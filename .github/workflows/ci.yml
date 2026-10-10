@@ -21,11 +21,13 @@ jobs:
         with:
           node-version: 22
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Dependency audit summary
         run: |
           npm audit --json > /tmp/samura-npm-audit.json || true
           node -e 'const a=require("/tmp/samura-npm-audit.json"); console.log(JSON.stringify({metadata:a.metadata?.vulnerabilities, advisories:Object.entries(a.vulnerabilities||{}).map(([name,v])=>({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable,via:v.via.map(x=>typeof x==="string"?x:{name:x.name,title:x.title,range:x.range,url:x.url})}))},null,2))'
+      - name: Enforce dependency security audit
+        run: npm audit --audit-level=low
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
