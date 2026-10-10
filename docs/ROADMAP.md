@@ -1,35 +1,39 @@
 # SAMURA Roadmap
 
-## Current milestone — repository foundation
-- [x] Initialize repository charter.
-- [x] Add TypeScript/Next.js application skeleton.
-- [x] Establish original landing-page design tokens and responsive foundation.
-- [x] Add a minimal non-sensitive health endpoint.
-- [x] Document architecture direction and initial constraints.
-- [ ] Run install, lint, typecheck, tests, and production build in a real CI environment.
-- [ ] Confirm deployment target and environment variables.
+## Phase 0 — repository foundation
+- [x] Project charter and original SAMURA landing page.
+- [x] Next.js / TypeScript application scaffold and health endpoint.
+- [x] CI workflow and baseline architecture/security documentation.
 
-## Next milestones
-### 1. Identity and persistence
-Choose an authentication approach compatible with the deployment target; implement server-verified sessions, relational schema/migrations, ownership enforcement, and cross-user access tests.
+## Phase 1 — secure persistent chat (PR #2, pending CI/review)
+- [x] Better Auth email/password handlers and browser client.
+- [x] PostgreSQL schema and initial migration for auth, conversations, messages, and usage records.
+- [x] Owner-scoped conversation APIs.
+- [x] Server-side OpenAI streaming adapter and request/usage controls.
+- [x] Responsive chat workspace, session-aware entry flow, history restoration, and Markdown/GFM rendering.
+- [x] Health and rate-limit unit tests added.
+- [ ] Confirm GitHub Actions passes all checks.
+- [ ] Apply migration to a test PostgreSQL database and verify auth/conversation flows.
+- [ ] Run a live OpenAI inference test using an authorized key.
+- [ ] Add deterministic dependency lockfile and validate deployment configuration.
+- [ ] Review complete diff and security controls before merge.
 
-### 2. SAMURA Chat
-Persist conversations/messages, add streaming and cancellation, Markdown/code rendering, retry/regeneration, history, export, and clear recovery states.
+## Phase 2 — context and memory
+- [ ] Token-budgeted conversation context and long-thread summarization.
+- [ ] User-approved memory CRUD and deletion.
+- [ ] Project-scoped history and durable task continuity.
 
-### 3. Provider gateway
-Implement a mock adapter for deterministic tests and at least one live adapter when an authorized key and billing limits are configured. Add capability metadata, timeouts, normalized errors, and usage records.
+## Phase 3 — bounded agent runtime
+- [ ] Typed tool registry, per-tool authorization, timeouts, and audit events.
+- [ ] Checkpoints, idempotency, approvals for consequential actions, and explicit success criteria.
 
-### 4. Context and memory
-Add token-budgeted context assembly, summarization, user-approved memory CRUD, deletion, and project-scoped task history.
+## Phase 4 — evaluation and economics
+- [ ] Versioned evaluation set and quality/latency/cost baselines.
+- [ ] Usage dashboards, budget enforcement, and regression checks.
 
-### 5. Agent execution
-Implement a permissioned tool registry, validated inputs, bounded steps, checkpoints, idempotency, approvals, audit records, and explicit success criteria.
-
-### 6. Evaluation and economics
-Create versioned test datasets, quality/cost/latency baselines, regression checks, budget enforcement, and operational dashboards.
-
-### 7. Research
-Review model/data licenses, create reproducible small-model inference and fine-tuning experiments, estimate compute before running, and preserve experiment provenance.
+## Phase 5 — model research
+- [ ] Reproducible open-weight inference and fine-tuning experiments.
+- [ ] License/provenance checks and compute estimates before training.
 
 ## Release gates
-No public AI inference before auth, tenant isolation, usage limits, provider credential handling, and failure paths are tested. No claim of live integration or model training without run evidence. No production-ready claim until deployment, migrations, backup/restore, observability, and security review are complete.
+No public AI inference before authentication, tenant isolation, provider credential handling, rate limits, and failure paths are tested. No live integration, benchmark, training, or production-ready claim without corresponding evidence. The current in-memory limiter is not sufficient for horizontally scaled production.
