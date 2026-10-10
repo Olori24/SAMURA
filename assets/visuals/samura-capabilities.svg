@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+<title id="title">SAMURA capability map</title>
+<desc id="desc">Capability map with three status groups: implemented foundation code, in-development live verification, and planned intelligence features. It distinguishes current code from future capabilities.</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07110e"/><stop offset="1" stop-color="#101c18"/></linearGradient>
+<style>
+.title{font:700 25px Inter,Segoe UI,Arial,sans-serif;fill:#f0faf5}.label{font:700 12px Inter,Segoe UI,Arial,sans-serif;letter-spacing:1.6px}.item{font:650 17px Inter,Segoe UI,Arial,sans-serif;fill:#f0faf5}.detail{font:400 13px Inter,Segoe UI,Arial,sans-serif;fill:#b9ccc2}.small{font:600 11px Inter,Segoe UI,Arial,sans-serif;letter-spacing:1px}
+</style>
+</defs>
+<rect width="1200" height="560" rx="24" fill="url(#bg)"/>
+<text x="42" y="48" class="label" fill="#72e7b7">SAMURA / CAPABILITY MAP</text>
+<text x="42" y="82" class="title">What exists. What needs proof. What comes next.</text>
+<text x="42" y="108" class="detail">Status reflects repository code and current verification evidence—not the long-term vision alone.</text>
+<rect x="38" y="138" width="356" height="374" rx="18" fill="#10251b" stroke="#2d6b4d"/>
+<rect x="38" y="138" width="356" height="8" rx="4" fill="#26c786"/>
+<text x="62" y="176" class="label" fill="#78efbd">01 / IMPLEMENTED IN CODE</text>
+<circle cx="66" cy="216" r="5" fill="#26c786"/><text x="82" y="221" class="item">Web application</text><text x="82" y="241" class="detail">Next.js, React, TypeScript</text>
+<circle cx="66" cy="278" r="5" fill="#26c786"/><text x="82" y="283" class="item">Identity + session code</text><text x="82" y="303" class="detail">Better Auth handlers and client</text>
+<circle cx="66" cy="340" r="5" fill="#26c786"/><text x="82" y="345" class="item">Conversation API</text><text x="82" y="365" class="detail">Owner-scoped routes and history</text>
+<circle cx="66" cy="402" r="5" fill="#26c786"/><text x="82" y="407" class="item">Data / model adapters</text><text x="82" y="427" class="detail">Schema, migration, OpenAI stream path</text>
+<rect x="60" y="459" width="310" height="32" rx="8" fill="#173b2a"/><text x="215" y="480" text-anchor="middle" class="small" fill="#9cf3cd">LIVE INTEGRATION STILL UNVERIFIED</text>
+<rect x="422" y="138" width="356" height="374" rx="18" fill="#201e13" stroke="#796536"/>
+<rect x="422" y="138" width="356" height="8" rx="4" fill="#d8ae52"/>
+<text x="446" y="176" class="label" fill="#f1d18a">02 / IN DEVELOPMENT</text>
+<circle cx="450" cy="216" r="5" fill="#e2b75b"/><text x="466" y="221" class="item">Database migration</text><text x="466" y="241" class="detail">Apply and verify against test Neon DB</text>
+<circle cx="450" cy="278" r="5" fill="#e2b75b"/><text x="466" y="283" class="item">Signup + session checks</text><text x="466" y="303" class="detail">Real end-to-end identity verification</text>
+<circle cx="450" cy="340" r="5" fill="#e2b75b"/><text x="466" y="345" class="item">Cross-user isolation</text><text x="466" y="365" class="detail">Prove owner boundaries with live data</text>
+<circle cx="450" cy="402" r="5" fill="#e2b75b"/><text x="466" y="407" class="item">Authorized inference</text><text x="466" y="427" class="detail">Real provider response + failure paths</text>
+<rect x="444" y="459" width="310" height="32" rx="8" fill="#3c321c"/><text x="599" y="480" text-anchor="middle" class="small" fill="#f4d995">PHASE 1 RELEASE GATES</text>
+<rect x="806" y="138" width="356" height="374" rx="18" fill="#171b2a" stroke="#414c71"/>
+<rect x="806" y="138" width="356" height="8" rx="4" fill="#8c9de9"/>
+<text x="830" y="176" class="label" fill="#b4c1ff">03 / PLANNED CAPABILITIES</text>
+<circle cx="834" cy="216" r="5" fill="#8c9de9"/><text x="850" y="221" class="item">Multi-model orchestration</text><text x="850" y="241" class="detail">Provider selection and adapter contracts</text>
+<circle cx="834" cy="278" r="5" fill="#8c9de9"/><text x="850" y="283" class="item">Persistent memory</text><text x="850" y="303" class="detail">User-controlled, inspectable continuity</text>
+<circle cx="834" cy="340" r="5" fill="#8c9de9"/><text x="850" y="345" class="item">Bounded AI agents</text><text x="850" y="365" class="detail">Permissions, checkpoints, real tool calls</text>
+<circle cx="834" cy="402" r="5" fill="#8c9de9"/><text x="850" y="407" class="item">Evaluation + model research</text><text x="850" y="427" class="detail">Benchmarks and future open-weight studies</text>
+<rect x="828" y="459" width="310" height="32" rx="8" fill="#252d49"/><text x="983" y="480" text-anchor="middle" class="small" fill="#c6d0ff">ROADMAP — NOT AVAILABLE TODAY</text>
+<text x="42" y="539" class="detail">SAMURA reports implementation status separately from live operational verification.</text>
+</svg>
