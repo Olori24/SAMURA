@@ -2,14 +2,13 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { AudioWaveform, LoaderCircle, ShieldCheck } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 
 export default function LoginPage() {
   const router = useRouter();
-  const params = useSearchParams();
-  const [mode, setMode] = useState<"login" | "signup">(params.get("mode") === "signup" ? "signup" : "login");
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,7 +40,7 @@ export default function LoginPage() {
           <label className="block text-sm text-slate-300">Email address<input required type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} maxLength={254} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 outline-none focus:border-[var(--accent)]" /></label>
           <label className="block text-sm text-slate-300">Password<input required type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 12 : 1} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 outline-none focus:border-[var(--accent)]" />{mode === "signup" && <span className="mt-1 block text-xs text-slate-500">Use at least 12 characters.</span>}</label>
           {error && <p role="alert" className="rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">{error}</p>}
-          <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-3.5 font-semibold text-[#07120e] transition hover:bg-white disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={17}/ >}{mode === "signup" ? "Create account" : "Sign in"}</button>
+          <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-3.5 font-semibold text-[#07120e] transition hover:bg-white disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={17} />}{mode === "signup" ? "Create account" : "Sign in"}</button>
         </form>
         <p className="mt-6 text-center text-sm text-slate-400">{mode === "signup" ? "Already have an account?" : "New to SAMURA?"} <button onClick={()=>{setMode(mode === "signup" ? "login" : "signup");setError("");}} className="font-semibold text-[var(--accent)] hover:underline">{mode === "signup" ? "Sign in" : "Create account"}</button></p>
         <div className="mt-7 flex items-center justify-center gap-2 border-t border-white/10 pt-5 text-xs text-slate-500"><ShieldCheck size={15}/> Protected by server-side authentication</div>
