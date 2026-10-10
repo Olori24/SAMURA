@@ -7,7 +7,7 @@
 - Owner-scoped conversation list, create, and detail endpoints.
 - OpenAI server-side streaming adapter with explicit provider/model headers, input bounds, per-user request throttling, cancellation propagation, partial-response persistence, and usage outcome records.
 - Responsive chat and email authentication screens.
-- CI setup correction: remove npm setup cache until a lockfile is committed.
+- CI enforces deterministic `npm ci` installs and a zero-advisory dependency audit.
 - Automated rate-limit and health endpoint tests.
 
 ## Required environment
@@ -25,5 +25,5 @@ Never commit actual environment values. Run migrations through the configured Dr
 - The in-memory rate limiter is a single-process safety net, not a distributed quota system; replace it with a shared atomic store before horizontally scaled public production.
 - Email verification and password reset require a configured mail provider and are not enabled in this phase.
 - Usage records capture provider/model and outcome; exact token/cost figures are not claimed when provider usage/pricing is unavailable.
-- The project has no committed npm lockfile yet; add one with the chosen Node/npm environment before relying on deterministic dependency resolution in production.
-- Run GitHub Actions and fix all reported issues before considering this phase verified.
+- A committed npm lockfile is maintained by the repository workflow; CI validates it with `npm ci`.
+- Current GitHub Actions checks pass on the verified head, including the production build and blocking dependency audit. Live integration gates remain open.
