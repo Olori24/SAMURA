@@ -96,16 +96,33 @@ export default function ChatPage() {
       }
       if (!response.body) throw new Error("Streaming is unavailable in this browser.");
       const reader = response.body.getReader(); const decoder = new TextDecoder();
-      let received = "";
+      let received = ""; let buffer = ""; let streamFailed = false;
+      const consumeEvent = (raw: string) => {
+        const line = raw.split("\\n").find(item => item.startsWith("data: "));
+        if (!line) return;
+        try {
+          const event = JSON.parse(line.slice(6)) as { type: string; text?: string; message?: string; status?: string };
+          if (event.type === "delta" && typeof event.text === "string") {
+            received += event.text;
+            setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, content: received } : m));
+          } else if (event.type === "error") {
+            streamFailed = true; setError(event.message ?? "Generation stopped unexpectedly.");
+          } else if (event.type === "done" && event.status !== "complete") {
+            streamFailed = event.status !== "cancelled";
+          }
+        } catch { streamFailed = true; setError("Received an invalid streaming response. Refresh the conversation."); }
+      };
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        received += decoder.decode(value, { stream: true });
-        setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, content: received } : m));
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\\n\\n"); buffer = events.pop() ?? "";
+        events.forEach(consumeEvent);
       }
-      received += decoder.decode();
-      setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, content: received, status: received ? "complete" : "failed" } : m));
-      if (!received) setError("The model returned an empty response. You can try again.");
+      buffer += decoder.decode();
+      if (buffer.trim()) consumeEvent(buffer);
+      setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, content: received, status: received ? (streamFailed ? "partial" : "complete") : "failed" } : m));
+      if (!received && !streamFailed) setError("The model returned an empty response. You can try again.");
       await loadConversations();
     } catch(e) {
       const stopped = e instanceof DOMException && e.name === "AbortError";
