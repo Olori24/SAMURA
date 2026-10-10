@@ -5,11 +5,13 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { conversations, messages } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { isRuntimeConfigured } from "@/lib/runtime-config";
 
 export const runtime = "nodejs";
 const idSchema = z.string().uuid();
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  if (!isRuntimeConfigured()) return NextResponse.json({ error: "Conversation service is not configured." }, { status: 503 });
   try {
     const user = await auth.api.getSession({ headers: await headers() });
     if (!user?.user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
