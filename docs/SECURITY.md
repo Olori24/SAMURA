@@ -16,7 +16,7 @@
 - In-memory throttling is process-local; use a shared atomic limiter for multiple instances.
 - Email verification and password recovery require configured email delivery and are not enabled.
 - No live database or provider credentials were supplied; real integration remains unverified.
-- Add a committed lockfile and dependency audit.
+- Keep the committed lockfile current; CI enforces `npm ci` and `npm audit --audit-level=low` (zero advisories on the verified head).
 - Test ownership isolation and authentication flows against a real test database.
 - Add an explicit maximum request body limit at the hosting layer as well as application-level content checks.
 - Review session cookie behavior behind the actual production proxy/domain.
@@ -35,4 +35,4 @@
 - Provide data export and deletion pathways as persistence features are introduced.
 
 ## Current truth
-The Phase 1 branch contains the initial implementation, but CI, live PostgreSQL, live provider behavior, and production deployment have not yet been verified. Do not describe SAMURA as production-ready until those gates pass.
+GitHub Actions and the dependency audit pass on the current Phase 1 head. Live PostgreSQL/auth flows, live provider behavior, shared rate limiting, email recovery/verification, and production deployment remain unverified. Do not describe SAMURA as production-ready until those gates pass.
