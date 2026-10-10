@@ -1,7 +1,7 @@
 # SAMURA Architecture
 
 ## Status
-Phase 1 implementation is in PR #2 and remains pending verification. This document distinguishes code in the branch from integrations that have not been run against real credentials.
+Phase 1 implementation is in PR #2. Current branch CI (install, dependency audit, typecheck, lint, tests, production build) passes; live integrations that require authorized credentials remain unverified.
 
 ## Application shape
 Use a modular monolith. The Next.js application hosts the product UI and server routes. PostgreSQL is accessed through Drizzle ORM and the Neon serverless driver. Better Auth manages email/password identity and sessions. The initial model adapter calls the OpenAI chat completions streaming API server-side.
@@ -30,4 +30,4 @@ Schema is defined in src/db/schema.ts. The initial SQL migration is in drizzle/0
 The first adapter is OpenAI. SAMURA_OPENAI_MODEL configures the model identifier and defaults to gpt-4.1-mini; verify availability and billing for the actual account before enabling use. Provider calls fail clearly when OPENAI_API_KEY is absent. Do not treat mocks or unconfigured code as a live integration.
 
 ## Production gates
-Before public launch: verify CI, lock dependency versions with a committed lockfile, test auth and tenant isolation against PostgreSQL, run a real authorized inference test, use shared rate limiting, configure email recovery/verification, and review production cookie/domain settings.
+Before public launch: test auth and tenant isolation against PostgreSQL, run a real authorized inference test, use shared rate limiting, configure email recovery/verification, and review production cookie/domain settings. CI enforces the committed npm lockfile and zero-advisory dependency audit.
