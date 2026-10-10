@@ -10,7 +10,7 @@
 
 <br />
 
-[![SAMURA CI](https://github.com/Olori24/SAMURA/actions/workflows/ci.yml/badge.svg)](https://github.com/Olori24/SAMURA/actions/workflows/ci.yml)
+[![SAMURA CI](https://github.com/Olori24/SAMURA/actions/workflows/ci.yml/badge.svg?branch=feat%2Fphase-1-secure-chat)](https://github.com/Olori24/SAMURA/actions/workflows/ci.yml)
 ![Stage: Foundation](https://img.shields.io/badge/stage-foundation-15b981?style=flat-square)
 ![Development: Early](https://img.shields.io/badge/development-early%20stage-8b9bb4?style=flat-square)
 ![Research: In progress](https://img.shields.io/badge/research-in%20progress-8b7cf6?style=flat-square)
@@ -216,7 +216,7 @@ The expected workflow is:
 
 **INSPECT → PLAN → IMPLEMENT → TEST → FIX → VERIFY → DOCUMENT**
 
-Please include tests for behavior changes, update docs when reality changes, explain what you verified, and avoid unrelated refactors. Security-sensitive changes should be reported privately as described in [docs/SECURITY.md](docs/SECURITY.md).
+Please include tests for behavior changes, update docs when reality changes, explain what you verified, and avoid unrelated refactors. Security-sensitive changes should be reported privately as described in [docs/SECURITY.md](docs/SECURITY.md). See [repository governance](docs/REPOSITORY-GOVERNANCE.md) for the proposed issue-label taxonomy.
 
 ## License
 
