@@ -2,9 +2,9 @@ name: SAMURA CI
 
 on:
   push:
-    branches: [main, "feat/**"]
+    branches: [main, "feat/**", "docs/**"]
   pull_request:
-    branches: [main]
+    branches: [main, "feat/**"]
 
 permissions:
   contents: read
