@@ -23,10 +23,10 @@ export async function POST(request: Request) {
   const user = session?.user;
   if (!user) return NextResponse.json({ error: "Please sign in to use SAMURA Chat." }, { status: 401 });
 
-  const rate = checkRateLimit("chat:" + user.id, 10, 60_000);
+  const env = getServerEnv();
+  const rate = checkRateLimit("chat:" + user.id, env.SAMURA_MAX_REQUESTS_PER_MINUTE, 60_000);
   if (!rate.allowed) return NextResponse.json({ error: "You've reached the request limit. Please wait a minute and try again." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
 
-  const env = getServerEnv();
   if (!env.OPENAI_API_KEY) return NextResponse.json({ error: "AI inference is not configured yet. Add OPENAI_API_KEY in the server environment." }, { status: 503 });
   const contentLength = Number(request.headers.get("content-length") ?? "0");
   if (Number.isFinite(contentLength) && contentLength > 20_000) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
