@@ -79,7 +79,7 @@ export const usageRecords = pgTable("usage_record", {
   inputTokens: integer("input_tokens"),
   outputTokens: integer("output_tokens"),
   status: varchar("status", { length: 24 }).notNull(),
-  estimatedCostUsd: integer("estimated_cost_microusd"),
+  estimatedCostMicrousd: integer("estimated_cost_microusd"),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("usage_user_created_idx").on(t.userId, t.createdAt)]);
