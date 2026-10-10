@@ -22,7 +22,7 @@ export default function Home() {
         <h1 className="max-w-4xl font-[family-name:var(--font-space)] text-5xl font-medium leading-[1.06] tracking-[-0.055em] sm:text-7xl lg:text-8xl">Intelligence for<br /><span className="text-[var(--accent)]">what comes next.</span></h1>
         <p className="mt-7 max-w-2xl text-base leading-8 text-[var(--muted)] sm:text-lg">SAMURA is building toward a more capable, transparent, and useful AI platform — grounded in thoughtful engineering and a commitment to earn trust.</p>
         <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-          <a href="/login?mode=signup" className="rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-bold text-[#07120e] transition hover:bg-white">Get started <ArrowUpRight className="ml-2 inline" size={16} /></a>
+          <a href="/login" className="rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-bold text-[#07120e] transition hover:bg-white">Get started <ArrowUpRight className="ml-2 inline" size={16} /></a>
           <span className="px-4 py-3 text-sm text-slate-400">Built incrementally. Verified honestly.</span>
         </div>
         <div className="mt-20 grid w-full max-w-4xl grid-cols-3 divide-x divide-white/10 rounded-2xl border border-white/10 bg-white/[0.025] py-6">
