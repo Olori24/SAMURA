@@ -37,6 +37,7 @@
     "eslint-config-next": "^15.1.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",
-    "drizzle-kit": "^0.31.4"
+    "drizzle-kit": "^0.31.4",
+    "@eslint/eslintrc": "^3.3.1"
   }
 }
