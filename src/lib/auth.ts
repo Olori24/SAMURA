@@ -17,6 +17,15 @@ export const auth = betterAuth({
     provider: "pg",
     schema: { user: users, session: sessions, account: accounts, verification: verifications },
   }),
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 20,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 10 },
+      "/sign-up/email": { window: 60, max: 5 },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 12,
