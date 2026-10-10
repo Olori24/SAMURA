@@ -6,6 +6,7 @@ import { getDb } from "@/db";
 import { conversations } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isRuntimeConfigured } from "@/lib/runtime-config";
 
 export const runtime = "nodejs";
 const createSchema = z.object({ title: z.string().trim().min(1).max(160).optional() });
@@ -16,6 +17,7 @@ async function currentUser() {
 }
 
 export async function GET() {
+  if (!isRuntimeConfigured()) return NextResponse.json({ error: "Conversation service is not configured." }, { status: 503 });
   try {
     const user = await currentUser();
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
@@ -33,6 +35,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!isRuntimeConfigured()) return NextResponse.json({ error: "Conversation service is not configured." }, { status: 503 });
   try {
     const user = await currentUser();
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
