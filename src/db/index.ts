@@ -10,9 +10,16 @@ function createDatabase(url: string) {
 type Database = ReturnType<typeof createDatabase>;
 let database: Database | undefined;
 
+export function isDatabaseConfigured() {
+  return Boolean(process.env.SAMURA_DATABASE_URL ?? process.env.DATABASE_URL);
+}
+
 export function getDb() {
-  const url = process.env.SAMURA_DATABASE_URL ?? process.env.DATABASE_URL;
-  if (!url) throw new Error("Database is not configured. Set SAMURA_DATABASE_URL.");
+  // Keep Next.js build-time module evaluation possible without credentials.
+  // Every data API checks configuration before accessing the database; this
+  // placeholder fails closed if an unconfigured request somehow reaches here.
+  const url = process.env.SAMURA_DATABASE_URL ?? process.env.DATABASE_URL
+    ?? "postgres://invalid:invalid@127.0.0.1:5432/samura";
   if (!database) database = createDatabase(url);
   return database;
 }
