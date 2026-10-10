@@ -98,7 +98,7 @@ export async function POST(request: Request) {
   const responseStream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let outcome = "complete";
-      const emit = (payload: Record<string, unknown>) => controller.enqueue(encoder.encode("data: " + JSON.stringify(payload) + "\\n\\n"));
+      const emit = (payload: Record<string, unknown>) => controller.enqueue(encoder.encode("data: " + JSON.stringify(payload) + "\n\n"));
       try {
         for await (const part of stream) {
           const text = part.choices[0]?.delta?.content;
