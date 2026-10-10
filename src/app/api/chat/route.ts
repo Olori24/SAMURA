@@ -8,6 +8,7 @@ import { conversations, messages, usageRecords } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getServerEnv } from "@/lib/env";
+import { isRuntimeConfigured } from "@/lib/runtime-config";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -19,6 +20,7 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!isRuntimeConfigured()) return NextResponse.json({ error: "SAMURA is not configured yet. Add database and authentication settings." }, { status: 503 });
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
   const user = session?.user;
   if (!user) return NextResponse.json({ error: "Please sign in to use SAMURA Chat." }, { status: 401 });
