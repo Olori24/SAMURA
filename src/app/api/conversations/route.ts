@@ -35,6 +35,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(contentLength) && contentLength > 4_096) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
   if (!isRuntimeConfigured()) return NextResponse.json({ error: "Conversation service is not configured." }, { status: 503 });
   try {
     const user = await currentUser();
