@@ -37,7 +37,7 @@ npm run build
 ~~~~
 
 - Update architecture, security, and roadmap documents when implementation status changes.
-- State exactly what you tested. Distinguish unit tests, mocked tests, and live integration tests.
+- State exactly what you tested. Distinguish unit tests, mocked tests, and live integration tests. Before reporting a check as green, confirm the corresponding GitHub Actions run has completed successfully and link to its run.
 - Do not claim that an integration works merely because a client or adapter exists in the repository.
 - Do not add a new dependency without explaining why it is needed and considering maintenance, security, and resource costs.
 
