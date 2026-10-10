@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowUpRight, AudioWaveform, BrainCircuit, CheckCircle2, Compass, ShieldCheck, Sparkles } from "lucide-react";
 
 const capabilities = [
@@ -10,11 +11,11 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-hidden">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-8">
-        <a href="/" className="flex items-center gap-3" aria-label="SAMURA AI home">
+        <Link href="/" className="flex items-center gap-3" aria-label="SAMURA AI home">
           <span className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] text-[var(--accent)]"><AudioWaveform size={21} /></span>
           <span><strong className="block font-[family-name:var(--font-space)] text-lg tracking-[0.2em]">SAMURA</strong><span className="block text-[10px] uppercase tracking-[0.28em] text-[var(--muted)]">Artificial Intelligence</span></span>
-        </a>
-        <div className="flex items-center gap-3"><a href="#vision" className="hidden rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:border-white/25 hover:text-white sm:inline-flex">Our vision</a><a href="/login" className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#07120e] transition hover:bg-white">Sign in <ArrowUpRight className="ml-1 inline" size={14} /></a></div>
+        </Link>
+        <div className="flex items-center gap-3"><a href="#vision" className="hidden rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:border-white/25 hover:text-white sm:inline-flex">Our vision</a><Link href="/login" className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#07120e] transition hover:bg-white">Sign in <ArrowUpRight className="ml-1 inline" size={14} /></Link></div>
       </header>
 
       <section className="relative mx-auto flex max-w-7xl flex-col items-center px-5 pb-24 pt-20 text-center sm:px-8 sm:pt-28">
@@ -22,7 +23,7 @@ export default function Home() {
         <h1 className="max-w-4xl font-[family-name:var(--font-space)] text-5xl font-medium leading-[1.06] tracking-[-0.055em] sm:text-7xl lg:text-8xl">Intelligence for<br /><span className="text-[var(--accent)]">what comes next.</span></h1>
         <p className="mt-7 max-w-2xl text-base leading-8 text-[var(--muted)] sm:text-lg">SAMURA is building toward a more capable, transparent, and useful AI platform — grounded in thoughtful engineering and a commitment to earn trust.</p>
         <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-          <a href="/login" className="rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-bold text-[#07120e] transition hover:bg-white">Get started <ArrowUpRight className="ml-2 inline" size={16} /></a>
+          <Link href="/login" className="rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-bold text-[#07120e] transition hover:bg-white">Get started <ArrowUpRight className="ml-2 inline" size={16} /></Link>
           <span className="px-4 py-3 text-sm text-slate-400">Built incrementally. Verified honestly.</span>
         </div>
         <div className="mt-20 grid w-full max-w-4xl grid-cols-3 divide-x divide-white/10 rounded-2xl border border-white/10 bg-white/[0.025] py-6">
