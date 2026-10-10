@@ -98,7 +98,7 @@ export default function ChatPage() {
       const reader = response.body.getReader(); const decoder = new TextDecoder();
       let received = ""; let buffer = ""; let streamFailed = false;
       const consumeEvent = (raw: string) => {
-        const line = raw.split("\\n").find(item => item.startsWith("data: "));
+        const line = raw.split("\n").find(item => item.startsWith("data: "));
         if (!line) return;
         try {
           const event = JSON.parse(line.slice(6)) as { type: string; text?: string; message?: string; status?: string };
@@ -116,7 +116,7 @@ export default function ChatPage() {
         const { value, done } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\\n\\n"); buffer = events.pop() ?? "";
+        const events = buffer.split("\n\n"); buffer = events.pop() ?? "";
         events.forEach(consumeEvent);
       }
       buffer += decoder.decode();
