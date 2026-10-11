@@ -1,9 +1,11 @@
 export interface AIProviderEnv {
-  SAMURA_AI_PROVIDER: "ollama" | "openai";
+  SAMURA_AI_PROVIDER: "ollama" | "openai" | "gemini";
   SAMURA_OLLAMA_BASE_URL: string;
   SAMURA_OLLAMA_MODEL: string;
   OPENAI_API_KEY?: string;
   SAMURA_OPENAI_MODEL: string;
+  GEMINI_API_KEY?: string;
+  SAMURA_GEMINI_MODEL: string;
   NODE_ENV?: string;
 }
 
@@ -17,6 +19,18 @@ export function getAIProviderConfig(env: AIProviderEnv) {
       model: env.SAMURA_OPENAI_MODEL,
       apiKey: env.OPENAI_API_KEY,
       baseURL: undefined,
+    };
+  }
+
+  if (env.SAMURA_AI_PROVIDER === "gemini") {
+    if (!env.GEMINI_API_KEY) {
+      throw new Error("Gemini provider selected but GEMINI_API_KEY is not configured.");
+    }
+    return {
+      provider: "gemini" as const,
+      model: env.SAMURA_GEMINI_MODEL,
+      apiKey: env.GEMINI_API_KEY,
+      baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
     };
   }
 
