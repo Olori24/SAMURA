@@ -51,3 +51,34 @@ Changes should follow:
 `INSPECT → PLAN → IMPLEMENT → TEST → FIX → VERIFY → DOCUMENT`
 
 Prefer small, reviewable increments. Protect user data, avoid destructive changes, and never commit credentials or environment files containing secrets.
+
+
+## AI inference providers
+
+SAMURA Chat uses a server-side provider adapter. The default provider is **Ollama** for local development, so a paid OpenAI API key is not required to run the chat integration locally.
+
+### Local Ollama setup
+
+1. Install Ollama from the official website: https://ollama.com/download.
+2. Pull the configured model: `ollama pull qwen3:8b` (or set `SAMURA_OLLAMA_MODEL` to another compatible model).
+3. Keep `SAMURA_AI_PROVIDER=ollama` and set `SAMURA_OLLAMA_BASE_URL=http://127.0.0.1:11434/v1`.
+4. Start the SAMURA app and send a test message.
+
+Ollama's OpenAI-compatible API supports common chat-completion features, but feature support varies by model. SAMURA stores conversation history in its database; Ollama itself does not replace the SAMURA persistence layer.
+
+### Deployment warning
+
+A Vercel-hosted server cannot reach your personal computer through `127.0.0.1`. To use Ollama from a deployed SAMURA instance, run it on a reachable server or use a secure private network/tunnel, then set `SAMURA_OLLAMA_BASE_URL` to that server's API base URL. Do not expose an unauthenticated Ollama endpoint to the public internet. For production, add network access controls, authentication at a gateway, usage limits, monitoring, and capacity planning.
+
+To use OpenAI instead, set `SAMURA_AI_PROVIDER=openai`, provide `OPENAI_API_KEY` as a server-side secret, and configure `SAMURA_OPENAI_MODEL`. No provider key belongs in browser code or source control.
+
+
+### Hosted free-tier option for a Vercel preview
+
+For a deployed preview that cannot reach a developer's local Ollama process, SAMURA can optionally use Gemini's OpenAI-compatible API:
+
+1. Create a Gemini API key in Google AI Studio.
+2. In Vercel Preview environment variables, set `SAMURA_AI_PROVIDER=gemini`, `GEMINI_API_KEY` (as a secret), and optionally `SAMURA_GEMINI_MODEL=gemini-3.8-flash`.
+3. Redeploy the preview and test a real authenticated conversation.
+
+Google documents an API free tier for eligible models and an OpenAI-compatible endpoint, but rate limits and availability can change. Free-tier requests may be used to improve Google's products; do not send confidential customer data without reviewing the provider's current data-use terms. This is an optional bridge for early testing, not SAMURA-owned model infrastructure. See Google's [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing) and [OpenAI compatibility guide](https://ai.google.dev/gemini-api/docs/openai).
