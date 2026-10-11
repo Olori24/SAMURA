@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
-import { connectorRegistry } from "@/lib/connectors/registry";
+import { getConnectorRegistry } from "@/lib/connectors/registry";
 
 export const runtime = "nodejs";
 
@@ -17,7 +17,7 @@ export async function GET() {
   }
 
   return NextResponse.json(
-    { connectors: connectorRegistry },
+    { connectors: getConnectorRegistry() },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
