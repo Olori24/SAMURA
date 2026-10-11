@@ -4,6 +4,7 @@ export interface AIProviderEnv {
   SAMURA_OLLAMA_MODEL: string;
   OPENAI_API_KEY?: string;
   SAMURA_OPENAI_MODEL: string;
+  NODE_ENV?: string;
 }
 
 export function getAIProviderConfig(env: AIProviderEnv) {
@@ -17,6 +18,13 @@ export function getAIProviderConfig(env: AIProviderEnv) {
       apiKey: env.OPENAI_API_KEY,
       baseURL: undefined,
     };
+  }
+
+  if (env.NODE_ENV === "production") {
+    const host = new URL(env.SAMURA_OLLAMA_BASE_URL).hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]") {
+      throw new Error("Ollama is configured for localhost in production; configure a reachable, secured Ollama endpoint.");
+    }
   }
 
   return {
