@@ -63,16 +63,15 @@ export default function ConnectPage() {
   useEffect(() => {
     if (isPending || !session?.user) return;
     let active = true;
-    const params = new URLSearchParams(window.location.search);
-    const result = params.get("github");
-    if (result === "connected") setGithubNotice("GitHub connected successfully.");
-    else if (result === "setup_required") setGithubNotice("GitHub OAuth is not configured in the production environment yet.");
-    else if (result && result !== "connected") setGithubNotice("GitHub connection: " + result.replaceAll("_", " ") + ".");
+    const result = new URLSearchParams(window.location.search).get("github");
     fetch("/api/connectors/github", { cache: "no-store" })
       .then(async response => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error ?? "Could not check GitHub connection.");
         if (!active) return;
+        if (result === "connected") setGithubNotice("GitHub connected successfully.");
+        else if (result === "setup_required") setGithubNotice("GitHub OAuth is not configured in the production environment yet.");
+        else if (result && result !== "connected") setGithubNotice("GitHub connection: " + result.replaceAll("_", " ") + ".");
         setGithubConnected(Boolean(data.connected));
         setGithubProfile(data.account ?? null);
         if (data.needsReauthorization) setGithubNotice("GitHub authorization expired. Reconnect to continue.");
