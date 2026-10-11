@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,8 @@ export async function GET(request: Request) {
   if (!isRuntimeConfigured()) return NextResponse.json({ error: "SAMURA is not configured yet." }, { status: 503 });
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
   if (!session?.user) return NextResponse.redirect(new URL("/login", request.url));
+  const rate = checkRateLimit("github-oauth-start:" + session.user.id, 5, 60_000);
+  if (!rate.allowed) return NextResponse.json({ error: "Too many GitHub connection attempts. Wait a minute and try again." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
 
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
