@@ -1,0 +1,47 @@
+name: Feature request
+description: Propose a user-focused improvement or research direction
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Who has this problem, and why does it matter?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed direction
+      description: Describe the outcome, not just the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Measurable acceptance criteria
+      description: How could a reviewer verify that this works?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Primary area
+      options:
+        - Frontend
+        - Backend
+        - AI / model integration
+        - Database
+        - Security
+        - Infrastructure
+        - Documentation
+        - Research
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks, costs, and alternatives
+      description: Note privacy, security, operational, licensing, or infrastructure implications.
+    validations:
+      required: false
