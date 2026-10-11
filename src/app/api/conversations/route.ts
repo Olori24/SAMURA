@@ -7,6 +7,7 @@ import { conversations } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
+import { parseBoundedJson } from "@/lib/parse-bounded-json";
 
 export const runtime = "nodejs";
 const createSchema = z.object({ title: z.string().trim().min(1).max(160).optional() });
@@ -35,16 +36,18 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const contentLength = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(contentLength) && contentLength > 4_096) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
   if (!isRuntimeConfigured()) return NextResponse.json({ error: "Conversation service is not configured." }, { status: 503 });
   try {
     const user = await currentUser();
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
     const limit = checkRateLimit("conversation-create:" + user.id, 30);
     if (!limit.allowed) return NextResponse.json({ error: "Too many new conversations. Try again shortly." }, { status: 429 });
-    const raw = await request.json().catch(() => null);
-    const parsed = createSchema.safeParse(raw ?? {});
+    const body = await parseBoundedJson(request, 4_096);
+    if (!body.ok) return NextResponse.json(
+      { error: body.tooLarge ? "Request is too large." : "Invalid JSON request body." },
+      { status: body.tooLarge ? 413 : 400 },
+    );
+    const parsed = createSchema.safeParse(body.value ?? {});
     if (!parsed.success) return NextResponse.json({ error: "Invalid conversation details." }, { status: 400 });
     const db = getDb();
     const [created] = await db.insert(conversations).values({
