@@ -26,11 +26,11 @@ export const connectorRegistry: ConnectorDefinition[] = [
     id: "github",
     name: "GitHub",
     category: "developer",
-    description: "Prepare repository search, issue review, and pull-request workflows after a secure GitHub OAuth connection is configured.",
+    description: "Connect your GitHub identity and inspect public repositories. This initial integration is read-only and does not request repository write or private-repository access.",
     status: "setup_required",
     auth: "oauth",
-    scopes: ["read:user", "repo (only if private repository access is requested)"],
-    actions: ["search_repositories", "list_issues", "list_pull_requests"],
+    scopes: ["read:user", "user:email"],
+    actions: ["view_profile", "list_public_repositories"],
   },
   {
     id: "google-drive",
@@ -56,4 +56,16 @@ export const connectorRegistry: ConnectorDefinition[] = [
 
 export function getConnector(id: string) {
   return connectorRegistry.find((connector) => connector.id === id);
+}
+
+export function getConnectorRegistry() {
+  const githubConfigured = Boolean(
+    process.env.GITHUB_CLIENT_ID &&
+    process.env.GITHUB_CLIENT_SECRET &&
+    process.env.SAMURA_CONNECTOR_ENCRYPTION_KEY &&
+    process.env.SAMURA_CONNECTOR_ENCRYPTION_KEY.length >= 32
+  );
+  return connectorRegistry.map((connector) => connector.id === "github"
+    ? { ...connector, status: githubConfigured ? "available" as const : "setup_required" as const }
+    : connector);
 }
