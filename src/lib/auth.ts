@@ -8,10 +8,18 @@ import { accounts, sessions, users, verifications } from "@/db/schema";
 // secrets. All auth handlers reject requests unless real runtime configuration
 // is present; this value must never be used for an authenticated request.
 const secret = process.env.BETTER_AUTH_SECRET ?? "build-only-placeholder-secret-never-use-at-runtime";
+const canonicalAuthUrl = process.env.BETTER_AUTH_URL;
 
 export const auth = betterAuth({
   appName: "SAMURA AI",
-  baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+  baseURL: canonicalAuthUrl ?? "http://localhost:3000",
+  // Vercel creates a unique hostname for each deployment. Trust only SAMURA's
+  // project-specific Vercel deployment pattern, plus the explicitly configured
+  // canonical URL. Do not trust every *.vercel.app origin.
+  trustedOrigins: [
+    ...(canonicalAuthUrl ? [canonicalAuthUrl] : []),
+    "https://samura-*-bakande11-2779s-projects.vercel.app",
+  ],
   secret,
   database: drizzleAdapter(getDb(), {
     provider: "pg",
