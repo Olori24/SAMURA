@@ -6,11 +6,12 @@ const base = {
   SAMURA_OLLAMA_BASE_URL: "http://127.0.0.1:11434/v1",
   SAMURA_OLLAMA_MODEL: "qwen3:8b",
   SAMURA_OPENAI_MODEL: "gpt-4.1-mini",
+  SAMURA_OPENROUTER_MODEL: "openrouter/free",
   SAMURA_GEMINI_MODEL: "gemini-3.8-flash",
 };
 
 describe("SAMURA AI provider configuration", () => {
-  it("selects local Ollama without requiring an OpenAI API key", () => {
+  it("selects local Ollama without requiring a hosted API key", () => {
     expect(getAIProviderConfig(base)).toEqual({
       provider: "ollama",
       model: "qwen3:8b",
@@ -36,6 +37,26 @@ describe("SAMURA AI provider configuration", () => {
       model: "gemini-3.8-flash",
       apiKey: "test-gemini-key",
       baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+    });
+  });
+
+  it("requires an OpenRouter key only when OpenRouter is explicitly selected", () => {
+    expect(() => getAIProviderConfig({
+      ...base,
+      SAMURA_AI_PROVIDER: "openrouter",
+    })).toThrow("OPENROUTER_API_KEY");
+  });
+
+  it("configures OpenRouter with its OpenAI-compatible endpoint", () => {
+    expect(getAIProviderConfig({
+      ...base,
+      SAMURA_AI_PROVIDER: "openrouter",
+      OPENROUTER_API_KEY: "test-openrouter-key",
+    })).toEqual({
+      provider: "openrouter",
+      model: "openrouter/free",
+      apiKey: "test-openrouter-key",
+      baseURL: "https://openrouter.ai/api/v1",
     });
   });
 

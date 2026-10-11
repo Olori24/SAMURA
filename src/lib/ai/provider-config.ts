@@ -1,9 +1,11 @@
 export interface AIProviderEnv {
-  SAMURA_AI_PROVIDER: "ollama" | "openai" | "gemini";
+  SAMURA_AI_PROVIDER: "ollama" | "openai" | "gemini" | "openrouter";
   SAMURA_OLLAMA_BASE_URL: string;
   SAMURA_OLLAMA_MODEL: string;
   OPENAI_API_KEY?: string;
   SAMURA_OPENAI_MODEL: string;
+  OPENROUTER_API_KEY?: string;
+  SAMURA_OPENROUTER_MODEL: string;
   GEMINI_API_KEY?: string;
   SAMURA_GEMINI_MODEL: string;
   NODE_ENV?: string;
@@ -19,6 +21,18 @@ export function getAIProviderConfig(env: AIProviderEnv) {
       model: env.SAMURA_OPENAI_MODEL,
       apiKey: env.OPENAI_API_KEY,
       baseURL: undefined,
+    };
+  }
+
+  if (env.SAMURA_AI_PROVIDER === "openrouter") {
+    if (!env.OPENROUTER_API_KEY) {
+      throw new Error("OpenRouter provider selected but OPENROUTER_API_KEY is not configured.");
+    }
+    return {
+      provider: "openrouter" as const,
+      model: env.SAMURA_OPENROUTER_MODEL,
+      apiKey: env.OPENROUTER_API_KEY,
+      baseURL: "https://openrouter.ai/api/v1",
     };
   }
 
