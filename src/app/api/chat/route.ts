@@ -9,6 +9,7 @@ import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
+import { createAIClient } from "@/lib/ai/provider";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -29,7 +30,15 @@ export async function POST(request: Request) {
   const rate = checkRateLimit("chat:" + user.id, env.SAMURA_MAX_REQUESTS_PER_MINUTE, 60_000);
   if (!rate.allowed) return NextResponse.json({ error: "You've reached the request limit. Please wait a minute and try again." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
 
-  if (!env.OPENAI_API_KEY) return NextResponse.json({ error: "AI inference is not configured yet. Add OPENAI_API_KEY in the server environment." }, { status: 503 });
+  let ai: ReturnType<typeof createAIClient>;
+  try {
+    ai = createAIClient(env);
+  } catch (error) {
+    const message = error instanceof Error && error.message.includes("OPENAI_API_KEY")
+      ? "OpenAI is selected but its server API key is not configured. Select Ollama or configure OPENAI_API_KEY."
+      : "AI provider configuration is invalid.";
+    return NextResponse.json({ error: message }, { status: 503 });
+  }
   const contentLength = Number(request.headers.get("content-length") ?? "0");
   if (Number.isFinite(contentLength) && contentLength > 20_000) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
   const raw = await request.json().catch(() => null);
@@ -80,13 +89,12 @@ export async function POST(request: Request) {
     ...boundedHistory,
   ];
 
-  const client = new OpenAI({ apiKey: env.OPENAI_API_KEY, timeout: 50_000, maxRetries: 0 });
   const abortController = new AbortController();
   request.signal.addEventListener("abort", () => abortController.abort(), { once: true });
   let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
   try {
-    stream = await client.chat.completions.create({
-      model: env.SAMURA_OPENAI_MODEL,
+    stream = await ai.client.chat.completions.create({
+      model: ai.model,
       messages: providerMessages,
       stream: true,
       stream_options: { include_usage: true },
@@ -95,10 +103,10 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof OpenAI.APIError && error.status === 429
       ? "The AI provider is busy or the configured quota is exhausted. Please try again later."
-      : "SAMURA could not reach the AI provider. Check provider configuration and try again.";
+      : "SAMURA could not reach the selected AI provider. Check that the model server is running and reachable, then try again.";
     await db.insert(usageRecords).values({
-      userId: user.id, conversationId: conversation.id, provider: "openai",
-      model: env.SAMURA_OPENAI_MODEL, status: "failed",
+      userId: user.id, conversationId: conversation.id, provider: ai.provider,
+      model: ai.model, status: "failed",
     }).catch(() => undefined);
     await db.update(messages).set({ status: "failed" }).where(and(eq(messages.id, userMessage.id), eq(messages.userId, user.id))).catch(() => undefined);
     return NextResponse.json({ error: message }, { status: error instanceof OpenAI.APIError && error.status === 429 ? 429 : 502 });
@@ -132,8 +140,8 @@ export async function POST(request: Request) {
           }).catch(() => undefined);
         }
         await db.insert(usageRecords).values({
-          userId: user.id, conversationId: conversation.id, provider: "openai",
-          model: env.SAMURA_OPENAI_MODEL, inputTokens, outputTokens, status: outcome,
+          userId: user.id, conversationId: conversation.id, provider: ai.provider,
+          model: ai.model, inputTokens, outputTokens, status: outcome,
         }).catch(() => undefined);
         try {
           if (outcome === "failed") emit({ type: "error", message: "Generation stopped unexpectedly. Refresh the conversation to see any saved partial response." });
@@ -153,8 +161,8 @@ export async function POST(request: Request) {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       "X-Content-Type-Options": "nosniff",
-      "X-SAMURA-Provider": "openai",
-      "X-SAMURA-Model": env.SAMURA_OPENAI_MODEL,
+      "X-SAMURA-Provider": ai.provider,
+      "X-SAMURA-Model": ai.model,
     },
   });
 }
