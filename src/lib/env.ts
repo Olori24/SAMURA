@@ -34,7 +34,8 @@ export function getServerEnv() {
     SAMURA_OLLAMA_MODEL: process.env.SAMURA_OLLAMA_MODEL,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     SAMURA_OPENAI_MODEL: process.env.SAMURA_OPENAI_MODEL,
-    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    // Support the existing Vercel secret name while standardizing on OPENROUTER_API_KEY.
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ?? process.env.Openrouter,
     SAMURA_OPENROUTER_MODEL: process.env.SAMURA_OPENROUTER_MODEL,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     SAMURA_GEMINI_MODEL: process.env.SAMURA_GEMINI_MODEL,
