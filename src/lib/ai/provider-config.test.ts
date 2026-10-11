@@ -6,6 +6,7 @@ const base = {
   SAMURA_OLLAMA_BASE_URL: "http://127.0.0.1:11434/v1",
   SAMURA_OLLAMA_MODEL: "qwen3:8b",
   SAMURA_OPENAI_MODEL: "gpt-4.1-mini",
+  SAMURA_GEMINI_MODEL: "gemini-3.8-flash",
 };
 
 describe("SAMURA AI provider configuration", () => {
@@ -15,6 +16,26 @@ describe("SAMURA AI provider configuration", () => {
       model: "qwen3:8b",
       apiKey: "ollama",
       baseURL: "http://127.0.0.1:11434/v1",
+    });
+  });
+
+  it("requires a Gemini key only when Gemini is explicitly selected", () => {
+    expect(() => getAIProviderConfig({
+      ...base,
+      SAMURA_AI_PROVIDER: "gemini",
+    })).toThrow("GEMINI_API_KEY");
+  });
+
+  it("configures Gemini through its OpenAI-compatible endpoint", () => {
+    expect(getAIProviderConfig({
+      ...base,
+      SAMURA_AI_PROVIDER: "gemini",
+      GEMINI_API_KEY: "test-gemini-key",
+    })).toEqual({
+      provider: "gemini",
+      model: "gemini-3.8-flash",
+      apiKey: "test-gemini-key",
+      baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
     });
   });
 
