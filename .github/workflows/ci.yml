@@ -1,0 +1,38 @@
+name: SAMURA CI
+
+on:
+  push:
+    branches: [main, "feat/**", "docs/**"]
+  pull_request:
+    branches: [main, "feat/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm ci
+      - name: Dependency audit summary
+        run: |
+          npm audit --json > /tmp/samura-npm-audit.json || true
+          node -e 'const a=require("/tmp/samura-npm-audit.json"); console.log(JSON.stringify({metadata:a.metadata?.vulnerabilities, advisories:Object.entries(a.vulnerabilities||{}).map(([name,v])=>({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable,via:v.via.map(x=>typeof x==="string"?x:{name:x.name,title:x.title,range:x.range,url:x.url})}))},null,2))'
+      - name: Enforce dependency security audit
+        run: npm audit --audit-level=low
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
