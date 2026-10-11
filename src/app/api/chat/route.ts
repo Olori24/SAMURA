@@ -34,9 +34,12 @@ export async function POST(request: Request) {
   try {
     ai = createAIClient(env);
   } catch (error) {
-    const message = error instanceof Error && error.message.includes("OPENAI_API_KEY")
+    const detail = error instanceof Error ? error.message : "";
+    const message = detail.includes("OPENAI_API_KEY")
       ? "OpenAI is selected but its server API key is not configured. Select Ollama or configure OPENAI_API_KEY."
-      : "AI provider configuration is invalid.";
+      : detail.includes("localhost in production")
+        ? "Ollama is configured for localhost, which Vercel cannot reach. Configure a reachable, secured Ollama endpoint."
+        : "AI provider configuration is invalid.";
     return NextResponse.json({ error: message }, { status: 503 });
   }
   const contentLength = Number(request.headers.get("content-length") ?? "0");
