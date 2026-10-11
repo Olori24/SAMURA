@@ -13,6 +13,16 @@
 
 ## Remaining findings / release gates
 
+### Critical — Application tables are absent from the connected Neon database
+- **Severity:** Critical
+- **Affected:** Neon project `noisy-shadow-16998197`, default branch `br-blue-shadow-b75r3shy`, database `neondb`; required public tables `user`, `session`, `account`, `verification`, `conversation`, `message`, and `usage_record`.
+- **Evidence:** Read-only Neon inventory and `information_schema.tables` query on 2026-10-11 returned only tables in the `neon_auth` schema; no application tables exist in the connected database branch. The repository's Drizzle adapter expects application tables in the default schema.
+- **Risk:** Authentication and chat persistence using the app's Drizzle schema cannot reliably work against this database until the expected application migrations are applied to the correct database. A successful build or generic health endpoint is insufficient evidence.
+- **Required fix:** Confirm Vercel's `SAMURA_DATABASE_URL` points to this intended project/database; apply the committed application migrations to a staging branch first; verify table definitions and Better Auth adapter compatibility; then schedule the same migration against the intended production branch with a rollback/restore plan. Do not point the app at Neon Auth's `neon_auth` tables as a substitute for the app's own Better Auth schema.
+- **Verification:** Query `information_schema.tables` and confirm all seven expected public tables exist; verify columns/indexes match `src/db/schema.ts`; run real signup/sign-in/session persistence and chat CRUD tests; prove cross-user reads/writes are denied.
+- **Current state:** Not fixed by this PR. The Neon migration tool requires explicit approval before completing a schema migration against the persistent branch, so no production database migration was applied autonomously.
+
+
 | Severity | Area | Current evidence and required action |
 |---|---|---|
 | High | Email verification | `src/lib/auth.ts` enables email/password auth but does not require verified email and no delivery callback is configured. Configure a real email sender, verification flow, and recovery flow; test delivery and token expiry before enabling the requirement in production. |
