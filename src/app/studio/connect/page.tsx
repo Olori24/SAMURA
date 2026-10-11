@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Code2, FileJson, FileText, Github, LockKeyhole, Plug, Search, ShieldCheck, Slack, Sparkles, type LucideIcon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 
+type GitHubProfile = { login: string; name: string | null; avatarUrl: string; profileUrl: string };
+type GitHubRepo = { id: number; fullName: string; url: string; description: string | null; language: string | null; stars: number; updatedAt: string };
+
 type Connector = {
   id: string;
   name: string;
@@ -36,6 +39,11 @@ export default function ConnectPage() {
   const [action, setAction] = useState("word_count");
   const [result, setResult] = useState("");
   const [running, setRunning] = useState(false);
+  const [githubProfile, setGithubProfile] = useState<GitHubProfile | null>(null);
+  const [githubConnected, setGithubConnected] = useState(false);
+  const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
+  const [githubBusy, setGithubBusy] = useState(false);
+  const [githubNotice, setGithubNotice] = useState("");
 
   useEffect(() => {
     if (isPending) return;
@@ -51,6 +59,55 @@ export default function ConnectPage() {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [isPending, session?.user, router]);
+
+  useEffect(() => {
+    if (isPending || !session?.user) return;
+    let active = true;
+    const result = new URLSearchParams(window.location.search).get("github");
+    fetch("/api/connectors/github", { cache: "no-store" })
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error ?? "Could not check GitHub connection.");
+        if (!active) return;
+        if (result === "connected") setGithubNotice("GitHub connected successfully.");
+        else if (result === "setup_required") setGithubNotice("GitHub OAuth is not configured in the production environment yet.");
+        else if (result && result !== "connected") setGithubNotice("GitHub connection: " + result.replaceAll("_", " ") + ".");
+        setGithubConnected(Boolean(data.connected));
+        setGithubProfile(data.account ?? null);
+        if (data.needsReauthorization) setGithubNotice("GitHub authorization expired. Reconnect to continue.");
+      })
+      .catch(e => { if (active) setGithubNotice(e instanceof Error ? e.message : "Could not check GitHub connection."); });
+    return () => { active = false; };
+  }, [isPending, session?.user]);
+
+  async function loadGithubRepos() {
+    setGithubBusy(true); setGithubNotice("");
+    try {
+      const response = await fetch("/api/connectors/github/repos", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not load GitHub repositories.");
+      setGithubRepos(data.repositories ?? []);
+    } catch (e) {
+      setGithubNotice(e instanceof Error ? e.message : "Could not load GitHub repositories.");
+    } finally {
+      setGithubBusy(false);
+    }
+  }
+
+  async function disconnectGithub() {
+    setGithubBusy(true); setGithubNotice("");
+    try {
+      const response = await fetch("/api/connectors/github", { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not disconnect GitHub.");
+      setGithubConnected(false); setGithubProfile(null); setGithubRepos([]);
+      setGithubNotice("GitHub disconnected. The stored SAMURA credential was removed.");
+    } catch (e) {
+      setGithubNotice(e instanceof Error ? e.message : "Could not disconnect GitHub.");
+    } finally {
+      setGithubBusy(false);
+    }
+  }
 
   async function runPlugin(event: React.FormEvent) {
     event.preventDefault();
@@ -84,7 +141,7 @@ export default function ConnectPage() {
         <div className="mb-3 grid h-11 w-11 place-items-center rounded-2xl border border-teal-300/20 bg-teal-300/10 text-teal-200"><Plug size={21}/></div>
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-teal-200">SAMURA Connect</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-5xl">Your tools, under your control.</h1>
-        <p className="mt-4 text-sm leading-7 text-slate-400">Explore plugins, inspect permissions, and run available actions. External account connections stay disabled until their OAuth credentials and consent flows are configured.</p>
+        <p className="mt-4 text-sm leading-7 text-slate-400">Explore plugins, inspect permissions, and run available actions. GitHub can be connected with read-only identity access once its production OAuth settings are configured.</p>
       </header>
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -109,6 +166,33 @@ export default function ConnectPage() {
           </article>;
         })}
       </div>
+
+      <section className="mt-6 rounded-3xl border border-teal-200/15 bg-teal-200/[0.035] p-5 sm:p-7">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-teal-200"><Github size={21}/></div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">GitHub account</h2><span className={"rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider " + (githubConnected ? "bg-teal-200/10 text-teal-200" : "bg-white/5 text-slate-400")}>{githubConnected ? "Connected" : "Not connected"}</span></div>
+              <p className="mt-1 text-sm leading-6 text-slate-400">Connect using GitHub OAuth with read-only identity scopes. SAMURA encrypts the token at rest and currently displays public repositories only.</p>
+              {githubProfile && <a href={githubProfile.profileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm text-teal-200 hover:text-white">{githubProfile.name || githubProfile.login} · @{githubProfile.login}</a>}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {!githubConnected ? <a href="/api/connectors/github/authorize" className="inline-flex items-center gap-2 rounded-xl bg-teal-200 px-4 py-2.5 text-sm font-bold text-[#07120e]"><Github size={15}/> Connect GitHub</a> : <>
+              <button disabled={githubBusy} onClick={()=>void loadGithubRepos()} className="rounded-xl bg-teal-200 px-4 py-2.5 text-sm font-bold text-[#07120e] disabled:opacity-50">{githubBusy ? "Loading…" : "Load public repositories"}</button>
+              <button disabled={githubBusy} onClick={()=>void disconnectGithub()} className="rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 disabled:opacity-50">Disconnect</button>
+            </>}
+          </div>
+        </div>
+        {githubNotice && <p role="status" className="mt-4 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-slate-300">{githubNotice}</p>}
+        {githubRepos.length > 0 && <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {githubRepos.map(repo => <article key={repo.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <a href={repo.url} target="_blank" rel="noreferrer" className="font-medium text-teal-200 hover:text-white">{repo.fullName}</a>
+            <p className="mt-2 text-sm leading-5 text-slate-400">{repo.description || "No description provided."}</p>
+            <p className="mt-3 text-xs text-slate-500">{repo.language || "Language not specified"} · {repo.stars} stars</p>
+          </article>)}
+        </div>}
+      </section>
 
       {selected && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-3 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="plugin-title">
         <section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-white/10 bg-[#0c111b] p-5 shadow-2xl sm:p-7">
