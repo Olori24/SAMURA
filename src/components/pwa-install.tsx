@@ -16,6 +16,10 @@ export default function PwaInstall() {
     const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isAndroid = /android/i.test(navigator.userAgent);
+
+    // Browser-only capabilities must be read after hydration; this one-time
+    // client sync initializes the install guidance from the actual device.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInstalled(standalone);
     setIos(isIos);
     setAndroid(isAndroid);
