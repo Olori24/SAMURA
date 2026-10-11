@@ -9,6 +9,7 @@ import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
+import { parseBoundedJson } from "@/lib/parse-bounded-json";
 import { createAIClient } from "@/lib/ai/provider";
 
 export const runtime = "nodejs";
@@ -44,10 +45,12 @@ export async function POST(request: Request) {
           : "AI provider configuration is invalid.";
     return NextResponse.json({ error: message }, { status: 503 });
   }
-  const contentLength = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(contentLength) && contentLength > 20_000) return NextResponse.json({ error: "Request is too large." }, { status: 413 });
-  const raw = await request.json().catch(() => null);
-  const parsed = requestSchema.safeParse(raw);
+  const body = await parseBoundedJson(request, 20_000);
+  if (!body.ok) return NextResponse.json(
+    { error: body.tooLarge ? "Request is too large." : "Invalid JSON request body." },
+    { status: body.tooLarge ? 413 : 400 },
+  );
+  const parsed = requestSchema.safeParse(body.value);
   if (!parsed.success) return NextResponse.json({ error: "Invalid message. Check the conversation and message fields." }, { status: 400 });
   if (parsed.data.message.length > env.SAMURA_MAX_INPUT_CHARS) return NextResponse.json({ error: "That message is too long. Please shorten it and try again." }, { status: 413 });
 
