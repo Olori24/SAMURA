@@ -37,9 +37,11 @@ export async function POST(request: Request) {
     const detail = error instanceof Error ? error.message : "";
     const message = detail.includes("OPENAI_API_KEY")
       ? "OpenAI is selected but its server API key is not configured. Select Ollama or configure OPENAI_API_KEY."
-      : detail.includes("localhost in production")
-        ? "Ollama is configured for localhost, which Vercel cannot reach. Configure a reachable, secured Ollama endpoint."
-        : "AI provider configuration is invalid.";
+      : detail.includes("GEMINI_API_KEY")
+        ? "Gemini is selected but GEMINI_API_KEY is not configured. Add a server-side Gemini API key or select another provider."
+        : detail.includes("localhost in production")
+          ? "Ollama is configured for localhost, which Vercel cannot reach. Configure a reachable, secured Ollama endpoint."
+          : "AI provider configuration is invalid.";
     return NextResponse.json({ error: message }, { status: 503 });
   }
   const contentLength = Number(request.headers.get("content-length") ?? "0");
@@ -100,7 +102,7 @@ export async function POST(request: Request) {
       model: ai.model,
       messages: providerMessages,
       stream: true,
-      stream_options: { include_usage: true },
+      ...(ai.provider === "gemini" ? {} : { stream_options: { include_usage: true } }),
       max_tokens: env.SAMURA_MAX_OUTPUT_TOKENS,
     }, { signal: abortController.signal });
   } catch (error) {
