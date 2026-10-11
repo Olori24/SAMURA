@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, Braces, Cable, ImagePlus, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Braces, Cable, ImagePlus, Sparkles } from "lucide-react";
 
 const items = [
   { title: "Code", eyebrow: "AVAILABLE NOW", description: "Switch to Code mode to generate, explain, review, and debug code with implementation-focused responses.", href: "/chat", icon: Braces, action: "Open Code workspace", ready: true },
   { title: "Image creation", eyebrow: "PROVIDER SETUP REQUIRED", description: "Create original images from text prompts, choose canvas orientation, and download generated results. Requires an administrator-configured image provider key.", href: "/studio/create", icon: ImagePlus, action: "Open image studio", ready: true },
-  { title: "Connectors & plugins", eyebrow: "NEXT BUILD PHASE", description: "A permission-based integration system is planned for external services, with explicit consent, scoped access, and secure server-side credential storage. No third-party connector is enabled yet.", href: "#connectors", icon: Cable, action: "Review security model", ready: false },
+  { title: "Connectors & plugins", eyebrow: "PLUGIN WORKSPACE AVAILABLE", description: "Explore the connector catalog, review permissions, and run built-in text utilities. GitHub, Drive, and Slack are listed with setup requirements until OAuth is configured.", href: "/studio/connect", icon: Cable, action: "Open Connect marketplace", ready: true },
 ];
 
 export default function StudioPage() {
@@ -26,9 +26,7 @@ export default function StudioPage() {
           <Link href={item.href} className="mt-6 inline-flex items-center justify-between gap-3 rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-100 transition hover:border-teal-200/30 hover:bg-white/[0.035]">{item.action}<ArrowRight size={16}/></Link>
         </article>; })}
       </div>
-      <section id="connectors" className="mt-6 rounded-3xl border border-white/10 bg-white/[0.025] p-6 sm:p-8">
-        <div className="flex items-start gap-4"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal-200/10 text-teal-200"><ShieldCheck size={20}/></div><div><h2 className="text-lg font-semibold">Connectors will be permission-first</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">The connector framework will require per-connector scopes, user consent before actions, server-side encrypted credentials, auditable execution, and revocation. Plugins will not receive unrestricted access to accounts, databases, or the server runtime.</p></div></div>
-      </section>
+
     </div>
   </main>;
 }
