@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, Braces, Cable, ImagePlus, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Braces, Cable, ImagePlus, Sparkles } from "lucide-react";
 
 const items = [
   { title: "Code", eyebrow: "AVAILABLE NOW", description: "Switch to Code mode to generate, explain, review, and debug code with implementation-focused responses.", href: "/chat", icon: Braces, action: "Open Code workspace", ready: true },
   { title: "Image creation", eyebrow: "PROVIDER SETUP REQUIRED", description: "Create original images from text prompts, choose canvas orientation, and download generated results. Requires an administrator-configured image provider key.", href: "/studio/create", icon: ImagePlus, action: "Open image studio", ready: true },
-  { title: "Connectors & plugins", eyebrow: "NEXT BUILD PHASE", description: "A permission-based integration system is planned for external services, with explicit consent, scoped access, and secure server-side credential storage. No third-party connector is enabled yet.", href: "#connectors", icon: Cable, action: "Review security model", ready: false },
+  { title: "Connectors & plugins", eyebrow: "PLUGIN WORKSPACE AVAILABLE", description: "Explore the connector catalog, review permissions, and run built-in text utilities. GitHub, Drive, and Slack are listed with setup requirements until OAuth is configured.", href: "/studio/connect", icon: Cable, action: "Open Connect marketplace", ready: true },
 ];
 
 export default function StudioPage() {
