@@ -49,10 +49,11 @@ export async function DELETE() {
   if (!result.account) return NextResponse.json({ connected: false }, { headers: { "Cache-Control": "no-store" } });
 
   const clientId = process.env.GITHUB_CLIENT_ID, clientSecret = process.env.GITHUB_CLIENT_SECRET;
+  let revocationConfirmed = false;
   if (clientId && clientSecret && result.account.accessToken) {
     try {
       const token = decryptConnectorToken(result.account.accessToken);
-      await fetch("https://api.github.com/applications/" + encodeURIComponent(clientId) + "/grant", {
+      const revocationResponse = await fetch("https://api.github.com/applications/" + encodeURIComponent(clientId) + "/grant", {
         method: "DELETE",
         headers: {
           Authorization: "Basic " + Buffer.from(clientId + ":" + clientSecret).toString("base64"),
@@ -60,8 +61,9 @@ export async function DELETE() {
         },
         body: JSON.stringify({ access_token: token }), cache: "no-store", signal: AbortSignal.timeout(10_000),
       });
+      revocationConfirmed = revocationResponse.ok;
     } catch { /* Remove the local credential even if remote revocation is unavailable. */ }
   }
   await getDb().delete(accounts).where(and(eq(accounts.userId, result.user.id), eq(accounts.providerId, githubProviderId())));
-  return NextResponse.json({ connected: false, revoked: true }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ connected: false, credentialDeleted: true, revocationConfirmed }, { headers: { "Cache-Control": "no-store" } });
 }
