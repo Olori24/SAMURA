@@ -18,6 +18,21 @@ describe("SAMURA AI provider configuration", () => {
     });
   });
 
+  it("rejects a localhost Ollama endpoint in production", () => {
+    expect(() => getAIProviderConfig({
+      ...base,
+      NODE_ENV: "production",
+    })).toThrow("localhost in production");
+  });
+
+  it("allows a non-local Ollama endpoint in production", () => {
+    expect(getAIProviderConfig({
+      ...base,
+      NODE_ENV: "production",
+      SAMURA_OLLAMA_BASE_URL: "https://ollama.internal.example/v1",
+    }).provider).toBe("ollama");
+  });
+
   it("requires a key only when OpenAI is explicitly selected", () => {
     expect(() => getAIProviderConfig({
       ...base,
