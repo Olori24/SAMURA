@@ -7,7 +7,8 @@ export function isValidRepositoryName(value: string): boolean {
 }
 
 export function isValidRepositoryPath(value: string): boolean {
-  if (!value || value.length > 500 || value.startsWith("/") || value.includes("\\\\") || /[\\u0000-\\u001f\\u007f]/.test(value)) return false;
+  if (!value || value.length > 500 || value.startsWith("/") || value.includes(String.fromCharCode(92))) return false;
+  if ([...value].some(char => char.charCodeAt(0) <= 31 || char.charCodeAt(0) === 127)) return false;
   const segments = value.split("/");
   return segments.every(segment =>
     segment.length > 0 &&
@@ -25,8 +26,8 @@ export function decodeGitHubText(
   maxBytes = 200_000,
 ): string | null {
   if (!Number.isSafeInteger(reportedSize) || reportedSize < 0 || reportedSize > maxBytes) return null;
-  if (!base64 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(base64.replace(/\\s/g, ""))) return null;
-  const normalized = base64.replace(/\\s/g, "");
+  const normalized = base64.replace(/\s/g, "");
+  if (!normalized || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized)) return null;
   const bytes = Buffer.from(normalized, "base64");
   if (bytes.byteLength !== reportedSize || bytes.byteLength > maxBytes) return null;
   try {
