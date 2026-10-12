@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import {
   decodeGitHubText,
   isGitHubHtmlUrl,
@@ -102,13 +102,15 @@ export async function GET(request: Request) {
 
   // Per-instance limits are defense in depth, not a substitute for a shared
   // distributed limiter or an edge/WAF rule.
-  const globalRate = checkRateLimit("github-inspect:global", 120, 60_000);
+  const globalRate = await checkDistributedRateLimit("github-inspect:global", 120, 60_000);
+  if (globalRate.unavailable) return json({ error: "Rate limiting is temporarily unavailable." }, 503);
   if (!globalRate.allowed) {
     return json({ error: "Repository inspection is temporarily rate limited." }, 429, {
       "Retry-After": String(globalRate.retryAfterSeconds),
     });
   }
-  const userRate = checkRateLimit("github-inspect:user:" + session.user.id, 20, 60_000);
+  const userRate = await checkDistributedRateLimit("github-inspect:user:" + session.user.id, 20, 60_000);
+  if (userRate.unavailable) return json({ error: "Rate limiting is temporarily unavailable." }, 503);
   if (!userRate.allowed) {
     return json({ error: "Inspection limit reached. Try again shortly." }, 429, {
       "Retry-After": String(userRate.retryAfterSeconds),
