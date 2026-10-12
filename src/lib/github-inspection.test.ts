@@ -21,7 +21,7 @@ describe("GitHub inspection input validation", () => {
   it("accepts ordinary repository paths and rejects traversal or control characters", () => {
     expect(isValidRepositoryPath("src/app.ts")).toBe(true);
     expect(isValidRepositoryPath("README.md")).toBe(true);
-    for (const value of ["", "/etc/passwd", "../secret", "src/../secret", "src\\\\secret", "src/./secret", "src/secret\\u0000.txt", "a//b", "a/../b"]) {
+    for (const value of ["", "/etc/passwd", "../secret", "src/../secret", "src\\\\secret", "src/./secret", "src/secret" + String.fromCharCode(0) + ".txt", "src/secret\\n.txt", "a//b", "a/../b", "x".repeat(501)]) {
       expect(isValidRepositoryPath(value)).toBe(false);
     }
   });
