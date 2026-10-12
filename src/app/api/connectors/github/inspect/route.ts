@@ -133,8 +133,8 @@ export async function GET(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
   if (!session?.user) return json({ error: "Authentication required." }, 401);
 
-  // Per-instance limits are defense in depth, not a substitute for a shared
-  // distributed limiter or an edge/WAF rule.
+  // Shared atomic limits protect across serverless instances; the edge/WAF
+  // remains an additional layer for unauthenticated traffic and volumetric abuse.
   const globalRate = await checkDistributedRateLimit("github-inspect:global", 120, 60_000);
   if (globalRate.unavailable) return json({ error: "Rate limiting is temporarily unavailable." }, 503);
   if (!globalRate.allowed) {
