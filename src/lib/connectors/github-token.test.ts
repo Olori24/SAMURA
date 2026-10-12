@@ -27,6 +27,24 @@ describe("GitHub connector token encryption", () => {
     expect(() => decryptConnectorToken(encrypted)).toThrow();
   });
 
+
+  it("rejects malformed or oversized token envelopes", () => {
+    process.env.SAMURA_CONNECTOR_ENCRYPTION_KEY = "test-only-high-entropy-key-material-123456789";
+    const encrypted = encryptConnectorToken("gho_example_secret_token");
+    expect(() => decryptConnectorToken(encrypted + ".extra")).toThrow(/unsupported format/);
+    expect(() => decryptConnectorToken("v1.@@.@@.@@")).toThrow();
+    expect(() => encryptConnectorToken("x".repeat(8193))).toThrow(/supported size/);
+    expect(() => decryptConnectorToken("x".repeat(16385))).toThrow(/supported size/);
+  });
+
+  it("rejects ciphertext tampering", () => {
+    process.env.SAMURA_CONNECTOR_ENCRYPTION_KEY = "test-only-high-entropy-key-material-123456789";
+    const encrypted = encryptConnectorToken("gho_example_secret_token");
+    const parts = encrypted.split(".");
+    parts[3] = parts[3].slice(0, -1) + (parts[3].endsWith("A") ? "B" : "A");
+    expect(() => decryptConnectorToken(parts.join("."))).toThrow();
+  });
+
   it("fails closed when no encryption key is configured", () => {
     delete process.env.SAMURA_CONNECTOR_ENCRYPTION_KEY;
     expect(() => encryptConnectorToken("token")).toThrow(/must be configured/);
