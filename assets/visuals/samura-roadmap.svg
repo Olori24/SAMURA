@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+<title id="title">SAMURA development roadmap</title>
+<desc id="desc">A staged roadmap: foundation code and CI verified; live identity and database verification in progress; conversational provider integration awaiting live test; then planned memory, bounded agents, evaluation, model research, and production hardening.</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07110e"/><stop offset="1" stop-color="#111b18"/></linearGradient>
+<style>
+.k{font:700 12px Inter,Segoe UI,Arial,sans-serif;letter-spacing:1.7px;fill:#78e9b9}.head{font:700 23px Inter,Segoe UI,Arial,sans-serif;fill:#f2faf6}.name{font:700 15px Inter,Segoe UI,Arial,sans-serif;fill:#eff8f3}.body{font:400 12px Inter,Segoe UI,Arial,sans-serif;fill:#b7c9c0}.status{font:700 10px Inter,Segoe UI,Arial,sans-serif;letter-spacing:1px}
+</style>
+</defs>
+<rect width="1200" height="560" rx="24" fill="url(#bg)"/>
+<text x="42" y="46" class="k">SAMURA / DELIVERY SEQUENCE</text>
+<text x="42" y="80" class="head">From reliable foundation to independent research.</text>
+<text x="42" y="105" class="body">Milestones advance only when their acceptance criteria are demonstrated.</text>
+<path d="M88 157 H1112" stroke="#35483f" stroke-width="3"/>
+<path d="M88 157 H330" stroke="#2dc68a" stroke-width="3"/>
+<g>
+<circle cx="88" cy="157" r="9" fill="#2dc68a" stroke="#b4ffdf" stroke-width="2"/>
+<rect x="38" y="183" width="252" height="132" rx="14" fill="#10251b" stroke="#2d6b4d"/>
+<text x="58" y="210" class="k">01 / FOUNDATION</text><text x="58" y="238" class="name">App + CI baseline</text><text x="58" y="262" class="body">Install, audit, typecheck, lint,</text><text x="58" y="280" class="body">unit tests, production build.</text>
+<rect x="58" y="291" width="148" height="17" rx="8" fill="#1c573b"/><text x="132" y="303" text-anchor="middle" class="status" fill="#a3f3cd">CI VERIFIED</text>
+</g>
+<g>
+<circle cx="330" cy="157" r="9" fill="#e2b75b" stroke="#ffebb0" stroke-width="2"/>
+<rect x="302" y="183" width="252" height="132" rx="14" fill="#272214" stroke="#806d37"/>
+<text x="322" y="210" class="k" fill="#f0ce7c">02 / LIVE VERIFICATION</text><text x="322" y="238" class="name">Identity + persistence</text><text x="322" y="262" class="body">Migrate test DB; verify signup,</text><text x="322" y="280" class="body">sessions, ownership, stored chat.</text>
+<rect x="322" y="291" width="184" height="17" rx="8" fill="#51421e"/><text x="414" y="303" text-anchor="middle" class="status" fill="#ffe7a1">RELEASE GATE OPEN</text>
+</g>
+<g>
+<circle cx="572" cy="157" r="9" fill="#e2b75b" stroke="#ffebb0" stroke-width="2"/>
+<rect x="566" y="183" width="252" height="132" rx="14" fill="#272214" stroke="#806d37"/>
+<text x="586" y="210" class="k" fill="#f0ce7c">03 / CONVERSATIONAL AI</text><text x="586" y="238" class="name">Provider integration</text><text x="586" y="262" class="body">Prove live streaming, cancellation,</text><text x="586" y="280" class="body">errors, and bounded usage.</text>
+<rect x="586" y="291" width="184" height="17" rx="8" fill="#51421e"/><text x="678" y="303" text-anchor="middle" class="status" fill="#ffe7a1">LIVE TEST PENDING</text>
+</g>
+<g>
+<circle cx="814" cy="157" r="9" fill="#8999e8" stroke="#d4dcff" stroke-width="2"/>
+<rect x="830" y="183" width="152" height="132" rx="14" fill="#171d2b" stroke="#455178" stroke-dasharray="5 4"/>
+<text x="846" y="210" class="k" fill="#b5c2ff">04 / CONTEXT</text><text x="846" y="238" class="name">Memory</text><text x="846" y="262" class="body">User control,</text><text x="846" y="280" class="body">continuity, deletion.</text>
+<rect x="846" y="291" width="116" height="17" rx="8" fill="#283151"/><text x="904" y="303" text-anchor="middle" class="status" fill="#cbd4ff">PLANNED</text>
+</g>
+<g>
+<circle cx="1056" cy="157" r="9" fill="#8999e8" stroke="#d4dcff" stroke-width="2"/>
+<rect x="994" y="183" width="168" height="132" rx="14" fill="#171d2b" stroke="#455178" stroke-dasharray="5 4"/>
+<text x="1010" y="210" class="k" fill="#b5c2ff">05–08 / SCALE</text><text x="1010" y="238" class="name">Agents → research</text><text x="1010" y="262" class="body">Tools, evaluations,</text><text x="1010" y="280" class="body">model experiments,</text><text x="1010" y="298" class="body">production hardening.</text>
+</g>
+<rect x="38" y="348" width="1124" height="158" rx="16" fill="#0c1713" stroke="#263c32"/>
+<text x="62" y="378" class="k">MILESTONE EXIT RULES</text>
+<g class="body">
+<circle cx="66" cy="410" r="3" fill="#74e6b5"/><text x="80" y="414">No database milestone without a successful migration and real persistence test.</text>
+<circle cx="66" cy="439" r="3" fill="#74e6b5"/><text x="80" y="443">No AI milestone without an authorized live provider response and failure-path tests.</text>
+<circle cx="66" cy="468" r="3" fill="#74e6b5"/><text x="80" y="472">No agent milestone without permission checks, timeouts, auditability, and verified outcomes.</text>
+<circle cx="650" cy="410" r="3" fill="#a5b2ff"/><text x="664" y="414">No model research claim without reproducible evidence, provenance, and resource estimates.</text>
+<circle cx="650" cy="439" r="3" fill="#a5b2ff"/><text x="664" y="443">No production-ready label until operational and security release gates are closed.</text>
+</g>
+<text x="62" y="490" class="status" fill="#70897c">SOURCE OF TRUTH: docs/ROADMAP.md</text>
+</svg>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="790" viewBox="0 0 1200 790" role="img" aria-labelledby="title desc">
+<title id="title">SAMURA conceptual architecture</title>
+<desc id="desc">A layered architecture diagram. The current application foundation includes a Next.js interface, Better Auth code, owner-scoped conversation routes, Drizzle/PostgreSQL schema, and an OpenAI streaming adapter. Live integration is unverified. Multi-model routing, memory, agents, evaluation, and model research are planned.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07110e"/><stop offset="1" stop-color="#0d1c17"/></linearGradient>
+  <linearGradient id="current" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#123c2c"/><stop offset="1" stop-color="#10291f"/></linearGradient>
+  <linearGradient id="future" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#151d29"/><stop offset="1" stop-color="#1b2130"/></linearGradient>
+  <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#5dd6a4"/></marker>
+  <style>
+    .h{font:700 17px Inter,Segoe UI,Arial,sans-serif;fill:#f0faf5}.s{font:500 13px Inter,Segoe UI,Arial,sans-serif;fill:#bdd0c6}.k{font:700 11px Inter,Segoe UI,Arial,sans-serif;letter-spacing:1.5px;fill:#79e8b9}.future{font:700 11px Inter,Segoe UI,Arial,sans-serif;letter-spacing:1px;fill:#b6c0e5}.box{stroke:#2b5142;stroke-width:1.2}.fbox{stroke:#3b435b;stroke-width:1.2;stroke-dasharray:6 5}
+  </style>
+</defs>
+<rect width="1200" height="790" rx="24" fill="url(#bg)"/>
+<text x="42" y="48" class="k">SAMURA AI / SYSTEM MAP</text>
+<text x="42" y="79" class="h" style="font-size:27px">A modular foundation. An extensible destination.</text>
+<text x="42" y="105" class="s">Solid emerald = code present · dashed slate = planned architecture · live integrations remain unverified</text>
+<rect x="40" y="132" width="1120" height="108" rx="16" fill="url(#current)" class="box"/>
+<text x="62" y="158" class="k">01 / USER EXPERIENCE — IMPLEMENTED</text>
+<rect x="62" y="176" width="320" height="45" rx="9" fill="#0b2118" stroke="#387b5d"/>
+<text x="222" y="194" text-anchor="middle" class="h">Next.js + React interface</text><text x="222" y="211" text-anchor="middle" class="s">Chat, login and signup screens</text>
+<rect x="404" y="176" width="320" height="45" rx="9" fill="#0b2118" stroke="#387b5d"/>
+<text x="564" y="194" text-anchor="middle" class="h">Conversation workspace</text><text x="564" y="211" text-anchor="middle" class="s">History UI and streamed output</text>
+<rect x="746" y="176" width="390" height="45" rx="9" fill="#0b2118" stroke="#387b5d"/>
+<text x="941" y="194" text-anchor="middle" class="h">Developer / project surfaces</text><text x="941" y="211" text-anchor="middle" class="s">Expanded workspace capability — planned</text>
+<path d="M600 240 V267" stroke="#5dd6a4" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="272" width="1120" height="118" rx="16" fill="url(#current)" class="box"/>
+<text x="62" y="298" class="k">02 / APPLICATION LAYER — CODE IMPLEMENTED</text>
+<rect x="62" y="316" width="240" height="52" rx="9" fill="#0b2118" stroke="#387b5d"/><text x="182" y="337" text-anchor="middle" class="h">Better Auth</text><text x="182" y="355" text-anchor="middle" class="s">Email/password + sessions</text>
+<rect x="318" y="316" width="240" height="52" rx="9" fill="#0b2118" stroke="#387b5d"/><text x="438" y="337" text-anchor="middle" class="h">Conversation API</text><text x="438" y="355" text-anchor="middle" class="s">Owner-scoped operations</text>
+<rect x="574" y="316" width="240" height="52" rx="9" fill="#0b2118" stroke="#387b5d"/><text x="694" y="337" text-anchor="middle" class="h">Validation + limits</text><text x="694" y="355" text-anchor="middle" class="s">Zod, bounded requests</text>
+<rect x="830" y="316" width="306" height="52" rx="9" fill="#0b2118" stroke="#387b5d"/><text x="983" y="337" text-anchor="middle" class="h">Usage / request controls</text><text x="983" y="355" text-anchor="middle" class="s">In-process limiter; not distributed</text>
+<path d="M600 390 V416" stroke="#5dd6a4" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="421" width="1120" height="116" rx="16" fill="url(#current)" class="box"/>
+<text x="62" y="447" class="k">03 / CURRENT DATA + INFERENCE ADAPTERS — LIVE CHECKS PENDING</text>
+<rect x="62" y="465" width="320" height="52" rx="9" fill="#0b2118" stroke="#387b5d"/><text x="222" y="486" text-anchor="middle" class="h">Drizzle + PostgreSQL schema</text><text x="222" y="504" text-anchor="middle" class="s">Migration present; DB flow unverified</text>
+<rect x="404" y="465" width="320" height="52" rx="9" fill="#0b2118" stroke="#387b5d"/><text x="564" y="486" text-anchor="middle" class="h">Neon-compatible driver</text><text x="564" y="504" text-anchor="middle" class="s">Connection requires valid configuration</text>
+<rect x="746" y="465" width="390" height="52" rx="9" fill="#0b2118" stroke="#387b5d"/><text x="941" y="486" text-anchor="middle" class="h">OpenAI streaming adapter</text><text x="941" y="504" text-anchor="middle" class="s">Code present; real inference unverified</text>
+<path d="M600 537 V563" stroke="#8894bd" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+<rect x="40" y="568" width="1120" height="84" rx="16" fill="url(#future)" class="fbox"/>
+<text x="62" y="592" class="future">04 / INTELLIGENCE + EXECUTION — PLANNED</text>
+<rect x="62" y="604" width="240" height="34" rx="8" fill="#171f2d" stroke="#4a5472" stroke-dasharray="4 3"/><text x="182" y="626" text-anchor="middle" class="s">Multi-model gateway</text>
+<rect x="318" y="604" width="240" height="34" rx="8" fill="#171f2d" stroke="#4a5472" stroke-dasharray="4 3"/><text x="438" y="626" text-anchor="middle" class="s">Context + user memory</text>
+<rect x="574" y="604" width="240" height="34" rx="8" fill="#171f2d" stroke="#4a5472" stroke-dasharray="4 3"/><text x="694" y="626" text-anchor="middle" class="s">Permissioned tools + agents</text>
+<rect x="830" y="604" width="306" height="34" rx="8" fill="#171f2d" stroke="#4a5472" stroke-dasharray="4 3"/><text x="983" y="626" text-anchor="middle" class="s">Checkpoints + audit events</text>
+<path d="M600 652 V676" stroke="#8894bd" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+<rect x="40" y="681" width="1120" height="70" rx="16" fill="url(#future)" class="fbox"/>
+<text x="62" y="706" class="future">05 / EVALUATION + RESEARCH — LONG-TERM</text>
+<text x="62" y="731" class="s">Versioned evaluations</text><text x="300" y="731" class="s">Quality / latency / cost baselines</text><text x="620" y="731" class="s">Open-weight experiments</text><text x="900" y="731" class="s">Future model research</text>
+</svg>
