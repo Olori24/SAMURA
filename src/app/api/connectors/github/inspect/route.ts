@@ -49,7 +49,43 @@ function json(data: unknown, status = 200, extraHeaders: Record<string, string> 
   });
 }
 
-async function githubGet<T>(path: string): Promise<T> {
+async function readBoundedJson<T>(response: Response, maxBytes: number): Promise<T> {
+  const advertisedLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(advertisedLength) && advertisedLength > maxBytes) {
+    await response.body?.cancel().catch(() => undefined);
+    const error = new Error("GitHub response exceeded the inspection size limit.");
+    Object.assign(error, { status: 413 });
+    throw error;
+  }
+
+  if (!response.body) throw new Error("GitHub returned an empty response.");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      const error = new Error("GitHub response exceeded the inspection size limit.");
+      Object.assign(error, { status: 413 });
+      throw error;
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  return JSON.parse(text) as T;
+}
+
+async function githubGet<T>(path: string, maxResponseBytes = 8_000_000): Promise<T> {
   const response = await fetch("https://api.github.com" + path, {
     headers: {
       Accept: "application/vnd.github+json",
@@ -61,23 +97,20 @@ async function githubGet<T>(path: string): Promise<T> {
 
   if (!response.ok) {
     const remaining = response.headers.get("x-ratelimit-remaining");
+    const rateLimited = response.status === 429 || (response.status === 403 && remaining === "0");
+    const status = response.status === 404 ? 404 : rateLimited ? 429 : 502;
     const error = new Error(
-      response.status === 404
+      status === 404
         ? "Repository or file not found."
-        : response.status === 403 && remaining === "0" || response.status === 429
+        : rateLimited
           ? "GitHub rate limit reached. Try again shortly."
           : "GitHub could not complete the inspection.",
     );
-    Object.assign(error, {
-      status: response.status === 404 ? 404
-        : response.status === 403 && remaining === "0" || response.status === 429 ? 429
-          : 502,
-      retryAfter: response.headers.get("retry-after"),
-    });
+    Object.assign(error, { status, retryAfter: response.headers.get("retry-after") });
     throw error;
   }
 
-  return response.json() as Promise<T>;
+  return readBoundedJson<T>(response, maxResponseBytes);
 }
 
 function safeStatus(error: unknown): number {
@@ -130,9 +163,9 @@ export async function GET(request: Request) {
 
   try {
     const encodedRepo = repository.split("/").map(encodeURIComponent).join("/");
-    const repo = await githubGet<GitHubRepository>("/repos/" + encodedRepo);
+    const repo = await githubGet<GitHubRepository>("/repos/" + encodedRepo, 256_000);
 
-    if (repo.private) return json({ error: "This read-only inspector supports public repositories only." }, 403);
+    if (repo.private !== false) return json({ error: "This read-only inspector supports public repositories only." }, 403);
     if (
       typeof repo.full_name !== "string" ||
       repo.full_name.toLowerCase() !== repository.toLowerCase() ||
@@ -149,6 +182,7 @@ export async function GET(request: Request) {
         "/repos/" + encodedRepo + "/contents/" +
         filePath.split("/").map(encodeURIComponent).join("/") +
         "?ref=" + encodeURIComponent(repo.default_branch),
+        300_000,
       );
       if (file.type !== "file" || !Number.isSafeInteger(file.size) || file.size > 200_000) {
         return json({ error: "This file is not a supported regular file or exceeds the 200 KB inspection limit." }, 413);
@@ -196,6 +230,7 @@ export async function GET(request: Request) {
           "/repos/" + encodedRepo + "/contents/" +
           encodeURIComponent(readmeEntry.path) +
           "?ref=" + encodeURIComponent(repo.default_branch),
+          300_000,
         );
         if (file.type === "file" && file.encoding === "base64" && typeof file.content === "string") {
           const content = decodeGitHubText(file.content, file.size, 200_000);
