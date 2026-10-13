@@ -15,11 +15,20 @@ function escapeHtml(value: string) {
 }
 
 export function isPasswordRecoveryEmailConfigured() {
-  return Boolean(
-    process.env.RESEND_API_KEY?.trim() &&
-    process.env.SAMURA_EMAIL_FROM?.trim() &&
-    process.env.BETTER_AUTH_URL?.trim()
-  );
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.SAMURA_EMAIL_FROM?.trim();
+  const baseUrl = process.env.BETTER_AUTH_URL?.trim();
+  if (!apiKey || !from || !baseUrl || !from.includes("@") || /[\\r\\n]/.test(from)) {
+    return false;
+  }
+  try {
+    const url = new URL(baseUrl);
+    return url.protocol === (process.env.NODE_ENV === "production" ? "https:" : url.protocol)
+      && !url.username
+      && !url.password;
+  } catch {
+    return false;
+  }
 }
 
 export async function sendPasswordResetEmail({ to, url }: ResetEmailInput) {
