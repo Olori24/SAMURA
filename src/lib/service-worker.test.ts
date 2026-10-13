@@ -24,7 +24,7 @@ function createWorkerHarness() {
     match: vi.fn().mockResolvedValue(undefined),
   };
   const self = {
-    addEventListener: vi.fn((type: string, callback: (event: any) => void) => listeners.set(type, callback)),
+    addEventListener: vi.fn((type: string, callback: (event: WorkerEvent) => void) => listeners.set(type, callback)),
     skipWaiting: vi.fn(),
     clients: { claim: vi.fn().mockResolvedValue(undefined) },
     location: { origin: "https://samura.test" },
