@@ -21,19 +21,16 @@ vi.mock("@/lib/rate-limit", () => ({ checkRateLimit }));
 
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 
-const originalNodeEnv = process.env.NODE_ENV;
-
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.NODE_ENV = "production";
+  vi.stubEnv("NODE_ENV", "production");
   isDatabaseConfigured.mockReturnValue(true);
   execute.mockResolvedValue({ rows: [{ requestCount: 1, retryAfterSeconds: 60 }] });
   checkRateLimit.mockReturnValue({ allowed: true, retryAfterSeconds: 0 });
 });
 
 afterEach(() => {
-  if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
-  else process.env.NODE_ENV = originalNodeEnv;
+  vi.unstubAllEnvs();
 });
 
 describe("checkDistributedRateLimit", () => {
@@ -78,7 +75,7 @@ describe("checkDistributedRateLimit", () => {
   });
 
   it("uses the in-memory fallback only outside production when the database is absent", async () => {
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("NODE_ENV", "test");
     isDatabaseConfigured.mockReturnValue(false);
     checkRateLimit.mockReturnValue({ allowed: false, retryAfterSeconds: 9 });
 
