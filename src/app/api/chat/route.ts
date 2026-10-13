@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { conversations, messages, usageRecords } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
@@ -29,8 +29,9 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Please sign in to use SAMURA Chat." }, { status: 401 });
 
   const env = getServerEnv();
-  const rate = checkRateLimit("chat:" + user.id, env.SAMURA_MAX_REQUESTS_PER_MINUTE, 60_000);
-  if (!rate.allowed) return NextResponse.json({ error: "You've reached the request limit. Please wait a minute and try again." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
+  const rate = await checkDistributedRateLimit("chat:" + user.id, env.SAMURA_MAX_REQUESTS_PER_MINUTE, 60_000);
+  if (rate.unavailable) return NextResponse.json({ error: "Rate limiting is temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  if (!rate.allowed) return NextResponse.json({ error: "You've reached the request limit. Please wait a minute and try again." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds), "Cache-Control": "no-store" } });
 
   let ai: ReturnType<typeof createAIClient>;
   try {

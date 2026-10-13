@@ -1,4 +1,5 @@
-import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const users = pgTable("user", {
   id: text("id").primaryKey(),
@@ -83,3 +84,15 @@ export const usageRecords = pgTable("usage_record", {
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("usage_user_created_idx").on(t.userId, t.createdAt)]);
+
+
+export const apiRateLimits = pgTable("api_rate_limit", {
+  bucketKey: varchar("bucket_key", { length: 64 }).primaryKey(),
+  requestCount: integer("request_count").notNull(),
+  windowStartedAt: timestamp("window_started_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+}, (t) => [
+  index("api_rate_limit_expires_idx").on(t.expiresAt),
+  check("api_rate_limit_bucket_key_check", sql`length(${t.bucketKey}) = 64`),
+  check("api_rate_limit_request_count_check", sql`${t.requestCount} > 0`),
+]);

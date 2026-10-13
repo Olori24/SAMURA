@@ -8,6 +8,13 @@
       "when": 1791633600000,
       "tag": "0001_samura_core",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791825000000,
+      "tag": "0003_distributed_rate_limit",
+      "breakpoints": true
     }
   ]
 }

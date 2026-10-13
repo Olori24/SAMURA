@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { getServerEnv } from "@/lib/env";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 
 export const runtime = "nodejs";
@@ -21,11 +21,12 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Please sign in to create images." }, { status: 401 });
 
   const env = getServerEnv();
-  const rate = checkRateLimit("image:" + user.id, 5, 60_000);
+  const rate = await checkDistributedRateLimit("image:" + user.id, 5, 60_000);
+  if (rate.unavailable) return NextResponse.json({ error: "Rate limiting is temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   if (!rate.allowed) {
     return NextResponse.json(
       { error: "You've reached the image creation limit. Please wait a minute and try again." },
-      { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds), "Cache-Control": "no-store" } },
     );
   }
 

@@ -44,6 +44,9 @@ export default function ConnectPage() {
   const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
   const [githubBusy, setGithubBusy] = useState(false);
   const [githubNotice, setGithubNotice] = useState("");
+  const [inspectingRepo, setInspectingRepo] = useState("");
+  const [inspection, setInspection] = useState<{ repository: { fullName: string; url: string; description: string | null; defaultBranch: string; language: string | null; stars: number; updatedAt: string }; files: Array<{ path: string; size: number | null; sha: string }>; readme: { path: string; content: string } | null; truncated: boolean } | null>(null);
+  const [inspectionError, setInspectionError] = useState("");
 
   useEffect(() => {
     if (isPending) return;
@@ -91,6 +94,20 @@ export default function ConnectPage() {
       setGithubNotice(e instanceof Error ? e.message : "Could not load GitHub repositories.");
     } finally {
       setGithubBusy(false);
+    }
+  }
+
+  async function inspectGithubRepo(fullName: string) {
+    setInspectingRepo(fullName); setInspectionError(""); setInspection(null);
+    try {
+      const response = await fetch("/api/connectors/github/inspect?repository=" + encodeURIComponent(fullName), { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Repository inspection failed.");
+      setInspection(data);
+    } catch (e) {
+      setInspectionError(e instanceof Error ? e.message : "Repository inspection failed.");
+    } finally {
+      setInspectingRepo("");
     }
   }
 
@@ -190,8 +207,20 @@ export default function ConnectPage() {
             <a href={repo.url} target="_blank" rel="noreferrer" className="font-medium text-teal-200 hover:text-white">{repo.fullName}</a>
             <p className="mt-2 text-sm leading-5 text-slate-400">{repo.description || "No description provided."}</p>
             <p className="mt-3 text-xs text-slate-500">{repo.language || "Language not specified"} · {repo.stars} stars</p>
+            <button disabled={Boolean(inspectingRepo)} onClick={() => void inspectGithubRepo(repo.fullName)} className="mt-4 rounded-xl border border-teal-200/20 px-3 py-2 text-sm font-medium text-teal-100 disabled:opacity-50">{inspectingRepo === repo.fullName ? "Inspecting…" : "Inspect repository"}</button>
           </article>)}
         </div>}
+        {inspectionError && <p role="alert" className="mt-4 rounded-xl border border-amber-200/20 bg-amber-200/5 p-3 text-sm text-amber-100">{inspectionError}</p>}
+        {inspection && <section className="mt-5 rounded-2xl border border-teal-200/20 bg-black/20 p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><p className="text-xs font-bold uppercase tracking-wider text-teal-200">Read-only repository inspection</p><h3 className="mt-1 font-semibold">{inspection.repository.fullName}</h3><p className="mt-1 text-xs text-slate-400">Default branch: {inspection.repository.defaultBranch} · {inspection.files.length} files indexed{inspection.truncated ? " (limited listing)" : ""}</p></div>
+            <a href={inspection.repository.url} target="_blank" rel="noreferrer" className="text-sm text-teal-200 hover:text-white">Open on GitHub ↗</a>
+          </div>
+          {inspection.readme && <div className="mt-4"><h4 className="text-sm font-semibold">README · {inspection.readme.path}</h4><pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-slate-300">{inspection.readme.content}</pre></div>}
+          <h4 className="mt-4 text-sm font-semibold">Repository files</h4>
+          <div className="mt-2 max-h-72 overflow-auto rounded-xl border border-white/10">{inspection.files.map(file => <div key={file.path} className="flex items-center justify-between gap-3 border-b border-white/5 px-3 py-2 last:border-b-0"><span className="min-w-0 break-all font-mono text-xs text-slate-300">{file.path}</span><span className="shrink-0 text-[10px] text-slate-500">{file.size === null ? "size n/a" : file.size + " B"}</span></div>)}</div>
+          <p className="mt-3 text-xs leading-5 text-slate-500">This first inspection stage is read-only. It does not write files, create branches, or open pull requests.</p>
+        </section>}
       </section>
 
       {selected && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-3 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="plugin-title">
