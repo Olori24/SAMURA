@@ -19,7 +19,7 @@ vi.mock("@/db", () => ({
 }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit }));
 
-import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
+import { checkDistributedRateLimit } from "./distributed-rate-limit";
 
 beforeEach(() => {
   vi.clearAllMocks();
