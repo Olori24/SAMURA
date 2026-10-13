@@ -19,6 +19,8 @@ export default function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("password-reset") === "success") {
+      // This one-time query notice is read after hydration and then removed from history.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNotice("Your password has been updated. Sign in with your new password.");
       window.history.replaceState({}, "", window.location.pathname);
     }
