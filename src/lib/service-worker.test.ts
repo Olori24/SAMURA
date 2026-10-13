@@ -4,8 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 
 const workerSource = readFileSync(new URL("../../public/sw.js", import.meta.url), "utf8");
 
+type WorkerEvent = {
+  request?: { url: string; method: string; mode: string };
+  respondWith?: (promise: Promise<unknown>) => void;
+  waitUntil?: (promise: Promise<unknown>) => void;
+};
+
 function createWorkerHarness() {
-  const listeners = new Map<string, (event: any) => void>();
+  const listeners = new Map<string, (event: WorkerEvent) => void>();
   const cache = {
     addAll: vi.fn().mockResolvedValue(undefined),
     put: vi.fn().mockResolvedValue(undefined),
@@ -34,7 +40,7 @@ function createWorkerHarness() {
 }
 
 function dispatchFetch(
-  listeners: Map<string, (event: any) => void>,
+  listeners: Map<string, (event: WorkerEvent) => void>,
   url: string,
   method = "GET",
 ) {
@@ -98,7 +104,7 @@ describe("service worker cache boundaries", () => {
   it("removes the previous SAMURA shell cache during activation", async () => {
     const { listeners, caches } = createWorkerHarness();
     let activation: Promise<unknown> | undefined;
-    const event = { waitUntil: (promise: Promise<unknown>) => { activation = promise; } };
+    const event: WorkerEvent = { waitUntil: (promise: Promise<unknown>) => { activation = promise; } };
 
     listeners.get("activate")?.(event);
     await activation;
