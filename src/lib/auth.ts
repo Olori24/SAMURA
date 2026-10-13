@@ -1,7 +1,9 @@
 import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { after } from "next/server";
 import { getDb } from "@/db";
+import { sendPasswordResetEmail } from "@/lib/auth-email";
 import { accounts, sessions, users, verifications } from "@/db/schema";
 
 // A build-only fallback prevents Next.js static compilation from requiring live
@@ -39,6 +41,21 @@ export const auth = betterAuth({
     minPasswordLength: 12,
     maxPasswordLength: 128,
     autoSignIn: true,
+    resetPasswordTokenExpiresIn: 60 * 60,
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      // Defer email delivery until after the generic auth response to reduce
+      // account-enumeration timing differences while keeping work in the
+      // Next.js request lifecycle.
+      after(async () => {
+        try {
+          await sendPasswordResetEmail({ to: user.email, url });
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : "unknown delivery error";
+          console.error("[auth] Password recovery email delivery failed.", reason);
+        }
+      });
+    },
   },
   session: {
     expiresIn: 60 * 60 * 24 * 14,
