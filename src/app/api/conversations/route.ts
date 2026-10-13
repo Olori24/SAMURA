@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { conversations } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 
@@ -40,8 +40,9 @@ export async function POST(request: Request) {
   try {
     const user = await currentUser();
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-    const limit = checkRateLimit("conversation-create:" + user.id, 30);
-    if (!limit.allowed) return NextResponse.json({ error: "Too many new conversations. Try again shortly." }, { status: 429 });
+    const limit = await checkDistributedRateLimit("conversation-create:" + user.id, 30, 60_000);
+    if (limit.unavailable) return NextResponse.json({ error: "Rate limiting is temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    if (!limit.allowed) return NextResponse.json({ error: "Too many new conversations. Try again shortly." }, { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds), "Cache-Control": "no-store" } });
     const body = await parseBoundedJson(request, 4_096);
     if (!body.ok) return NextResponse.json(
       { error: body.tooLarge ? "Request is too large." : "Invalid JSON request body." },
