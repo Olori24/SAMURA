@@ -76,14 +76,14 @@ This was a source/configuration review, not an independent penetration test. Liv
 - **Exact fix:** Generate a per-request nonce in Next.js middleware/proxy, pass it to the rendering pipeline, and use a nonce-based `script-src` (plus `strict-dynamic` where compatible) without `unsafe-inline`. Remove `unsafe-inline` from styles where the framework/components permit; otherwise document the remaining style exception. Test the actual production build before enforcement.
 - **Verification:** Inspect response headers on the deployed app, confirm framework scripts carry the matching nonce, run CSP violation tests, and prove inline injected scripts are blocked without breaking sign-in, chat streaming, or PWA install behavior.
 
-### SAM-SEC-07 — Public readiness endpoint reveals database/auth-table state
+### SAM-SEC-07 — Public readiness endpoint revealed database/auth-table state
 - **Severity / risk:** Low
-- **Status:** Open hardening recommendation.
+- **Status:** Code fix committed; CI and runtime verification pending.
 - **Affected:** `src/app/api/health/auth-db/route.ts`.
-- **Evidence:** An unauthenticated GET distinguishes `not_configured` from `unavailable` and returns separate database/auth-table booleans.
-- **Risk:** This discloses limited operational configuration to anonymous callers and can help an attacker fingerprint service readiness.
-- **Exact fix:** Keep `/api/health` as the public liveness check and protect `/api/health/auth-db` with an internal health-check secret/network policy, or return a generic response externally while recording detailed readiness internally.
-- **Verification:** Anonymous requests receive no database configuration details; authorized monitoring can still confirm readiness without returning rows or credentials.
+- **Evidence:** The previous unauthenticated GET distinguished `not_configured` from `unavailable` and returned separate database/auth-table booleans.
+- **Risk:** This disclosed limited operational configuration to anonymous callers and could help an attacker fingerprint service readiness.
+- **Fix applied:** Detailed readiness now requires a Bearer token matching a server-only `HEALTH_CHECK_SECRET` of at least 32 characters; comparison uses `timingSafeEqual`. Unauthorized requests receive a generic 404. Authorized responses disclose only `ok` or `unavailable`, with no-store and nosniff headers. The public `/api/health` liveness endpoint remains separate.
+- **Verification required:** Confirm unauthorized requests return the same generic 404 regardless of database state; test missing, short, incorrect, and correct secrets; verify the secret is never exposed in client bundles or logs; verify authorized monitoring receives the correct readiness status.
 
 ### SAM-SEC-08 — Vercel environment variables contain legacy/duplicate names
 - **Severity / risk:** Medium configuration-hygiene risk; no direct secret disclosure established.
