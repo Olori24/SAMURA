@@ -35,7 +35,7 @@ This was a source/configuration review, not an independent penetration test. Liv
 - **Severity / risk:** High
 - **Status:** Open; requires database identity/role design and migration.
 - **Affected:** `drizzle/0001_samura_core.sql`, `drizzle/0001_auth_tables.sql`, `drizzle/0002_chat_tables.sql`, `drizzle/0003_distributed_rate_limit.sql`, `src/db/schema.ts`; tables include `conversation`, `message`, `usage_record`, `account`, and authentication tables.
-- **Evidence:** The migrations define tables, foreign keys and indexes but do not enable RLS or create policies. The application uses a shared server-side database connection. Sampled API queries include owner predicates, but this is not equivalent to database-enforced RLS.
+- **Evidence:** The migrations define tables, foreign keys and indexes but do not enable RLS or create policies. Direct read-only inspection of the production Neon main branch confirmed `relrowsecurity=false` and `relforcerowsecurity=false` for `account`, `conversation`, `message`, `session`, `usage_record`, `user`, and `verification`. The application uses a shared server-side database connection. Sampled API queries include owner predicates, but this is not equivalent to database-enforced RLS.
 - **Risk:** A future query regression or an incorrectly scoped server-side operation could expose another user's conversations or encrypted connector credentials. A shared database role without request-bound identity cannot safely apply user-specific policies by itself.
 - **Exact fix:** Before enabling RLS, establish a trusted transaction-scoped identity mechanism and a runtime role that is not the table owner and does not have `BYPASSRLS`. For user-owned tables, enable and force RLS and create `USING` and `WITH CHECK` policies comparing the owner column to a transaction-local user identity set only by trusted server code. Apply equivalent policies to `account` and any other user-owned sensitive tables. Keep migrations on a separate privileged role. Do not blindly enable RLS without policies or a reliable per-request identity propagation mechanism.
 - **Verification:** Query `pg_class.relrowsecurity` and `relforcerowsecurity`; inspect `pg_policies`; verify the production runtime role lacks bypass privileges; run two-user read/update/delete/insert tests against the actual runtime role and prove cross-user operations are denied.
@@ -78,7 +78,7 @@ This was a source/configuration review, not an independent penetration test. Liv
 
 ### SAM-SEC-07 — Public readiness endpoint revealed database/auth-table state
 - **Severity / risk:** Low
-- **Status:** Code fix committed; CI and runtime verification pending.
+- **Status:** Code fix committed; automated CI tests passed on commit `e800cd4097e97f07e20fc30c397eb4d6175df205`; deployed runtime verification remains pending.
 - **Affected:** `src/app/api/health/auth-db/route.ts`.
 - **Evidence:** The previous unauthenticated GET distinguished `not_configured` from `unavailable` and returned separate database/auth-table booleans.
 - **Risk:** This disclosed limited operational configuration to anonymous callers and could help an attacker fingerprint service readiness.
@@ -127,7 +127,7 @@ This was a source/configuration review, not an independent penetration test. Liv
 
 ## 4. Dependency, Git, logs, and storage limitations
 
-- GitHub Actions run 244 passed `npm audit`, typecheck, lint, tests, and build on the pre-audit feature head. The audit changes require a new green run on the resulting head.
+- GitHub Actions validation on commit `e800cd4097e97f07e20fc30c397eb4d6175df205` passed dependency audit, typecheck, lint, unit tests, and production build. The Vercel check still fails independently at resource provisioning.
 - The public repository tree contains a lockfile; a green prior dependency audit is not a substitute for checking the new head.
 - The Vercel environment inventory was reviewed by variable name, target, and sensitivity type only; raw credentials are intentionally omitted.
 - Full Git-history secret scanning could not be completed with the available connector capabilities.
