@@ -18,7 +18,7 @@ export function isPasswordRecoveryEmailConfigured() {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.SAMURA_EMAIL_FROM?.trim();
   const baseUrl = process.env.BETTER_AUTH_URL?.trim();
-  if (!apiKey || !from || !baseUrl || !from.includes("@") || /[\\r\\n]/.test(from)) {
+  if (!apiKey || !from || !baseUrl || !from.includes("@") || /[\r\n]/.test(from)) {
     return false;
   }
   try {
