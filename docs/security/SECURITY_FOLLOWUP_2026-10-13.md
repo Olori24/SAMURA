@@ -40,3 +40,29 @@ At the time of this note, the normal CI job for commit `9b5426f9dff95b33ef6c77a0
 7. Confirm exact-commit Vercel preview readiness and run authenticated runtime smoke tests.
 
 **Decision remains: NOT CLEARED FOR PRODUCTION.** No merge or production promotion is authorized by this follow-up note.
+
+
+## Password recovery implementation — 2026-10-13
+
+Implemented on the PR branch:
+
+- Added `src/app/forgot-password/page.tsx` and linked it from the sign-in page.
+- Added `src/app/reset-password/page.tsx` with password confirmation, a 12–128 character limit, token removal from the visible URL after capture, and a generic invalid/expired-link path.
+- Configured Better Auth password-reset tokens to expire after 60 minutes and revoke existing sessions after a successful reset.
+- Added a rate-limit rule for password-reset requests.
+- Added `src/lib/auth-email.ts` for Resend transactional email. It requires explicit server-side credentials, validates that reset links use the configured auth origin (HTTPS in production), escapes the HTML link, bounds the request with a timeout, avoids logging recipient/token/provider response bodies, and rejects untrusted reset URLs.
+- Added route-level protection that returns a generic 503 for password-reset requests until delivery configuration exists, instead of pretending an email was sent.
+- Added unit tests for email configuration, origin validation, HTTPS enforcement, provider failure handling, and request shape.
+
+### Recovery delivery blocker
+
+The current Vercel project configuration has no `RESEND_API_KEY` or `SAMURA_EMAIL_FROM`. The connected Resend account does not show a verified SAMURA-owned sending domain. I did not reuse another project’s sender domain, expose/create a provider API key, or change production environment variables.
+
+Required before end-to-end recovery can be declared working:
+1. Select a domain the owner controls for SAMURA transactional email and verify it in Resend.
+2. Add `RESEND_API_KEY` as an encrypted/sensitive Vercel environment variable.
+3. Add `SAMURA_EMAIL_FROM` using an address on that verified domain.
+4. Configure the canonical `BETTER_AUTH_URL` and separate preview auth URL/database/secret correctly.
+5. Test delivery, token expiry, one-time use, password update, and session revocation on a disposable preview account.
+
+Until these credentials and a verified sender are available, the recovery UI is implemented but **email delivery is intentionally unavailable**. No production password or auth configuration was changed.
