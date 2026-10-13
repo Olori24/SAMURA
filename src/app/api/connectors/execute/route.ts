@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 import { getConnector } from "@/lib/connectors/registry";
 
@@ -24,11 +24,14 @@ export async function POST(request: Request) {
   const user = session?.user;
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
-  const rate = checkRateLimit("connector-execute:" + user.id, 30, 60_000);
+  const rate = await checkDistributedRateLimit("connector-execute:" + user.id, 30, 60_000);
+  if (rate.unavailable) {
+    return NextResponse.json({ error: "Rate limiting is temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
   if (!rate.allowed) {
     return NextResponse.json(
       { error: "Plugin action limit reached. Try again shortly." },
-      { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds), "Cache-Control": "no-store" } },
     );
   }
 
