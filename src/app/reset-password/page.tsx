@@ -8,11 +8,11 @@ import { authClient } from "@/lib/auth-client";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const [token, setToken] = useState("");
+  const [resetState, setResetState] = useState({ token: "", invalidToken: true });
+  const { token, invalidToken } = resetState;
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [invalidToken, setInvalidToken] = useState(false);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -20,8 +20,9 @@ export default function ResetPasswordPage() {
     const url = new URL(window.location.href);
     const resetToken = url.searchParams.get("token") ?? "";
     const tokenError = url.searchParams.get("error");
-    setToken(resetToken);
-    setInvalidToken(Boolean(tokenError) || !resetToken);
+    // Read the one-time token after hydration, then remove it from browser history.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setResetState({ token: resetToken, invalidToken: Boolean(tokenError) || !resetToken });
     // Remove the bearer-like reset token from the visible URL/history as soon
     // as it has been captured in memory.
     if (resetToken) {
@@ -50,11 +51,11 @@ export default function ResetPasswordPage() {
     try {
       const result = await authClient.resetPassword({ newPassword: password, token });
       if (result.error) {
-        setInvalidToken(true);
+        setResetState(current => ({ ...current, invalidToken: true }));
         setError("This reset link is invalid or expired. Request a new link and try again.");
         return;
       }
-      setToken("");
+      setResetState({ token: "", invalidToken: true });
       setPassword("");
       setConfirmPassword("");
       setDone(true);
