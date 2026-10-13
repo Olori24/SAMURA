@@ -2,12 +2,10 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AudioWaveform, LoaderCircle, Mail, ShieldCheck } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
