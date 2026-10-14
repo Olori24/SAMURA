@@ -58,7 +58,7 @@ export default function GitHubEngineeringPage() {
         setGithubAccount(data.account ?? null);
         setRepos(list);
         const first = list.find(repo => repo.permissions?.write);
-        if (first) { setRepository(first.fullName); setBaseBranch(first.defaultBranch); }
+        if (first) { setLoadingBranches(true); setRepository(first.fullName); setBaseBranch(first.defaultBranch); }
       })
       .catch(e => { if (active) setError(e instanceof Error ? e.message : "Could not load GitHub repositories."); })
       .finally(() => { if (active) setLoading(false); });
@@ -68,8 +68,6 @@ export default function GitHubEngineeringPage() {
   useEffect(() => {
     if (isPending || !session?.user?.id || !repository) return;
     let active = true;
-    setLoadingBranches(true);
-    setRepoInspectError("");
     fetch("/api/connectors/github/branches", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ repository }),
@@ -77,6 +75,7 @@ export default function GitHubEngineeringPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not load repository branches.");
       if (!active) return;
+      setRepoInspectError("");
       setBranches(data.branches ?? []);
       setRecentCommits(data.recentCommits ?? []);
       setBaseBranch((current: string) => data.branches?.some((branch: Branch) => branch.name === current) ? current : (data.defaultBranch ?? ""));
@@ -156,6 +155,7 @@ export default function GitHubEngineeringPage() {
           <label className="block text-sm text-slate-300">Authorized GitHub repository
             <select value={repository} onChange={e => {
               const repo = repos.find(item => item.fullName === e.target.value);
+              setLoadingBranches(Boolean(e.target.value)); setRepoInspectError(""); setBranches([]); setRecentCommits([]);
               setRepository(e.target.value); setBaseBranch(repo?.defaultBranch ?? "");
               setPatch(null); setApproved(false); setResult(null);
             }} className="mt-2 w-full rounded-xl border border-white/10 bg-[#111722] px-3 py-3 text-white">
