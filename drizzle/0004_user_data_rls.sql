@@ -1,6 +1,6 @@
 -- Enforce database-level tenant isolation for SAMURA user-owned data.
 -- Create the restricted role in the schema migration; provision its password
--- through Neon role/SQL tooling and configure SAMURA_DATABASE_URL separately.
+-- through a secure database operation and configure SAMURA_DATABASE_URL separately.
 -- Deploy with SAMURA_RLS_ENABLED=true only after the role and policies exist.
 -- All queries touching these tables must use withUserTransaction() with a
 -- user ID taken from a verified Better Auth session.
@@ -37,9 +37,41 @@ CREATE POLICY samura_runtime_conversation_isolation ON public.conversation
   WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
 CREATE POLICY samura_runtime_message_isolation ON public.message
   FOR ALL TO samura_runtime
-  USING (user_id = NULLIF(current_setting('app.user_id', true), ''))
-  WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
+  USING (
+    user_id = NULLIF(current_setting('app.user_id', true), '')
+    AND EXISTS (
+      SELECT 1 FROM public.conversation c
+      WHERE c.id = message.conversation_id
+        AND c.user_id = NULLIF(current_setting('app.user_id', true), '')
+    )
+  )
+  WITH CHECK (
+    user_id = NULLIF(current_setting('app.user_id', true), '')
+    AND EXISTS (
+      SELECT 1 FROM public.conversation c
+      WHERE c.id = message.conversation_id
+        AND c.user_id = NULLIF(current_setting('app.user_id', true), '')
+    )
+  );
 CREATE POLICY samura_runtime_usage_record_isolation ON public.usage_record
   FOR ALL TO samura_runtime
-  USING (user_id = NULLIF(current_setting('app.user_id', true), ''))
-  WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
+  USING (
+    user_id = NULLIF(current_setting('app.user_id', true), '')
+    AND (
+      conversation_id IS NULL OR EXISTS (
+        SELECT 1 FROM public.conversation c
+        WHERE c.id = usage_record.conversation_id
+          AND c.user_id = NULLIF(current_setting('app.user_id', true), '')
+      )
+    )
+  )
+  WITH CHECK (
+    user_id = NULLIF(current_setting('app.user_id', true), '')
+    AND (
+      conversation_id IS NULL OR EXISTS (
+        SELECT 1 FROM public.conversation c
+        WHERE c.id = usage_record.conversation_id
+          AND c.user_id = NULLIF(current_setting('app.user_id', true), '')
+      )
+    )
+  );
