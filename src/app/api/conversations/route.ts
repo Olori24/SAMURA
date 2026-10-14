@@ -2,12 +2,12 @@ import { and, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb } from "@/db";
 import { conversations } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
+import { withUserTransaction } from "@/db/user-transaction";
 
 export const runtime = "nodejs";
 const createSchema = z.object({ title: z.string().trim().min(1).max(160).optional() });
@@ -22,13 +22,12 @@ export async function GET() {
   try {
     const user = await currentUser();
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-    const db = getDb();
-    const rows = await db.select({
+    const rows = await withUserTransaction(user.id, async (tx) => tx.select({
       id: conversations.id, title: conversations.title, createdAt: conversations.createdAt,
       updatedAt: conversations.updatedAt,
     }).from(conversations)
       .where(and(eq(conversations.userId, user.id), eq(conversations.archived, false)))
-      .orderBy(desc(conversations.updatedAt)).limit(100);
+      .orderBy(desc(conversations.updatedAt)).limit(100));
     return NextResponse.json({ conversations: rows }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Conversation service is temporarily unavailable." }, { status: 503 });
@@ -50,10 +49,12 @@ export async function POST(request: Request) {
     );
     const parsed = createSchema.safeParse(body.value ?? {});
     if (!parsed.success) return NextResponse.json({ error: "Invalid conversation details." }, { status: 400 });
-    const db = getDb();
-    const [created] = await db.insert(conversations).values({
-      userId: user.id, title: parsed.data.title ?? "New conversation",
-    }).returning({ id: conversations.id, title: conversations.title, createdAt: conversations.createdAt, updatedAt: conversations.updatedAt });
+    const created = await withUserTransaction(user.id, async (tx) => {
+      const [row] = await tx.insert(conversations).values({
+        userId: user.id, title: parsed.data.title ?? "New conversation",
+      }).returning({ id: conversations.id, title: conversations.title, createdAt: conversations.createdAt, updatedAt: conversations.updatedAt });
+      return row;
+    });
     return NextResponse.json({ conversation: created }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Could not create a conversation. Check database configuration." }, { status: 503 });

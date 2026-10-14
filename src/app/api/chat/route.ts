@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb } from "@/db";
+import { withUserTransaction } from "@/db/user-transaction";
 import { conversations, messages, usageRecords } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
@@ -56,34 +56,52 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid message. Check the conversation and message fields." }, { status: 400 });
   if (parsed.data.message.length > env.SAMURA_MAX_INPUT_CHARS) return NextResponse.json({ error: "That message is too long. Please shorten it and try again." }, { status: 413 });
 
-  const db = getDb();
-  const [conversation] = await db.select({ id: conversations.id, title: conversations.title })
-    .from(conversations).where(and(eq(conversations.id, parsed.data.conversationId), eq(conversations.userId, user.id))).limit(1);
-  if (!conversation) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+  type ChatSetup =
+    | { status: "not_found" }
+    | { status: "duplicate" }
+    | {
+        status: "ok";
+        conversation: { id: string; title: string };
+        userMessage: { id: string };
+        history: Array<{ role: string; content: string }>;
+      };
+  let setup: ChatSetup;
+  try {
+    setup = await withUserTransaction(user.id, async (tx) => {
+      const [conversation] = await tx.select({ id: conversations.id, title: conversations.title })
+        .from(conversations).where(and(eq(conversations.id, parsed.data.conversationId), eq(conversations.userId, user.id))).limit(1);
+      if (!conversation) return { status: "not_found" as const };
 
-  const [existing] = await db.select({ id: messages.id, role: messages.role, content: messages.content })
-    .from(messages).where(and(eq(messages.userId, user.id), eq(messages.requestId, parsed.data.requestId))).limit(1);
-  if (existing) return NextResponse.json({ error: "This request was already submitted. Refresh the conversation before sending another message." }, { status: 409 });
+      const [existing] = await tx.select({ id: messages.id })
+        .from(messages).where(and(eq(messages.userId, user.id), eq(messages.requestId, parsed.data.requestId))).limit(1);
+      if (existing) return { status: "duplicate" as const };
 
-  const [prior] = await db.select({ id: messages.id }).from(messages)
-    .where(and(eq(messages.conversationId, conversation.id), eq(messages.userId, user.id))).orderBy(desc(messages.createdAt)).limit(1);
-  const [userMessage] = await db.insert(messages).values({
-    conversationId: conversation.id, userId: user.id, role: "user", content: parsed.data.message,
-    status: "complete", requestId: parsed.data.requestId,
-  }).returning({ id: messages.id });
+      const [prior] = await tx.select({ id: messages.id }).from(messages)
+        .where(and(eq(messages.conversationId, conversation.id), eq(messages.userId, user.id))).orderBy(desc(messages.createdAt)).limit(1);
+      const [userMessage] = await tx.insert(messages).values({
+        conversationId: conversation.id, userId: user.id, role: "user", content: parsed.data.message,
+        status: "complete", requestId: parsed.data.requestId,
+      }).returning({ id: messages.id });
 
-  if (!prior && conversation.title === "New conversation") {
-    await db.update(conversations).set({ title: parsed.data.message.slice(0, 72), updatedAt: new Date() })
-      .where(and(eq(conversations.id, conversation.id), eq(conversations.userId, user.id)));
-  } else {
-    await db.update(conversations).set({ updatedAt: new Date() })
-      .where(and(eq(conversations.id, conversation.id), eq(conversations.userId, user.id)));
+      const title = !prior && conversation.title === "New conversation"
+        ? parsed.data.message.slice(0, 72)
+        : conversation.title;
+      await tx.update(conversations).set({ title, updatedAt: new Date() })
+        .where(and(eq(conversations.id, conversation.id), eq(conversations.userId, user.id)));
+
+      const history = await tx.select({ role: messages.role, content: messages.content })
+        .from(messages).where(and(eq(messages.conversationId, conversation.id), eq(messages.userId, user.id)))
+        .orderBy(desc(messages.createdAt)).limit(40);
+      history.reverse();
+      return { status: "ok" as const, conversation, userMessage, history };
+    });
+  } catch {
+    return NextResponse.json({ error: "Conversation service is temporarily unavailable." }, { status: 503 });
   }
 
-  const history = await db.select({ role: messages.role, content: messages.content })
-    .from(messages).where(and(eq(messages.conversationId, conversation.id), eq(messages.userId, user.id)))
-    .orderBy(desc(messages.createdAt)).limit(40).catch(() => []);
-  history.reverse();
+  if (setup.status === "not_found") return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+  if (setup.status === "duplicate") return NextResponse.json({ error: "This request was already submitted. Refresh the conversation before sending another message." }, { status: 409 });
+  const { conversation, userMessage, history } = setup;
   // Keep both message count and total context size bounded to control spend.
   let remainingChars = 24_000;
   const boundedHistory: Array<{ role: "user" | "assistant"; content: string }> = [];
@@ -116,11 +134,14 @@ export async function POST(request: Request) {
     const message = error instanceof OpenAI.APIError && error.status === 429
       ? "The AI provider is busy or the configured quota is exhausted. Please try again later."
       : "SAMURA could not reach the selected AI provider. Check that the model server is running and reachable, then try again.";
-    await db.insert(usageRecords).values({
-      userId: user.id, conversationId: conversation.id, provider: ai.provider,
-      model: ai.model, status: "failed",
+    await withUserTransaction(user.id, async (tx) => {
+      await tx.insert(usageRecords).values({
+        userId: user.id, conversationId: conversation.id, provider: ai.provider,
+        model: ai.model, status: "failed",
+      });
+      await tx.update(messages).set({ status: "failed" })
+        .where(and(eq(messages.id, userMessage.id), eq(messages.userId, user.id)));
     }).catch(() => undefined);
-    await db.update(messages).set({ status: "failed" }).where(and(eq(messages.id, userMessage.id), eq(messages.userId, user.id))).catch(() => undefined);
     return NextResponse.json({ error: message }, { status: error instanceof OpenAI.APIError && error.status === 429 ? 429 : 502 });
   }
 
@@ -145,15 +166,17 @@ export async function POST(request: Request) {
       } catch {
         outcome = abortController.signal.aborted ? "cancelled" : "failed";
       } finally {
-        if (fullText.trim()) {
-          await db.insert(messages).values({
-            conversationId: conversation.id, userId: user.id, role: "assistant",
-            content: fullText, status: outcome === "complete" ? "complete" : "partial",
-          }).catch(() => undefined);
-        }
-        await db.insert(usageRecords).values({
-          userId: user.id, conversationId: conversation.id, provider: ai.provider,
-          model: ai.model, inputTokens, outputTokens, status: outcome,
+        await withUserTransaction(user.id, async (tx) => {
+          if (fullText.trim()) {
+            await tx.insert(messages).values({
+              conversationId: conversation.id, userId: user.id, role: "assistant",
+              content: fullText, status: outcome === "complete" ? "complete" : "partial",
+            });
+          }
+          await tx.insert(usageRecords).values({
+            userId: user.id, conversationId: conversation.id, provider: ai.provider,
+            model: ai.model, inputTokens, outputTokens, status: outcome,
+          });
         }).catch(() => undefined);
         try {
           if (outcome === "failed") emit({ type: "error", message: "Generation stopped unexpectedly. Refresh the conversation to see any saved partial response." });

@@ -15,6 +15,13 @@
       "when": 1791825000000,
       "tag": "0003_distributed_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791969000000,
+      "tag": "0004_user_data_rls",
+      "breakpoints": true
     }
   ]
 }
