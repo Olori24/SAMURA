@@ -123,6 +123,7 @@ export async function POST(request: Request) {
     const patchDigest = createGitHubPatchDigest({
       repository: input.repository.toLowerCase(),
       baseBranch: input.baseBranch,
+      expectedBaseCommit: input.expectedBaseCommit,
       title: input.title,
       body: input.body,
       changes: input.changes,
