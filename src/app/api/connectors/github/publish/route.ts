@@ -89,8 +89,15 @@ export async function POST(request: Request) {
   }
   const totalBytes = input.changes.reduce((sum, change) => sum + Buffer.byteLength(change.content, "utf8"), 0);
   if (totalBytes > 500_000) return NextResponse.json({ error: "Patch exceeds the 500 KB total limit." }, { status: 413, headers: noStore });
-  if (input.changes.some(c => c.operation === "add" && (c.path === "package.json" || c.path.startsWith(".github/workflows/")))) {
-    return NextResponse.json({ error: "New package manifests and workflow files require a separate security review and are not supported by this publishing endpoint." }, { status: 400, headers: noStore });
+  const blockedPath = (path: string) => {
+    const lower = path.toLowerCase();
+    return lower === ".env" || lower.startsWith(".env.") && !lower.endsWith(".example")
+      || lower.includes("credentials") || lower.includes("private_key") || lower.endsWith(".pem")
+      || lower.startsWith(".github/workflows/") || lower === "package.json"
+      || lower.endsWith(".lock") || lower.endsWith(".log");
+  };
+  if (input.changes.some(c => blockedPath(c.path))) {
+    return NextResponse.json({ error: "This file path requires a separate security review and is not supported by this publishing endpoint." }, { status: 400, headers: noStore });
   }
 
   const [account] = await getDb().select({ accessToken: accounts.accessToken, scope: accounts.scope })
@@ -118,9 +125,6 @@ export async function POST(request: Request) {
     const branchName = branchSlug;
     const base = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
     const baseCommit = await github<{ tree: { sha: string }; parents: Array<{ sha: string }> }>(token, "/repos/" + repository + "/git/commits/" + base.object.sha);
-    // Reject a replay if the operation branch already exists; never overwrite an existing branch.
-    await github(token, "/repos/" + repository + "/git/refs", "POST", { ref: branchRef, sha: base.object.sha });
-
     const treeEntries: Array<{ path: string; mode: "100644"; type: "blob"; sha: string }> = [];
     for (const change of input.changes) {
       const existing = await github<{ sha: string; type: string } | null>(token, "/repos/" + repository + "/contents/" + change.path.split("/").map(encodeURIComponent).join("/") + "?ref=" + encodeURIComponent(input.baseBranch)).catch(error => {
@@ -138,7 +142,8 @@ export async function POST(request: Request) {
     const commit = await github<{ sha: string; html_url: string }>(token, "/repos/" + repository + "/git/commits", "POST", {
       message: input.title, tree: tree.sha, parents: [base.object.sha],
     });
-    // Ref update is non-force. If the base branch moved, GitHub rejects the update.
+    // Create the branch only after the commit exists; never overwrite an existing ref.
+    // The commit parent is the base SHA inspected above, so unrelated files remain untouched.
     await github(token, "/repos/" + repository + "/git/refs", "POST", { ref: branchRef, sha: commit.sha });
     const pull = await github<{ html_url: string; number: number; state: string; head: { ref: string }; base: { ref: string } }>(
       token, "/repos/" + repository + "/pulls", "POST", {
