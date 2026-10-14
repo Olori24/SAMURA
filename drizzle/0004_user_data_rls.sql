@@ -1,12 +1,13 @@
 -- Enforce database-level tenant isolation for SAMURA user-owned data.
--- Deploy the application with the restricted samura_app role, never neondb_owner.
--- Every query touching these tables must run inside a transaction that sets
--- app.user_id from the verified Better Auth session using set_config(..., true).
+-- Create the restricted role in the schema migration; provision its password
+-- through Neon role/SQL tooling and configure SAMURA_DATABASE_URL separately.
+-- Deploy with SAMURA_RLS_ENABLED=true only after the role and policies exist.
+-- All queries touching these tables must use withUserTransaction() with a
+-- user ID taken from a verified Better Auth session.
 
--- Provision samura_app with the Neon role-management API before applying this migration.
--- The role must be LOGIN, NOINHERIT, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOBYPASSRLS.
+CREATE ROLE samura_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
 
-GRANT USAGE ON SCHEMA public TO samura_app;
+GRANT USAGE ON SCHEMA public TO samura_runtime;
 GRANT SELECT, INSERT, UPDATE, DELETE ON
   public."user",
   public.session,
@@ -16,12 +17,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   public.message,
   public.usage_record,
   public.api_rate_limit
-TO samura_app;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO samura_app;
+TO samura_runtime;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO samura_runtime;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO samura_app;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO samura_runtime;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-  GRANT USAGE, SELECT ON SEQUENCES TO samura_app;
+  GRANT USAGE, SELECT ON SEQUENCES TO samura_runtime;
 
 ALTER TABLE public.conversation ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversation FORCE ROW LEVEL SECURITY;
@@ -30,15 +31,15 @@ ALTER TABLE public.message FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.usage_record ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.usage_record FORCE ROW LEVEL SECURITY;
 
-CREATE POLICY samura_conversation_isolation ON public.conversation
-  FOR ALL TO samura_app
+CREATE POLICY samura_runtime_conversation_isolation ON public.conversation
+  FOR ALL TO samura_runtime
   USING (user_id = NULLIF(current_setting('app.user_id', true), ''))
   WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
-CREATE POLICY samura_message_isolation ON public.message
-  FOR ALL TO samura_app
+CREATE POLICY samura_runtime_message_isolation ON public.message
+  FOR ALL TO samura_runtime
   USING (user_id = NULLIF(current_setting('app.user_id', true), ''))
   WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
-CREATE POLICY samura_usage_record_isolation ON public.usage_record
-  FOR ALL TO samura_app
+CREATE POLICY samura_runtime_usage_record_isolation ON public.usage_record
+  FOR ALL TO samura_runtime
   USING (user_id = NULLIF(current_setting('app.user_id', true), ''))
   WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
