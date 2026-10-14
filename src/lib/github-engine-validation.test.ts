@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "./github-engine-validation";
+import { createGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "./github-engine-validation";
 
 describe("GitHub patch path validation", () => {
   it("allows normal source and documentation files", () => {
@@ -40,5 +40,29 @@ describe("GitHub reviewed base commit validation", () => {
     expect(matchesExpectedBaseCommit("", inspected)).toBe(false);
     expect(matchesExpectedBaseCommit("main", inspected)).toBe(false);
     expect(matchesExpectedBaseCommit(inspected, "not-a-sha")).toBe(false);
+  });
+});
+
+
+describe("GitHub publish idempotency digest", () => {
+  const base = {
+    repository: "Olori24/SAMURA",
+    baseBranch: "main",
+    title: "Add safe helper",
+    body: "Reviewed change",
+    changes: [
+      { path: "src/lib/example.ts", content: "export const value = 1;", operation: "add" as const },
+      { path: "docs/example.md", content: "# Example", operation: "add" as const },
+    ],
+  };
+
+  it("is stable when the same approved paths are provided in a different order", () => {
+    expect(createGitHubPatchDigest(base)).toBe(createGitHubPatchDigest({ ...base, changes: [...base.changes].reverse() }));
+  });
+
+  it("changes when repository, base branch, title, body, path, operation, or content changes", () => {
+    expect(createGitHubPatchDigest(base)).not.toBe(createGitHubPatchDigest({ ...base, baseBranch: "release" }));
+    expect(createGitHubPatchDigest(base)).not.toBe(createGitHubPatchDigest({ ...base, title: "Different title" }));
+    expect(createGitHubPatchDigest(base)).not.toBe(createGitHubPatchDigest({ ...base, changes: [{ ...base.changes[0], content: "changed" }, base.changes[1]] }));
   });
 });
