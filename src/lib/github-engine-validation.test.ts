@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSafeGitHubPatchPath } from "./github-engine-validation";
+import { isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "./github-engine-validation";
 
 describe("GitHub patch path validation", () => {
   it("allows normal source and documentation files", () => {
@@ -24,5 +24,21 @@ describe("GitHub patch path validation", () => {
     expect(isSafeGitHubPatchPath("README.md")).toBe(false);
     expect(isSafeGitHubPatchPath("public/logo.svg")).toBe(false);
     expect(isSafeGitHubPatchPath("docs/guide.md")).toBe(true);
+  });
+});
+
+
+describe("GitHub reviewed base commit validation", () => {
+  const inspected = "0123456789abcdef0123456789abcdef01234567";
+
+  it("accepts only the exact valid commit that was inspected", () => {
+    expect(matchesExpectedBaseCommit(inspected, inspected)).toBe(true);
+  });
+
+  it("rejects stale commits and malformed SHA values", () => {
+    expect(matchesExpectedBaseCommit(inspected, "1123456789abcdef0123456789abcdef01234567")).toBe(false);
+    expect(matchesExpectedBaseCommit("", inspected)).toBe(false);
+    expect(matchesExpectedBaseCommit("main", inspected)).toBe(false);
+    expect(matchesExpectedBaseCommit(inspected, "not-a-sha")).toBe(false);
   });
 });
