@@ -58,3 +58,13 @@
 A successful owner-reported smoke test is useful evidence but is not an automated regression test or a complete security audit. No public AI inference or autonomous code execution without authentication, tenant isolation, provider credential handling, rate limits, bounded execution, failure-path testing, and explicit authorization. No live integration, benchmark, training, or production-ready claim without corresponding evidence.
 
 Before merging, verify the latest commit—not an earlier commit—has green dependency audit, typecheck, lint, unit tests, production build, and full-history secret scan. Verify the Vercel preview and perform authenticated smoke tests when test credentials and a safe environment are available. The distributed rate limiter must fail closed in production if its shared store is unavailable.
+
+
+## Document workspace advancement (2026-10-15)
+
+- Added authenticated list/create/read/update/delete APIs for user-owned documents.
+- Added `user_document` Drizzle schema and additive migration `0005_user_documents.sql`, with row-level security for the restricted `samura_runtime` role.
+- Connected the editor to the account document library with explicit save, reopen, delete, and local export actions.
+- Added a rate-limited AI drafting endpoint; generated content replaces the editor text but is not persisted until the user reviews and saves it.
+- Release blocker: the migration is registered in Drizzle's journal but has not been independently applied or verified against the dedicated production Neon database. Do not claim persistent documents are production-ready until migration state, owner isolation, and signed-in save/reopen smoke tests are confirmed.
+- Release blocker: the newest CI, Vercel preview, and signed-in AI provider flow must be checked on the final commit before PR merge.
