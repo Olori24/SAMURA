@@ -15,13 +15,13 @@ export const dynamic = "force-dynamic";
 
 const schema = z.object({
   repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/).max(201),
-  baseBranch: z.string().min(1).max(250).regex(/^[^\\s~^:?*\\[]+$/),
+  baseBranch: z.string().min(1).max(250).refine(value => !/[\\s~^:?*\\[\\]\\\\]/.test(value)),
   title: z.string().trim().min(5).max(120),
   body: z.string().max(10_000).default(""),
   idempotencyKey: z.string().uuid(),
   approved: z.literal(true),
   changes: z.array(z.object({
-    path: z.string().min(1).max(500).refine(p => !p.startsWith("/") && !p.includes("\\\\") && p.split("/").every(s => s && s !== "." && s !== ".." && s.length <= 255)),
+    path: z.string().min(1).max(500).refine(p => !p.startsWith("/") && !p.includes("\\") && p.split("/").every(s => s && s !== "." && s !== ".." && s.length <= 255)),
     content: z.string().max(200_000),
     operation: z.enum(["add", "modify"]),
   }).strict()).min(1).max(30),
