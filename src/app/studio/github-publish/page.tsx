@@ -134,7 +134,7 @@ export default function GitHubPublishPage() {
 
       <section className="space-y-5 rounded-3xl border border-white/10 bg-white/[0.035] p-5 sm:p-7">
         <label className="block text-sm text-slate-300">Repository
-          <select value={repoName} onChange={e => { const repo = repos.find(r => r.fullName === e.target.value); setRepoName(e.target.value); setBaseBranch(repo?.defaultBranch ?? ""); setApproved(false); }} className="mt-2 w-full rounded-xl border border-white/10 bg-[#111722] px-3 py-3 text-white">
+          <select value={repoName} onChange={e => { const repo = repos.find(r => r.fullName === e.target.value); setRepoName(e.target.value); setBaseBranch(repo?.defaultBranch ?? ""); setApproved(false); setInspectingBranch(false); }} className="mt-2 w-full rounded-xl border border-white/10 bg-[#111722] px-3 py-3 text-white">
             <option value="">Select an authorized repository</option>
             {writableRepos.map(repo => <option key={repo.id} value={repo.fullName}>{repo.fullName}{repo.isPrivate ? " · private" : ""}</option>)}
           </select>
@@ -147,7 +147,7 @@ export default function GitHubPublishPage() {
         </div>}
         {writableRepos.length === 0 && !scopeMessage && <p className="text-sm text-slate-400">No repositories with effective write access were returned. Check the connected account and repository permissions.</p>}
         <label className="block text-sm text-slate-300">Base branch
-          <input value={baseBranch} onChange={e => { setBaseBranch(e.target.value); setApproved(false); }} maxLength={250} required className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 font-mono text-sm text-white"/>
+          <input value={baseBranch} onChange={e => { setBaseBranch(e.target.value); setApproved(false); setInspectingBranch(false); }} maxLength={250} required className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 font-mono text-sm text-white"/>
         </label>
         <label className="block text-sm text-slate-300">Pull request title
           <input value={title} onChange={e => { setTitle(e.target.value); setApproved(false); }} maxLength={120} required className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-white"/>
