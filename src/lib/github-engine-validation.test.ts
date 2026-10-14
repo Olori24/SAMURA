@@ -48,6 +48,7 @@ describe("GitHub publish idempotency digest", () => {
   const base = {
     repository: "Olori24/SAMURA",
     baseBranch: "main",
+    expectedBaseCommit: "0123456789abcdef0123456789abcdef01234567",
     title: "Add safe helper",
     body: "Reviewed change",
     changes: [
@@ -62,6 +63,7 @@ describe("GitHub publish idempotency digest", () => {
 
   it("changes when repository, base branch, title, body, path, operation, or content changes", () => {
     expect(createGitHubPatchDigest(base)).not.toBe(createGitHubPatchDigest({ ...base, baseBranch: "release" }));
+    expect(createGitHubPatchDigest(base)).not.toBe(createGitHubPatchDigest({ ...base, expectedBaseCommit: "1123456789abcdef0123456789abcdef01234567" }));
     expect(createGitHubPatchDigest(base)).not.toBe(createGitHubPatchDigest({ ...base, title: "Different title" }));
     expect(createGitHubPatchDigest(base)).not.toBe(createGitHubPatchDigest({ ...base, changes: [{ ...base.changes[0], content: "changed" }, base.changes[1]] }));
   });
