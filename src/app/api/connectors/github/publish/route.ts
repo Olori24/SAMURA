@@ -9,6 +9,7 @@ import { auth } from "@/lib/auth";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { decryptConnectorToken, githubProviderId } from "@/lib/connectors/github-token";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
+import { isSafeGitHubPatchPath } from "@/lib/github-engine-validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -90,15 +91,8 @@ export async function POST(request: Request) {
   }
   const totalBytes = input.changes.reduce((sum, change) => sum + Buffer.byteLength(change.content, "utf8"), 0);
   if (totalBytes > 500_000) return NextResponse.json({ error: "Patch exceeds the 500 KB total limit." }, { status: 413, headers: noStore });
-  const blockedPath = (path: string) => {
-    const lower = path.toLowerCase();
-    return lower === ".env" || lower.startsWith(".env.") && !lower.endsWith(".example")
-      || lower.includes("credentials") || lower.includes("private_key") || lower.endsWith(".pem")
-      || lower.startsWith(".github/workflows/") || lower === "package.json"
-      || lower.endsWith(".lock") || lower.endsWith(".log");
-  };
-  if (input.changes.some(c => blockedPath(c.path))) {
-    return NextResponse.json({ error: "This file path requires a separate security review and is not supported by this publishing endpoint." }, { status: 400, headers: noStore });
+  if (input.changes.some(c => !isSafeGitHubPatchPath(c.path))) {
+    return NextResponse.json({ error: "This path is outside the supported safe patch paths. Security-sensitive, binary, manifest, and deployment files require a separate review." }, { status: 400, headers: noStore });
   }
 
   const [account] = await getDb().select({ accessToken: accounts.accessToken, scope: accounts.scope })
@@ -136,7 +130,7 @@ export async function POST(request: Request) {
         throw error;
       });
       if (change.operation === "add" && existing) throw Object.assign(new Error("A file marked as new already exists. Refresh and review the patch."), { status: 409 });
-      if (change.operation === "modify" && !existing) throw Object.assign(new Error("A file marked for modification no longer exists. Refresh and review the patch."), { status: 409 });
+      if (change.operation === "modify" && (!existing || existing.type !== "file")) throw Object.assign(new Error("A file marked for modification does not resolve to an existing text file. Refresh and review the patch."), { status: 409 });
       const blob = await github<{ sha: string }>(token, "/repos/" + repository + "/git/blobs", "POST", { content: change.content, encoding: "utf-8" });
       treeEntries.push({ path: change.path, mode: "100644", type: "blob", sha: blob.sha });
     }
