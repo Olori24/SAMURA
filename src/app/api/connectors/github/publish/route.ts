@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -9,7 +8,7 @@ import { auth } from "@/lib/auth";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { decryptConnectorToken, githubProviderId } from "@/lib/connectors/github-token";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
-import { isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "@/lib/github-engine-validation";
+import { createGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "@/lib/github-engine-validation";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 
 export const runtime = "nodejs";
@@ -121,10 +120,56 @@ export async function POST(request: Request) {
     const branchSlug = "samura/" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-" + input.idempotencyKey.slice(0, 8);
     const branchRef = "refs/heads/" + branchSlug;
     const branchName = branchSlug;
+    const patchDigest = createGitHubPatchDigest({
+      repository: input.repository.toLowerCase(),
+      baseBranch: input.baseBranch,
+      title: input.title,
+      body: input.body,
+      changes: input.changes,
+    });
     const base = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
     if (!matchesExpectedBaseCommit(input.expectedBaseCommit, base.object.sha)) {
       return NextResponse.json({ error: "The selected branch changed after SAMURA inspected it. Regenerate the patch against the latest branch and review it again.", retryable: true }, { status: 409, headers: noStore });
     }
+
+    // Recover completed publishes after a timeout or lost response. Never create a
+    // second commit/PR for the same approval key, and reject key reuse for other content.
+    const existingRef = await github<{ object: { sha: string } }>(
+      token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(branchName),
+    ).catch(error => {
+      if (safeErrorStatus(error) === 404) return null;
+      throw error;
+    });
+    if (existingRef) {
+      const existingCommit = await github<{ sha: string; message: string }>(
+        token, "/repos/" + repository + "/git/commits/" + existingRef.object.sha,
+      );
+      if (!existingCommit.message.includes("SAMURA-PATCH-DIGEST:" + patchDigest)) {
+        return NextResponse.json({ error: "This idempotency key has already been used for a different patch. Generate a new approval key before publishing.", retryable: false }, { status: 409, headers: noStore });
+      }
+      const existingPulls = await github<Array<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>>(
+        token, "/repos/" + repository + "/pulls?state=all&head=" + encodeURIComponent(repoInfo.full_name.split("/")[0] + ":" + branchName) + "&base=" + encodeURIComponent(input.baseBranch),
+      );
+      const existingPull = existingPulls.find(pull => pull.head.sha === existingCommit.sha);
+      if (!existingPull) {
+        return NextResponse.json({ error: "A matching SAMURA branch already exists, but its pull request could not be verified. Inspect the branch in GitHub before retrying.", retryable: false }, { status: 409, headers: noStore });
+      }
+      const verification = await github<{ sha: string; files?: Array<{ filename: string; status: string }> }>(
+        token, "/repos/" + repository + "/commits/" + existingCommit.sha,
+      );
+      const expectedPaths = input.changes.map(change => change.path).sort();
+      const actualPaths = (verification.files ?? []).map(file => file.filename).sort();
+      const verified = verification.sha === existingCommit.sha && expectedPaths.length === actualPaths.length && expectedPaths.every((path, index) => path === actualPaths[index]);
+      return NextResponse.json({
+        ok: verified, verified, branch: existingPull.head.ref, baseBranch: existingPull.base.ref,
+        commitSha: existingCommit.sha, commitUrl: "https://github.com/" + input.repository + "/commit/" + existingCommit.sha,
+        pullRequestUrl: existingPull.html_url, pullRequestNumber: existingPull.number,
+        pullRequestState: existingPull.state, changedFiles: actualPaths, patchDigest,
+        message: verified ? "Recovered the existing verified draft pull request for this approval key." : "An existing pull request was found, but its changed-file set did not match the approved patch. Review it manually.",
+        recovered: true,
+      }, { status: verified ? 200 : 502, headers: noStore });
+    }
+
     const baseCommit = await github<{ tree: { sha: string }; parents: Array<{ sha: string }> }>(token, "/repos/" + repository + "/git/commits/" + base.object.sha);
     const treeEntries: Array<{ path: string; mode: "100644"; type: "blob"; sha: string }> = [];
     for (const change of input.changes) {
@@ -141,7 +186,7 @@ export async function POST(request: Request) {
       base_tree: baseCommit.tree.sha, tree: treeEntries,
     });
     const commit = await github<{ sha: string; html_url: string }>(token, "/repos/" + repository + "/git/commits", "POST", {
-      message: input.title, tree: tree.sha, parents: [base.object.sha],
+      message: input.title + "\n\nSAMURA-PATCH-DIGEST:" + patchDigest, tree: tree.sha, parents: [base.object.sha],
     });
     // Fail closed if the base moved while the patch was being prepared.
     const latestBase = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
@@ -164,7 +209,6 @@ export async function POST(request: Request) {
     );
     const actualPaths = (verification.files ?? []).map(f => f.filename).sort();
     const verified = verification.sha === commit.sha && expectedPaths.every(p => actualPaths.includes(p));
-    const patchDigest = createHash("sha256").update(JSON.stringify(input.changes)).digest("hex");
     return NextResponse.json({
       ok: verified,
       verified,
