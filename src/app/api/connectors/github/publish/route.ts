@@ -10,6 +10,7 @@ import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { decryptConnectorToken, githubProviderId } from "@/lib/connectors/github-token";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { isSafeGitHubPatchPath } from "@/lib/github-engine-validation";
+import { parseBoundedJson } from "@/lib/parse-bounded-json";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,7 +84,9 @@ export async function POST(request: Request) {
   if (rate.unavailable) return NextResponse.json({ error: "Rate limiting is temporarily unavailable." }, { status: 503, headers: noStore });
   if (!rate.allowed) return NextResponse.json({ error: "Publishing is temporarily rate limited." }, { status: 429, headers: { ...noStore, "Retry-After": String(rate.retryAfterSeconds) } });
 
-  const payload = schema.safeParse(await request.json().catch(() => null));
+  const body = await parseBoundedJson(request, 600_000);
+  if (!body.ok) return NextResponse.json({ error: body.tooLarge ? "Publishing request exceeds the size limit." : "Invalid JSON request body." }, { status: body.tooLarge ? 413 : 400, headers: noStore });
+  const payload = schema.safeParse(body.value);
   if (!payload.success) return NextResponse.json({ error: "Invalid publishing request. Provide a reviewed patch and explicit approval." }, { status: 400, headers: noStore });
   const input = payload.data;
   if (new Set(input.changes.map(c => c.path)).size !== input.changes.length) {
