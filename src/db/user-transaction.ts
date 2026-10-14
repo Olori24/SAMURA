@@ -21,6 +21,9 @@ export async function withUserTransaction<T>(
   }
 
   return getDb().transaction(async (tx) => {
+    if (process.env.SAMURA_RLS_ENABLED === "true") {
+      await tx.execute(sql`SET LOCAL ROLE samura_runtime`);
+    }
     await tx.execute(sql`select set_config('app.user_id', ${authenticatedUserId}, true)`);
     return operation(tx as UserTransaction);
   });
