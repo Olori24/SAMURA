@@ -1,3 +1,23 @@
+import { createHash } from "node:crypto";
+
+export function createGitHubPatchDigest(input: {
+  repository: string;
+  baseBranch: string;
+  title: string;
+  body: string;
+  changes: Array<{ path: string; content: string; operation: "add" | "modify" }>;
+}) {
+  // Sort changes so the digest represents patch meaning, not UI array ordering.
+  const canonical = {
+    repository: input.repository.toLowerCase(),
+    baseBranch: input.baseBranch,
+    title: input.title,
+    body: input.body,
+    changes: [...input.changes].sort((a, b) => a.path.localeCompare(b.path)),
+  };
+  return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
+}
+
 export function isSafeGitHubPatchPath(path: string) {
   const lower = path.toLowerCase();
   if (!path || path.startsWith("/") || path.includes("\\") || path.split("/").some(p => !p || p === "." || p === "..")) return false;
