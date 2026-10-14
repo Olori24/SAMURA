@@ -10,3 +10,9 @@ export function isSafeGitHubPatchPath(path: string) {
   if (lower === "package.json" || lower === "package-lock.json" || lower === "pnpm-lock.yaml" || lower === "yarn.lock") return false;
   return /^(src|app|lib|docs|test|tests)\//.test(path);
 }
+
+
+/** A publish request is valid only for the exact commit inspected and reviewed by the user. */
+export function matchesExpectedBaseCommit(expected: string, actual: string) {
+  return /^[0-9a-f]{40}$/i.test(expected) && /^[0-9a-f]{40}$/i.test(actual) && expected === actual;
+}
