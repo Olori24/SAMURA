@@ -1,10 +1,15 @@
 import "server-only";
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { Pool } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-serverless";
 import * as schema from "./schema";
 
 function createDatabase(url: string) {
-  return drizzle(neon(url), { schema });
+  // The neon-http driver does not support transactions. SAMURA's RLS boundary
+  // depends on SET LOCAL ROLE and transaction-local app.user_id, so use the
+  // serverless Pool driver to keep these statements and the data query on the
+  // same PostgreSQL transaction/connection.
+  const pool = new Pool({ connectionString: url });
+  return drizzle({ client: pool, schema });
 }
 
 type Database = ReturnType<typeof createDatabase>;
