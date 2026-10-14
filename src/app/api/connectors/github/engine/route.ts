@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { createAIClient } from "@/lib/ai/provider";
 import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
+import { parseBoundedJson } from "@/lib/parse-bounded-json";
 import { decryptConnectorToken, githubProviderId } from "@/lib/connectors/github-token";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { isSafeGitHubPatchPath } from "@/lib/github-engine-validation";
@@ -45,7 +46,7 @@ function json(data: unknown, status = 200) {
   return NextResponse.json(data, { status, headers: noStore });
 }
 
-async function github<T>(token: string, path: string): Promise<T> {
+async function github<T>(token: string, path: string, maxBytes = 5_000_000): Promise<T> {
   const response = await fetch("https://api.github.com" + path, {
     headers: { Authorization: "Bearer " + token, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
     cache: "no-store",
@@ -60,7 +61,33 @@ async function github<T>(token: string, path: string): Promise<T> {
     Object.assign(error, { status });
     throw error;
   }
-  return response.json() as Promise<T>;
+  const advertisedLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(advertisedLength) && advertisedLength > maxBytes) {
+    await response.body?.cancel().catch(() => undefined);
+    const error = new Error("GitHub repository response exceeds the inspection limit.");
+    Object.assign(error, { status: 413 });
+    throw error;
+  }
+  if (!response.body) throw new Error("GitHub returned an empty response.");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      const error = new Error("GitHub repository response exceeds the inspection limit.");
+      Object.assign(error, { status: 413 });
+      throw error;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as T;
 }
 
 function decodeText(file: GitHubContent): string | null {
@@ -91,9 +118,9 @@ export async function POST(request: Request) {
     status: 429, headers: { ...noStore, "Retry-After": String(rate.retryAfterSeconds) },
   });
 
-  const length = Number(request.headers.get("content-length") ?? 0);
-  if (length > 12_000) return json({ error: "Request is too large." }, 413);
-  const parsed = inputSchema.safeParse(await request.json().catch(() => null));
+  const body = await parseBoundedJson(request, 12_000);
+  if (!body.ok) return json({ error: body.tooLarge ? "Request is too large." : "Invalid JSON request body." }, body.tooLarge ? 413 : 400);
+  const parsed = inputSchema.safeParse(body.value);
   if (!parsed.success) return json({ error: "Provide a repository, base branch, and a task of at least 8 characters." }, 400);
   const input = parsed.data;
 
