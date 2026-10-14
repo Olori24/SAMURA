@@ -56,7 +56,16 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid message. Check the conversation and message fields." }, { status: 400 });
   if (parsed.data.message.length > env.SAMURA_MAX_INPUT_CHARS) return NextResponse.json({ error: "That message is too long. Please shorten it and try again." }, { status: 413 });
 
-  let setup: Awaited<ReturnType<typeof withUserTransaction>>;
+  type ChatSetup =
+    | { status: "not_found" }
+    | { status: "duplicate" }
+    | {
+        status: "ok";
+        conversation: { id: string; title: string };
+        userMessage: { id: string };
+        history: Array<{ role: string; content: string }>;
+      };
+  let setup: ChatSetup;
   try {
     setup = await withUserTransaction(user.id, async (tx) => {
       const [conversation] = await tx.select({ id: conversations.id, title: conversations.title })
