@@ -49,12 +49,19 @@ export async function POST(request: Request) {
     if (!body.ok) return NextResponse.json({ error: body.tooLarge ? "Document is too large." : "Invalid JSON request body." }, { status: body.tooLarge ? 413 : 400 });
     const parsed = documentSchema.safeParse(body.value);
     if (!parsed.success) return NextResponse.json({ error: "Check the document title, format, and content." }, { status: 400 });
-    const [created] = await withUserTransaction(user.id, async (tx) => tx.insert(userDocuments).values({
-      userId: user.id, title: parsed.data.title, format: parsed.data.format, content: parsed.data.content,
-    }).returning({
-      id: userDocuments.id, title: userDocuments.title, format: userDocuments.format,
-      content: userDocuments.content, createdAt: userDocuments.createdAt, updatedAt: userDocuments.updatedAt,
-    }));
+    const created = await withUserTransaction(user.id, async (tx) => {
+      const existing = await tx.select({ id: userDocuments.id }).from(userDocuments)
+        .where(eq(userDocuments.userId, user.id)).limit(100);
+      if (existing.length >= 100) return null;
+      const [row] = await tx.insert(userDocuments).values({
+        userId: user.id, title: parsed.data.title, format: parsed.data.format, content: parsed.data.content,
+      }).returning({
+        id: userDocuments.id, title: userDocuments.title, format: userDocuments.format,
+        content: userDocuments.content, createdAt: userDocuments.createdAt, updatedAt: userDocuments.updatedAt,
+      });
+      return row;
+    });
+    if (!created) return NextResponse.json({ error: "Your document library has reached its 100-document limit. Delete a document before creating another." }, { status: 409, headers: { "Cache-Control": "no-store" } });
     return NextResponse.json({ document: created }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Could not save your document. Please try again." }, { status: 503, headers: { "Cache-Control": "no-store" } });
