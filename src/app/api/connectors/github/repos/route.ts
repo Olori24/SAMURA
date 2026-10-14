@@ -8,6 +8,7 @@ import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { decryptConnectorToken, githubProviderId } from "@/lib/connectors/github-token";
 
 export const runtime = "nodejs";
+type GitHubProfile = { login: string; name: string | null; avatar_url: string; html_url: string };
 type GitHubRepo = {
   id: number;
   name: string;
@@ -46,6 +47,7 @@ export async function GET() {
       return NextResponse.json({ error: "GitHub authorization expired or was revoked. Reconnect GitHub." }, { status: 401, headers: noStore });
     }
     if (!profileResponse.ok) return NextResponse.json({ error: "GitHub could not verify this connection." }, { status: 502, headers: noStore });
+    const profile = await profileResponse.json() as GitHubProfile;
 
     // /user/repos is authenticated and includes private repositories the token can access.
     // /users/{login}/repos is public-profile scoped and silently misses collaborators,
@@ -75,13 +77,14 @@ export async function GET() {
     const scopes = (account.scope ?? "").split(/[ ,]+/).filter(Boolean);
     const hasRepoScope = scopes.includes("repo") || scopes.includes("public_repo");
     return NextResponse.json({
+      account: { login: profile.login, name: profile.name, avatarUrl: profile.avatar_url, profileUrl: profile.html_url },
       repositories: repositories.map(repo => ({
         id: repo.id, name: repo.name, fullName: repo.full_name, url: repo.html_url,
         description: repo.description, language: repo.language, stars: repo.stargazers_count,
         updatedAt: repo.updated_at, isPrivate: repo.private, defaultBranch: repo.default_branch,
         permissions: {
           read: repo.permissions?.pull === true,
-          write: repo.permissions?.push === true && (hasRepoScope || !repo.private),
+          write: repo.permissions?.push === true && hasRepoScope,
           admin: repo.permissions?.admin === true,
         },
       })),
