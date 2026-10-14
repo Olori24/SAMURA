@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PwaInstall from "@/components/pwa-install";
 
+// A request-specific CSP nonce requires dynamic rendering; static prerendered
+// HTML cannot carry the per-request nonce used by the response policy.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "SAMURA AI — Intelligence, built with integrity",
   description: "An independent AI platform focused on useful intelligence, trustworthy engineering, and research.",
