@@ -29,7 +29,8 @@ export default function GitHubEngineeringPage() {
   const [baseBranch, setBaseBranch] = useState("");
   const [task, setTask] = useState("");
   const [patch, setPatch] = useState<Patch | null>(null);
-  const [approved, setApproved] = useState(false);\n  const [publishKey, setPublishKey] = useState("");
+  const [approved, setApproved] = useState(false);
+  const [publishKey, setPublishKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -67,7 +68,8 @@ export default function GitHubEngineeringPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not generate a patch.");
-      setPatch(data as Patch);\n      setPublishKey(crypto.randomUUID());
+      setPatch(data as Patch);
+      setPublishKey(crypto.randomUUID());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not generate a patch.");
     } finally { setGenerating(false); }
@@ -79,6 +81,7 @@ export default function GitHubEngineeringPage() {
       changes: current.changes.map((change, i) => i === index ? { ...change, content } : change),
     } : current);
     setApproved(false);
+    setPublishKey(crypto.randomUUID());
     setResult(null);
   }
 
@@ -89,8 +92,8 @@ export default function GitHubEngineeringPage() {
       const response = await fetch("/api/connectors/github/publish", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          repository: patch.repository, baseBranch: patch.baseBranch, title: patch.title, body: patch.body,
-          approved: true, idempotencyKey: crypto.randomUUID(),
+          repository: patch.repository, baseBranch: patch.baseBranch, expectedBaseCommit: patch.baseCommit, title: patch.title, body: patch.body,
+          approved: true, idempotencyKey: publishKey,
           changes: patch.changes.map(({ path, operation, content }) => ({ path, operation, content })),
         }),
       });
