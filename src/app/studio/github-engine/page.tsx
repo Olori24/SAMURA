@@ -49,6 +49,7 @@ export default function GitHubEngineeringPage() {
         if (!response.ok) throw new Error(data.error ?? "Could not load GitHub repositories.");
         if (!active) return;
         const list: Repo[] = data.repositories ?? [];
+        setGithubAccount(data.account ?? null);
         setRepos(list);
         const first = list.find(repo => repo.permissions?.write);
         if (first) { setRepository(first.fullName); setBaseBranch(first.defaultBranch); }
