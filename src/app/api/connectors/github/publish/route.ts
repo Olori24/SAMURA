@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       if (visibility.private) return NextResponse.json({ error: "This connection only has public-repository scope. Reconnect with the required repository access." }, { status: 403, headers: noStore });
     }
 
-    const branchSlug = "samura/" + new Date().toISOString().slice(0, 10).replace(/-/g, "") + "-" + input.idempotencyKey.slice(0, 8);
+    const branchSlug = "samura/approval-" + input.idempotencyKey;
     const branchRef = "refs/heads/" + branchSlug;
     const branchName = branchSlug;
     const patchDigest = createGitHubPatchDigest({
@@ -127,11 +127,6 @@ export async function POST(request: Request) {
       body: input.body,
       changes: input.changes,
     });
-    const base = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
-    if (!matchesExpectedBaseCommit(input.expectedBaseCommit, base.object.sha)) {
-      return NextResponse.json({ error: "The selected branch changed after SAMURA inspected it. Regenerate the patch against the latest branch and review it again.", retryable: true }, { status: 409, headers: noStore });
-    }
-
     // Recover completed publishes after a timeout or lost response. Never create a
     // second commit/PR for the same approval key, and reject key reuse for other content.
     const existingRef = await github<{ object: { sha: string } }>(
@@ -170,6 +165,10 @@ export async function POST(request: Request) {
       }, { status: verified ? 200 : 502, headers: noStore });
     }
 
+    const base = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
+    if (!matchesExpectedBaseCommit(input.expectedBaseCommit, base.object.sha)) {
+      return NextResponse.json({ error: "The selected branch changed after SAMURA inspected it. Regenerate the patch against the latest branch and review it again.", retryable: true }, { status: 409, headers: noStore });
+    }
     const baseCommit = await github<{ tree: { sha: string }; parents: Array<{ sha: string }> }>(token, "/repos/" + repository + "/git/commits/" + base.object.sha);
     const treeEntries: Array<{ path: string; mode: "100644"; type: "blob"; sha: string }> = [];
     for (const change of input.changes) {
