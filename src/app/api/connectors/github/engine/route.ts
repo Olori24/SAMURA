@@ -66,7 +66,9 @@ function safePath(path: string) {
   const lower = path.toLowerCase();
   if (!path || path.startsWith("/") || path.includes("\\") || path.split("/").some(p => !p || p === "." || p === "..")) return false;
   if (lower === ".env" || lower.startsWith(".env.") && !lower.endsWith(".example")) return false;
-  if (lower.startsWith(".github/workflows/") || lower.includes("credentials") || lower.includes("private_key")) return false;
+  if (lower.startsWith(".github/") || lower.includes("credentials") || lower.includes("private_key")) return false;
+  if (/(^|\\/)(auth|session|middleware|security|migrations?)(\\/|\\.|$)/.test(lower) || lower.includes("github-token") || lower.includes("db/schema")) return false;
+  if (lower === "next.config.js" || lower === "next.config.ts" || lower === "next.config.mjs") return false;
   if (lower.endsWith(".pem") || lower.endsWith(".key") || lower.endsWith(".lock") || lower.endsWith(".log")) return false;
   if (lower === "package.json" || lower === "package-lock.json" || lower === "pnpm-lock.yaml" || lower === "yarn.lock") return false;
   return /^(src|app|lib|docs|test|tests)\//.test(path);
@@ -117,7 +119,9 @@ export async function POST(request: Request) {
       return json({ error: "This GitHub account cannot read the selected repository." }, 403);
     }
     const branch = encodeURIComponent(input.baseBranch).replace(/%2F/gi, "/");
-    const tree = await github<GitHubTree>(token, "/repos/" + repository + "/git/trees/" + branch + "?recursive=1");
+    const baseRef = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + branch);
+    const baseCommit = baseRef.object.sha;
+    const tree = await github<GitHubTree>(token, "/repos/" + repository + "/git/trees/" + baseCommit + "?recursive=1");
     if (tree.truncated) return json({ error: "This repository tree is too large for a safe single-pass inspection. Narrow the task or inspect a smaller package." }, 413);
 
     const entries = tree.tree.filter(entry => entry.type === "blob" && (entry.size ?? 0) <= 28_000);
@@ -182,9 +186,10 @@ export async function POST(request: Request) {
     if (totalBytes > 300_000) return json({ error: "Generated patch exceeds the 300 KB safety limit." }, 413);
     return json({
       ...patch.data,
+      changes: patch.data.changes.map(change => ({ ...change, originalContent: known.get(change.path)?.content ?? null })),
       repository: repo.full_name,
       baseBranch: input.baseBranch,
-      baseCommit: tree.tree.find(entry => entry.path === "README.md")?.sha ?? null,
+      baseCommit,
       inspectedFiles: contextFiles.map(({ path, sha }) => ({ path, sha })),
       provider: ai.provider,
       model: ai.model,
