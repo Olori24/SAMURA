@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDownToLine, ArrowLeft, FilePlus2, FileText, LockKeyhole, Save, Trash2 } from "lucide-react";
+import { ArrowDownToLine, ArrowLeft, FilePlus2, FileText, LockKeyhole, Save, Sparkles, Trash2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { countWords, MAX_DOCUMENT_CHARACTERS, safeDocumentFilename, type DocumentFormat } from "@/lib/document-utils";
 
@@ -27,6 +27,8 @@ export default function DocumentsPage() {
   const [dirty, setDirty] = useState(true);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [drafting, setDrafting] = useState(false);
 
   const wordCount = useMemo(() => countWords(content), [content]);
   const characterCount = content.length;
@@ -124,6 +126,34 @@ export default function DocumentsPage() {
     }
   }
 
+  async function generateDraft() {
+    if (!aiPrompt.trim()) { setError("Describe what you want SAMURA to draft."); return; }
+    setDrafting(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/documents/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: aiPrompt.trim(),
+          title: title.trim() || emptyTitle,
+          format,
+          existingContent: content.slice(0, 16_000),
+        }),
+      });
+      const payload = await response.json() as { content?: string; error?: string; note?: string };
+      if (!response.ok || typeof payload.content !== "string") throw new Error(payload.error || "Could not generate a draft.");
+      setContent(payload.content.slice(0, MAX_DOCUMENT_CHARACTERS));
+      setDirty(true);
+      setNotice((payload.note || "AI draft generated.") + " Review the result, then save it to your account.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not generate a draft.");
+    } finally {
+      setDrafting(false);
+    }
+  }
+
   async function deleteDocument() {
     if (!documentId || !window.confirm("Permanently delete this document from your account?")) return;
     setDeleting(true);
@@ -193,6 +223,12 @@ export default function DocumentsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
             <div><p className="text-sm font-medium text-slate-100">Editor</p><p className="mt-1 text-xs text-slate-500">{documentId ? "Saved document" : "New draft"} · {dirty ? "Unsaved changes" : "All changes saved"}</p></div>
             <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{format === "markdown" ? "Markdown" : "Plain text"}</span>
+          </div>
+          <div className="border-b border-white/10 bg-teal-200/[0.025] p-4 sm:p-5">
+            <div className="mb-3 flex items-center gap-2"><Sparkles size={17} className="text-teal-200"/><h2 className="text-sm font-semibold text-slate-100">AI document assistant</h2><span className="rounded-full border border-teal-200/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-teal-100">Preview</span></div>
+            <label htmlFor="document-ai-prompt" className="mb-2 block text-xs font-medium text-slate-300">What should SAMURA write or improve?</label>
+            <textarea id="document-ai-prompt" value={aiPrompt} onChange={event => setAiPrompt(event.target.value.slice(0, 4000))} maxLength={4000} rows={3} placeholder="Example: Turn these notes into a clear project proposal with goals, milestones, budget assumptions, and risks…" className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-600 focus:border-teal-200/40"/>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="max-w-xl text-xs leading-5 text-slate-500">AI output replaces the editor text but does not save automatically. Review the draft, then choose Save to account. Provider usage limits and charges may apply.</p><button type="button" disabled={drafting || !aiPrompt.trim()} onClick={() => void generateDraft()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-teal-200/25 bg-teal-200/[0.08] px-4 py-2.5 text-sm font-semibold text-teal-100 transition hover:bg-teal-200/[0.13] disabled:cursor-not-allowed disabled:opacity-50"><Sparkles size={15}/>{drafting ? "Drafting…" : "Generate draft"}</button></div>
           </div>
           <div className="grid gap-4 border-b border-white/10 p-4 sm:grid-cols-[minmax(0,1fr)_180px] sm:px-5">
             <div><label htmlFor="document-title" className="mb-2 block text-sm font-medium text-slate-200">Document title</label><input id="document-title" value={title} onChange={event => { setTitle(event.target.value.slice(0, 120)); setDirty(true); }} maxLength={120} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-white outline-none focus:border-teal-200/50" /></div>
