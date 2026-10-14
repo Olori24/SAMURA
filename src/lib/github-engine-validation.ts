@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 export function createGitHubPatchDigest(input: {
   repository: string;
   baseBranch: string;
+  expectedBaseCommit: string;
   title: string;
   body: string;
   changes: Array<{ path: string; content: string; operation: "add" | "modify" }>;
@@ -11,6 +12,7 @@ export function createGitHubPatchDigest(input: {
   const canonical = {
     repository: input.repository.toLowerCase(),
     baseBranch: input.baseBranch,
+    expectedBaseCommit: input.expectedBaseCommit,
     title: input.title,
     body: input.body,
     changes: [...input.changes].sort((a, b) => a.path.localeCompare(b.path)),
