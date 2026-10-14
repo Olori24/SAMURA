@@ -10,6 +10,7 @@ import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { decryptConnectorToken, githubProviderId } from "@/lib/connectors/github-token";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
+import { isSafeGitHubPatchPath } from "@/lib/github-engine-validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,19 +61,6 @@ async function github<T>(token: string, path: string): Promise<T> {
     throw error;
   }
   return response.json() as Promise<T>;
-}
-
-function safePath(path: string) {
-  const lower = path.toLowerCase();
-  if (!path || path.startsWith("/") || path.includes("\\") || path.split("/").some(p => !p || p === "." || p === "..")) return false;
-  if (lower === ".env" || lower.startsWith(".env.") && !lower.endsWith(".example")) return false;
-  if (lower.startsWith(".github/") || lower.includes("credentials") || lower.includes("private_key")) return false;
-  const restrictedSegment = lower.split("/").some(part => ["auth", "session", "middleware", "security", "migration", "migrations"].some(name => part === name || part.startsWith(name + ".")));
-  if (restrictedSegment || lower.includes("github-token") || lower.includes("db/schema")) return false;
-  if (lower === "next.config.js" || lower === "next.config.ts" || lower === "next.config.mjs") return false;
-  if (lower.endsWith(".pem") || lower.endsWith(".key") || lower.endsWith(".lock") || lower.endsWith(".log")) return false;
-  if (lower === "package.json" || lower === "package-lock.json" || lower === "pnpm-lock.yaml" || lower === "yarn.lock") return false;
-  return /^(src|app|lib|docs|test|tests)\//.test(path);
 }
 
 function decodeText(file: GitHubContent): string | null {
@@ -134,7 +122,7 @@ export async function POST(request: Request) {
       if (/\.(ts|tsx|js|jsx|json|md)$/.test(p)) return 3;
       return 9;
     };
-    const selected = entries.filter(e => priority(e.path) < 9 && safePath(e.path))
+    const selected = entries.filter(e => priority(e.path) < 9 && isSafeGitHubPatchPath(e.path))
       .sort((a, b) => priority(a.path) - priority(b.path) || a.path.localeCompare(b.path)).slice(0, 8);
     const contextFiles: Array<{ path: string; sha: string; content: string }> = [];
     for (const entry of selected) {
@@ -178,7 +166,7 @@ export async function POST(request: Request) {
     const known = new Map(contextFiles.map(f => [f.path, f]));
     const seen = new Set<string>();
     for (const change of patch.data.changes) {
-      if (!safePath(change.path) || seen.has(change.path)) return json({ error: "The generated patch contains a duplicate or restricted file path. No changes were published." }, 422);
+      if (!isSafeGitHubPatchPath(change.path) || seen.has(change.path)) return json({ error: "The generated patch contains a duplicate or restricted file path. No changes were published." }, 422);
       seen.add(change.path);
       if (change.operation === "modify" && !known.has(change.path)) return json({ error: "The generated patch attempted to modify a file that was not included in the inspected repository context. Retry with a narrower task." }, 422);
       if (change.operation === "add" && entries.some(entry => entry.path === change.path)) return json({ error: "The generated patch marked an existing file as new. Refresh repository context and retry." }, 409);
