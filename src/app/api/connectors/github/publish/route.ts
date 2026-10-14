@@ -124,6 +124,9 @@ export async function POST(request: Request) {
     const branchRef = "refs/heads/" + branchSlug;
     const branchName = branchSlug;
     const base = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
+    if (input.expectedBaseCommit && base.object.sha !== input.expectedBaseCommit) {
+      return NextResponse.json({ error: "The selected branch changed after SAMURA inspected it. Regenerate the patch against the latest branch and review it again.", retryable: true }, { status: 409, headers: noStore });
+    }
     const baseCommit = await github<{ tree: { sha: string }; parents: Array<{ sha: string }> }>(token, "/repos/" + repository + "/git/commits/" + base.object.sha);
     const treeEntries: Array<{ path: string; mode: "100644"; type: "blob"; sha: string }> = [];
     for (const change of input.changes) {
