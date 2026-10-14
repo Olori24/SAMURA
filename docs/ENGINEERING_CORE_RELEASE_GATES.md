@@ -41,6 +41,9 @@ On 2026-10-15, the owner reported successful completion of all four production s
 - Use safe download headers and no-store caching for private content.
 - Provide clear errors for unsupported formats and oversized content.
 - Test export/open/round-trip behavior for each supported format before claiming that format is supported.
+- The account document library uses additive migration `0005_user_documents.sql`; confirm it is applied to the dedicated Neon database before enabling this feature in production.
+- The documents API uses verified session identity, owner predicates, transaction-local RLS identity, bounded request bodies, and a 200,000-character content limit.
+- AI document generation is a separate, rate-limited endpoint. Generated output is unsaved until the user reviews and explicitly saves it; provider configuration and quotas still need a live smoke test.
 
 ## CI release gate
 
