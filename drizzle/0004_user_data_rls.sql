@@ -5,13 +5,13 @@
 -- All queries touching these tables must use withUserTransaction() with a
 -- user ID taken from a verified Better Auth session.
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'samura_runtime') THEN
     CREATE ROLE samura_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
   END IF;
 END
-$;
+$$;
 ALTER ROLE samura_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
 
 GRANT USAGE ON SCHEMA public TO samura_runtime;
