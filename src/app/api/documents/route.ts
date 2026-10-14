@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     const parsed = documentSchema.safeParse(body.value);
     if (!parsed.success) return NextResponse.json({ error: "Check the document title, format, and content." }, { status: 400 });
     const created = await withUserTransaction(user.id, async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${user.id}), 1)`);
       const existing = await tx.select({ id: userDocuments.id }).from(userDocuments)
         .where(eq(userDocuments.userId, user.id)).limit(100);
       if (existing.length >= 100) return null;
