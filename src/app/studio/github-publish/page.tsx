@@ -33,6 +33,8 @@ export default function GitHubPublishPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<PublishResult | null>(null);
   const [scopeMessage, setScopeMessage] = useState("");
+  const [inspectedBaseCommit, setInspectedBaseCommit] = useState("");
+  const [inspectingBranch, setInspectingBranch] = useState(false);
 
   useEffect(() => {
     if (isPending) return;
@@ -53,6 +55,41 @@ export default function GitHubPublishPage() {
     return () => { active = false; };
   }, [isPending, session?.user, router]);
 
+  useEffect(() => {
+    if (!session?.user || !repoName || !baseBranch.trim()) {
+      setInspectedBaseCommit("");
+      return;
+    }
+    let active = true;
+    setInspectedBaseCommit("");
+    setApproved(false);
+    setInspectingBranch(true);
+    fetch("/api/connectors/github/branches", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ repository: repoName }),
+    }).then(async response => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not inspect the selected branch.");
+      if (!active) return;
+      const branch = (data.branches ?? []).find((item: { name: string; sha: string }) => item.name === baseBranch);
+      if (!branch?.sha || !/^[0-9a-f]{40}$/i.test(branch.sha)) {
+        setInspectedBaseCommit("");
+        setError("The selected branch could not be inspected. Choose an existing branch and retry.");
+        return;
+      }
+      setInspectedBaseCommit(branch.sha);
+      setError("");
+    }).catch(e => {
+      if (active) {
+        setInspectedBaseCommit("");
+        setError(e instanceof Error ? e.message : "Could not inspect the selected branch.");
+      }
+    }).finally(() => { if (active) setInspectingBranch(false); });
+    return () => { active = false; };
+  }, [session?.user, repoName, baseBranch]);
+
   const selectedRepo = repos.find(repo => repo.fullName === repoName);
   const writableRepos = useMemo(() => repos.filter(repo => repo.permissions?.write), [repos]);
 
@@ -62,7 +99,7 @@ export default function GitHubPublishPage() {
       const response = await fetch("/api/connectors/github/publish", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          repository: repoName, baseBranch, title, body, approved: true,
+          repository: repoName, baseBranch, expectedBaseCommit: inspectedBaseCommit, title, body, approved: true,
           idempotencyKey: crypto.randomUUID(),
           changes: [{ path, content: fileContent, operation }],
         }),
@@ -132,6 +169,7 @@ export default function GitHubPublishPage() {
             <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-400">
               <li>• Repository: {repoName || "not selected"}</li>
               <li>• Base branch: {baseBranch || "not selected"}</li>
+              <li>• Inspected commit: {inspectingBranch ? "refreshing branch state…" : inspectedBaseCommit || "branch not verified — publishing disabled"}</li>
               <li>• Operation: {operation} {path || "(no path)"}</li>
               <li>• Payload size: {new TextEncoder().encode(fileContent).length.toLocaleString()} bytes</li>
               <li>• Publishing creates a new branch and a draft pull request; it does not merge.</li>
@@ -143,7 +181,7 @@ export default function GitHubPublishPage() {
           <input type="checkbox" checked={approved} onChange={e => setApproved(e.target.checked)} className="mt-1 accent-teal-200"/>
           <span>I reviewed the exact file content, repository, target branch, and pull request description. I explicitly authorize SAMURA to publish this change to a new branch and create a draft pull request.</span>
         </label>
-        <button onClick={() => void publish()} disabled={publishing || !approved || !selectedRepo?.permissions?.write || !repoName || !baseBranch.trim() || title.trim().length < 5 || !path.trim() || !fileContent} className="inline-flex items-center gap-2 rounded-xl bg-teal-200 px-5 py-3 text-sm font-bold text-[#07120e] disabled:cursor-not-allowed disabled:opacity-40">
+        <button onClick={() => void publish()} disabled={publishing || inspectingBranch || !inspectedBaseCommit || !approved || !selectedRepo?.permissions?.write || !repoName || !baseBranch.trim() || title.trim().length < 5 || !path.trim() || !fileContent} className="inline-flex items-center gap-2 rounded-xl bg-teal-200 px-5 py-3 text-sm font-bold text-[#07120e] disabled:cursor-not-allowed disabled:opacity-40">
           <Github size={16}/>{publishing ? "Publishing and verifying…" : "Approve and publish branch"}
         </button>
       </section>
