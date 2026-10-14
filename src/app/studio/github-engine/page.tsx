@@ -13,7 +13,7 @@ type Repo = {
 type Change = { path: string; operation: "add" | "modify"; content: string; originalContent?: string | null };
 type Patch = {
   title: string; body: string; plan: string[]; risks: string[]; tests: string[];
-  changes: Change[]; repository: string; baseBranch: string; provider: string; model: string;
+  changes: Change[]; repository: string; baseBranch: string; baseCommit: string; provider: string; model: string;
   validated: boolean; published: boolean; note: string;
 };
 type PublishResult = {
@@ -29,7 +29,7 @@ export default function GitHubEngineeringPage() {
   const [baseBranch, setBaseBranch] = useState("");
   const [task, setTask] = useState("");
   const [patch, setPatch] = useState<Patch | null>(null);
-  const [approved, setApproved] = useState(false);
+  const [approved, setApproved] = useState(false);\n  const [publishKey, setPublishKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -59,7 +59,7 @@ export default function GitHubEngineeringPage() {
   const selectedRepo = repos.find(repo => repo.fullName === repository);
 
   async function generate() {
-    setGenerating(true); setError(""); setPatch(null); setResult(null); setApproved(false);
+    setGenerating(true); setError(""); setPatch(null); setResult(null); setApproved(false); setPublishKey("");
     try {
       const response = await fetch("/api/connectors/github/engine", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -67,7 +67,7 @@ export default function GitHubEngineeringPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not generate a patch.");
-      setPatch(data as Patch);
+      setPatch(data as Patch);\n      setPublishKey(crypto.randomUUID());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not generate a patch.");
     } finally { setGenerating(false); }
@@ -156,10 +156,10 @@ export default function GitHubEngineeringPage() {
           <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400">{patch.provider} · {patch.model}</span>
         </div>
         <label className="block text-sm text-slate-300">Pull request title
-          <input value={patch.title} onChange={e => { setPatch({ ...patch, title: e.target.value }); setApproved(false); setResult(null); }} maxLength={120} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-white"/>
+          <input value={patch.title} onChange={e => { setPatch({ ...patch, title: e.target.value }); setApproved(false); setPublishKey(crypto.randomUUID()); setResult(null); }} maxLength={120} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-white"/>
         </label>
         <label className="block text-sm text-slate-300">Pull request description
-          <textarea value={patch.body} onChange={e => { setPatch({ ...patch, body: e.target.value }); setApproved(false); setResult(null); }} maxLength={8000} rows={3} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm leading-6 text-white"/>
+          <textarea value={patch.body} onChange={e => { setPatch({ ...patch, body: e.target.value }); setApproved(false); setPublishKey(crypto.randomUUID()); setResult(null); }} maxLength={8000} rows={3} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm leading-6 text-white"/>
         </label>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-white/10 bg-black/20 p-4"><h3 className="text-sm font-semibold">Plan</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-slate-300">{patch.plan.map((item, i) => <li key={i}>{item}</li>)}</ul></div>
@@ -189,7 +189,7 @@ export default function GitHubEngineeringPage() {
           <input type="checkbox" checked={approved} onChange={e => setApproved(e.target.checked)} className="mt-1 accent-teal-200"/>
           <span>I reviewed the pull request title, description, plan, risks, and exact content of every file. I authorize SAMURA to create a new branch and a draft pull request. I understand tests have not been run.</span>
         </label>
-        <button onClick={() => void publish()} disabled={!approved || publishing || !patch.changes.length || patch.title.trim().length < 5} className="inline-flex items-center gap-2 rounded-xl bg-teal-200 px-5 py-3 text-sm font-bold text-[#07120e] disabled:cursor-not-allowed disabled:opacity-40">
+        <button onClick={() => void publish()} disabled={!approved || publishing || !publishKey || !patch.changes.length || patch.title.trim().length < 5} className="inline-flex items-center gap-2 rounded-xl bg-teal-200 px-5 py-3 text-sm font-bold text-[#07120e] disabled:cursor-not-allowed disabled:opacity-40">
           {publishing ? <LoaderCircle size={16} className="animate-spin"/> : <ShieldCheck size={16}/>}
           {publishing ? "Publishing and verifying…" : "Approve & publish branch"}
         </button>
