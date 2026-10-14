@@ -5,37 +5,54 @@
 - [x] Next.js / TypeScript application scaffold and health endpoint.
 - [x] CI workflow and baseline architecture/security documentation.
 
-## Phase 1 — secure persistent chat (PR #2, CI green; live integration gates pending)
+## Phase 1 — secure persistent chat
 - [x] Better Auth email/password handlers and browser client.
-- [x] PostgreSQL schema and initial migration for auth, conversations, messages, and usage records.
-- [x] Owner-scoped conversation APIs.
-- [x] Server-side OpenAI streaming adapter and request/usage controls.
-- [x] Responsive chat workspace, session-aware entry flow, history restoration, and Markdown/GFM rendering.
-- [x] Health and rate-limit unit tests added.
-- [x] Confirm GitHub Actions passes install, dependency audit, typecheck, lint, unit tests, and production build on the current branch head.
-- [ ] Apply migration to a test PostgreSQL database and verify auth/conversation flows.
-- [ ] Run a live OpenAI inference test using an authorized key.
-- [x] Commit deterministic npm lockfile and enforce `npm ci` in CI.
-- [x] Upgrade vulnerable dependencies and require a zero-advisory `npm audit` in CI.
-- [ ] Validate deployment configuration against the actual hosting environment.
-- [ ] Review complete diff and security controls before merge.
+- [x] PostgreSQL schema and migrations for auth, conversations, messages, and usage records.
+- [x] Owner-scoped conversation APIs, server-side provider adapter, and bounded request handling.
+- [x] Responsive chat workspace, history restoration, and Markdown/GFM rendering.
+- [x] CI: dependency audit, typecheck, lint, unit tests, and production build.
+- [x] Owner-reported manual smoke test: sign-in, conversation creation, AI response, and history persistence all passed on 2026-10-15.
+- [ ] Automate the full browser-level smoke test against a disposable preview environment.
+- [ ] Verify two-user isolation and RLS/runtime-role behavior against a real test database.
+- [ ] Verify provider behavior and account recovery using configured test credentials.
+- [ ] Validate all production and preview deployment configuration against the actual hosting environment.
 
-## Phase 2 — context and memory
+## Phase 2 — repository-aware engineering workspace (in progress; PR #23)
+- [x] Inspect actual GitHub repository branches and bounded text-file context through the connected account.
+- [x] Generate structured, reviewable source patches with path restrictions and explicit approval.
+- [x] Publish approved changes on a new branch as a draft pull request; do not write to the base branch or auto-merge.
+- [x] Bind proposed changes to the inspected base commit and reject stale branch state.
+- [x] Add engineering-core regression and release-gate documentation.
+- [ ] Complete live in-app GitHub OAuth, repository access, patch generation, and draft-PR publishing test.
+- [ ] Add repeatable browser-level tests for the core engineering flow.
+- [ ] Add isolated, resource-bounded test execution for supported repositories before any test result is treated as verified.
+- [ ] Add durable task checkpoints, idempotent recovery, and auditable approval events.
+
+## Phase 3 — documents and artifact workspace
+- [ ] Authenticated document workspace with editable drafts and reliable Markdown/text export.
+- [ ] Add supported formats incrementally with explicit file-size and content validation.
+- [ ] Owner-scoped persistence, list/open/delete controls, and export tests for saved artifacts.
+- [ ] Add AI-assisted document drafting using the configured server-side provider, with clear generation errors and spend controls.
+- [ ] Never execute uploaded/generated files implicitly; do not expose provider credentials to the browser.
+
+## Phase 4 — context and memory
 - [ ] Token-budgeted conversation context and long-thread summarization.
-- [ ] User-approved memory CRUD and deletion.
+- [ ] User-approved memory creation, review, editing, and deletion.
 - [ ] Project-scoped history and durable task continuity.
 
-## Phase 3 — bounded agent runtime
+## Phase 5 — bounded agent runtime
 - [ ] Typed tool registry, per-tool authorization, timeouts, and audit events.
 - [ ] Checkpoints, idempotency, approvals for consequential actions, and explicit success criteria.
 
-## Phase 4 — evaluation and economics
+## Phase 6 — evaluation and economics
 - [ ] Versioned evaluation set and quality/latency/cost baselines.
 - [ ] Usage dashboards, budget enforcement, and regression checks.
 
-## Phase 5 — model research
+## Phase 7 — model research
 - [ ] Reproducible open-weight inference and fine-tuning experiments.
 - [ ] License/provenance checks and compute estimates before training.
 
 ## Release gates
-No public AI inference before authentication, tenant isolation, provider credential handling, rate limits, and failure paths are tested. No live integration, benchmark, training, or production-ready claim without corresponding evidence. The current in-memory limiter is not sufficient for horizontally scaled production.
+A successful owner-reported smoke test is useful evidence but is not an automated regression test or a complete security audit. No public AI inference or autonomous code execution without authentication, tenant isolation, provider credential handling, rate limits, bounded execution, failure-path testing, and explicit authorization. No live integration, benchmark, training, or production-ready claim without corresponding evidence.
+
+Before merging, verify the latest commit—not an earlier commit—has green dependency audit, typecheck, lint, unit tests, production build, and full-history secret scan. Verify the Vercel preview and perform authenticated smoke tests when test credentials and a safe environment are available. The distributed rate limiter must fail closed in production if its shared store is unavailable.
