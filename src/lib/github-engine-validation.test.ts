@@ -15,7 +15,7 @@ describe("GitHub patch path validation", () => {
   });
 
   it("blocks secrets, workflows, manifests, and sensitive security surfaces", () => {
-    for (const path of [".env", ".env.production", ".github/workflows/deploy.yml", "package.json", "package-lock.json", "src/lib/auth.ts", "src/lib/session.ts", "src/db/schema.ts", "src/lib/connectors/github-token.ts", "docs/private_key.pem"]) {
+    for (const path of [".env", ".env.production", ".github/workflows/deploy.yml", "package.json", "package-lock.json", "src/lib/auth.ts", "src/lib/session.ts", "src/db/schema.ts", "src/lib/connectors/github-token.ts", "docs/private_key.pem", "src/assets/logo.png", "public/banner.svg"]) {
       expect(isSafeGitHubPatchPath(path)).toBe(false);
     }
   });
