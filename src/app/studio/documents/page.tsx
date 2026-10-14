@@ -5,26 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDownToLine, ArrowLeft, FileText, LockKeyhole, RotateCcw } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-
-type Format = "markdown" | "text";
-
-function safeFilename(value: string) {
-  const cleaned = value.trim().toLowerCase()
-    .replace(/[^a-z0-9-_]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 72);
-  return cleaned || "samura-document";
-}
+import { countWords, MAX_DOCUMENT_CHARACTERS, safeDocumentFilename, type DocumentFormat } from "@/lib/document-utils";
 
 export default function DocumentsPage() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [title, setTitle] = useState("Untitled document");
-  const [format, setFormat] = useState<Format>("markdown");
+  const [format, setFormat] = useState<DocumentFormat>("markdown");
   const [content, setContent] = useState("# Untitled document\n\nStart writing here…");
   const [notice, setNotice] = useState("");
 
-  const wordCount = useMemo(() => content.trim().match(/\\S+/g)?.length ?? 0, [content]);
+  const wordCount = useMemo(() => countWords(content), [content]);
   const characterCount = content.length;
 
   function download() {
@@ -34,7 +25,7 @@ export default function DocumentsPage() {
     const objectUrl = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = objectUrl;
-    anchor.download = safeFilename(title) + "." + extension;
+    anchor.download = safeDocumentFilename(title) + "." + extension;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -67,7 +58,7 @@ export default function DocumentsPage() {
           <label htmlFor="document-title" className="mb-2 block text-sm font-medium text-slate-200">Document title</label>
           <input id="document-title" value={title} onChange={event => setTitle(event.target.value.slice(0, 120))} maxLength={120} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-white outline-none focus:border-teal-200/50" />
           <label htmlFor="document-format" className="mb-2 mt-5 block text-sm font-medium text-slate-200">Export format</label>
-          <select id="document-format" value={format} onChange={event => setFormat(event.target.value as Format)} className="w-full rounded-xl border border-white/10 bg-[#111722] px-3 py-3 text-sm text-white outline-none focus:border-teal-200/50">
+          <select id="document-format" value={format} onChange={event => setFormat(event.target.value as DocumentFormat)} className="w-full rounded-xl border border-white/10 bg-[#111722] px-3 py-3 text-sm text-white outline-none focus:border-teal-200/50">
             <option value="markdown">Markdown (.md)</option>
             <option value="text">Plain text (.txt)</option>
           </select>
@@ -83,8 +74,8 @@ export default function DocumentsPage() {
 
         <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035]">
           <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5"><div><p className="text-sm font-medium text-slate-100">Editor</p><p className="mt-1 text-xs text-slate-500">Plain text editing · Markdown supported</p></div><span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{format === "markdown" ? "Markdown" : "Plain text"}</span></div>
-          <textarea aria-label="Document content" value={content} onChange={event => { setContent(event.target.value.slice(0, 200_000)); setNotice(""); }} maxLength={200_000} spellCheck className="min-h-[60vh] w-full resize-y bg-transparent p-4 font-mono text-sm leading-7 text-slate-100 outline-none placeholder:text-slate-600 sm:p-6" placeholder="Write your document…" />
-          <div className="border-t border-white/10 px-4 py-3 text-xs text-slate-500 sm:px-5">Maximum draft size: 200,000 characters. Export is generated locally; no file is uploaded.</div>
+          <textarea aria-label="Document content" value={content} onChange={event => { setContent(event.target.value.slice(0, MAX_DOCUMENT_CHARACTERS)); setNotice(""); }} maxLength={MAX_DOCUMENT_CHARACTERS} spellCheck className="min-h-[60vh] w-full resize-y bg-transparent p-4 font-mono text-sm leading-7 text-slate-100 outline-none placeholder:text-slate-600 sm:p-6" placeholder="Write your document…" />
+          <div className="border-t border-white/10 px-4 py-3 text-xs text-slate-500 sm:px-5">Maximum draft size: {MAX_DOCUMENT_CHARACTERS.toLocaleString()} characters. Export is generated locally; no file is uploaded.</div>
         </div>
       </section>
     </div>
