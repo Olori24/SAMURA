@@ -11,6 +11,8 @@ type Repo = {
   defaultBranch: string; isPrivate: boolean; permissions: { read: boolean; write: boolean; admin: boolean };
 };
 type GitHubAccount = { login: string; name: string | null; avatarUrl: string; profileUrl: string };
+type Branch = { name: string; sha: string };
+type RecentCommit = { sha: string; shortSha: string; message: string; author: string; date: string | null; url: string };
 type Change = { path: string; operation: "add" | "modify"; content: string; originalContent?: string | null };
 type Patch = {
   title: string; body: string; plan: string[]; risks: string[]; tests: string[];
@@ -26,6 +28,10 @@ export default function GitHubEngineeringPage() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [repos, setRepos] = useState<Repo[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [recentCommits, setRecentCommits] = useState<RecentCommit[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+  const [repoInspectError, setRepoInspectError] = useState("");
   const [githubAccount, setGithubAccount] = useState<GitHubAccount | null>(null);
   const [repository, setRepository] = useState("");
   const [baseBranch, setBaseBranch] = useState("");
@@ -58,6 +64,27 @@ export default function GitHubEngineeringPage() {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [isPending, session?.user, router]);
+
+  useEffect(() => {
+    if (isPending || !session?.user?.id || !repository) return;
+    let active = true;
+    setLoadingBranches(true);
+    setRepoInspectError("");
+    fetch("/api/connectors/github/branches", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repository }),
+    }).then(async response => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not load repository branches.");
+      if (!active) return;
+      setBranches(data.branches ?? []);
+      setRecentCommits(data.recentCommits ?? []);
+      setBaseBranch((current: string) => data.branches?.some((branch: Branch) => branch.name === current) ? current : (data.defaultBranch ?? ""));
+    }).catch(e => {
+      if (active) setRepoInspectError(e instanceof Error ? e.message : "Could not load repository branches.");
+    }).finally(() => { if (active) setLoadingBranches(false); });
+    return () => { active = false; };
+  }, [repository, isPending, session?.user?.id]);
 
   const writableRepos = useMemo(() => repos.filter(repo => repo.permissions?.write), [repos]);
   const selectedRepo = repos.find(repo => repo.fullName === repository);
@@ -136,10 +163,14 @@ export default function GitHubEngineeringPage() {
               {writableRepos.map(repo => <option key={repo.id} value={repo.fullName}>{repo.fullName}{repo.isPrivate ? " · private" : ""}</option>)}
             </select>
           </label>
-          <label className="block text-sm text-slate-300">Base branch
-            <input value={baseBranch} onChange={e => { setBaseBranch(e.target.value); setPatch(null); setApproved(false); setResult(null); }} maxLength={250} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 font-mono text-sm text-white"/>
+          <label className="block text-sm text-slate-300">Base branch {loadingBranches ? "· loading…" : "· live GitHub branches"}
+            <select value={baseBranch} onChange={e => { setBaseBranch(e.target.value); setPatch(null); setApproved(false); setResult(null); }} disabled={loadingBranches || branches.length === 0} className="mt-2 w-full rounded-xl border border-white/10 bg-[#111722] px-3 py-3 font-mono text-sm text-white">
+              {baseBranch && !branches.some(branch => branch.name === baseBranch) && <option value={baseBranch}>{baseBranch}</option>}
+              {branches.map(branch => <option key={branch.name} value={branch.name}>{branch.name} · {branch.sha.slice(0, 7)}</option>)}
+            </select>
           </label>
         </div>
+        {repoInspectError && <p role="alert" className="text-sm text-amber-100">{repoInspectError}</p>}
         {selectedRepo && <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
           <p className="font-medium">{selectedRepo.fullName}</p>
           <p className="mt-1 text-xs text-slate-400">Default branch: {selectedRepo.defaultBranch} · {selectedRepo.isPrivate ? "Private" : "Public"} repository</p>
@@ -147,6 +178,7 @@ export default function GitHubEngineeringPage() {
           <a href={selectedRepo.url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-slate-300 underline">Open repository ↗</a>
         </div>}
         {writableRepos.length === 0 && <p className="text-sm text-slate-400">No repository with effective write access is available. Reconnect GitHub and grant repository access, or select a repository where your account can write.</p>}
+        {recentCommits.length > 0 && <details className="rounded-xl border border-white/10 bg-black/20 p-4"><summary className="cursor-pointer text-sm font-medium">Recent commits from GitHub ({recentCommits.length})</summary><ul className="mt-3 space-y-3">{recentCommits.map(commit => <li key={commit.sha} className="border-t border-white/5 pt-3"><a href={commit.url} target="_blank" rel="noreferrer" className="font-mono text-xs text-teal-200 underline">{commit.shortSha}</a><p className="mt-1 text-xs text-slate-200">{commit.message}</p><p className="mt-1 text-[11px] text-slate-500">{commit.author}{commit.date ? " · " + new Date(commit.date).toLocaleString() : ""}</p></li>)}</ul></details>}
         <label className="block text-sm text-slate-300">Engineering task
           <textarea value={task} onChange={e => { setTask(e.target.value); setPatch(null); setApproved(false); setResult(null); }} maxLength={6000} rows={5} placeholder="Example: Add a small /api/version endpoint that returns the app version, follow the existing route conventions, and add focused tests." className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 p-4 text-sm leading-6 text-white"/>
         </label>
