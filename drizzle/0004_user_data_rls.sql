@@ -3,7 +3,8 @@
 -- Every query touching these tables must run inside a transaction that sets
 -- app.user_id from the verified Better Auth session using set_config(..., true).
 
-CREATE ROLE samura_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+-- Provision samura_app with the Neon role-management API before applying this migration.
+-- The role must be LOGIN, NOINHERIT, NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOBYPASSRLS.
 
 GRANT USAGE ON SCHEMA public TO samura_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON
