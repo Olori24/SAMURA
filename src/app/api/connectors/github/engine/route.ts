@@ -17,7 +17,7 @@ export const maxDuration = 60;
 
 const inputSchema = z.object({
   repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/).max(201),
-  baseBranch: z.string().trim().min(1).max(250).refine(v => !/[ ~^:?*\\[\\]\\\\]/.test(v)),
+  baseBranch: z.string().trim().min(1).max(250).refine(v => ![" ", "~", "^", ":", "?", "*", "[", "]", "\\\\"].some(char => v.includes(char))),
   task: z.string().trim().min(8).max(6000),
 }).strict();
 
