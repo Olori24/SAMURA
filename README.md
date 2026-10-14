@@ -1,5 +1,7 @@
 # SAMURA AI
 
+![SAMURA logo](assets/brand/samura-logo.svg)
+
 **Build useful intelligence. Earn trust. Grow capability.**
 
 SAMURA is an independent AI engineering and research project focused on building a reliable AI platform through measurable engineering progress, responsible research, and useful products.
@@ -8,6 +10,8 @@ SAMURA is an independent AI engineering and research project focused on building
 
 ## Product direction
 
+![SAMURA capabilities](assets/visuals/samura-capabilities.svg)
+
 - **SAMURA Chat:** persistent conversations and model-provider integrations.
 - **Provider gateway:** a server-side interface for supported AI providers.
 - **Context and memory:** user-controlled continuity across conversations and projects.
@@ -15,6 +19,10 @@ SAMURA is an independent AI engineering and research project focused on building
 - **Evaluation and research:** repeatable quality checks, observability, and cost controls.
 
 Provider integration, operating a model, fine-tuning, and training a model from scratch are different capabilities. SAMURA will not present them as interchangeable.
+
+## Architecture overview
+
+![SAMURA architecture diagram](assets/diagrams/samura-architecture.svg)
 
 ## Engineering and security principles
 
@@ -70,6 +78,10 @@ Configure `SAMURA_AI_PROVIDER=openai`, `OPENAI_API_KEY` as a server-side secret,
 
 If the current provider adapter supports Gemini, configure `SAMURA_AI_PROVIDER=gemini`, `GEMINI_API_KEY` as a server-side secret, and `SAMURA_GEMINI_MODEL` to a model currently available to your project. Check Google's current [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), [model documentation](https://ai.google.dev/gemini-api/docs/models), and [OpenAI compatibility guide](https://ai.google.dev/gemini-api/docs/openai) before choosing a model. Availability, pricing, quotas, and data-use terms can change; do not assume that any provider or model is free or suitable for confidential data.
 
+## Roadmap
+
+![SAMURA roadmap](assets/visuals/samura-roadmap.svg)
+
 ## Available scripts
 
 ```bash
@@ -108,7 +120,7 @@ Follow this cycle:
 
 Prefer focused, reviewable pull requests. Include the reason for a change, tests run, results, and any remaining limitations. Avoid destructive changes unless their impact and recovery plan are understood.
 
-## Project status and roadmap
+## Project status
 
 The project is under active development. Planned areas include stronger provider abstraction, context and memory controls, permissioned tools, evaluations, observability, and research infrastructure. A roadmap item is not a claim that the feature is complete. Confirm current behavior in the code and tests.
 
