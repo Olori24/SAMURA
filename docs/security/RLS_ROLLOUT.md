@@ -6,8 +6,8 @@ The RLS migration protects `public.conversation`, `public.message`, and `public.
 
 ## Required deployment order
 
-1. Provision a dedicated PostgreSQL login role named `samura_runtime` with `NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS`. Never use `neondb_owner` as the application role after RLS enforcement is enabled.
-2. Apply `drizzle/0004_user_data_rls.sql` using the privileged migration connection.
+1. Provision `samura_runtime` through the Neon role API so Neon manages its password and connection credential. Immediately enforce `NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS`; verify every flag before proceeding. Never use `neondb_owner` as the application role after RLS enforcement is enabled.
+2. Apply `drizzle/0004_user_data_rls.sql` using the privileged migration connection. The migration is safe if the role already exists and reasserts the restricted role attributes.
 3. Set a strong, unique password for `samura_runtime` through a secure database operation. Do not commit it or print it in logs.
 4. Store the role-specific connection string in Vercel as sensitive `SAMURA_DATABASE_URL`. The code uses it ahead of `DATABASE_URL`.
 5. Verify the deployed environment has the correct role and migration before setting `SAMURA_RLS_ENABLED=true`. This flag makes each user-data transaction issue `SET LOCAL ROLE samura_runtime` and set `app.user_id` from the verified Better Auth session.
