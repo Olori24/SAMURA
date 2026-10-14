@@ -3,15 +3,7 @@
 -- Every query touching these tables must run inside a transaction that sets
 -- app.user_id from the verified Better Auth session using set_config(..., true).
 
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'samura_app') THEN
-    CREATE ROLE samura_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
-  ELSE
-    ALTER ROLE samura_app WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
-  END IF;
-END
-$$;
+CREATE ROLE samura_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
 
 GRANT USAGE ON SCHEMA public TO samura_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON
@@ -37,25 +29,15 @@ ALTER TABLE public.message FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.usage_record ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.usage_record FORCE ROW LEVEL SECURITY;
 
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'conversation' AND policyname = 'samura_conversation_isolation') THEN
-    CREATE POLICY samura_conversation_isolation ON public.conversation
-      FOR ALL TO samura_app
-      USING (user_id = NULLIF(current_setting('app.user_id', true), ''))
-      WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'message' AND policyname = 'samura_message_isolation') THEN
-    CREATE POLICY samura_message_isolation ON public.message
-      FOR ALL TO samura_app
-      USING (user_id = NULLIF(current_setting('app.user_id', true), ''))
-      WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'usage_record' AND policyname = 'samura_usage_record_isolation') THEN
-    CREATE POLICY samura_usage_record_isolation ON public.usage_record
-      FOR ALL TO samura_app
-      USING (user_id = NULLIF(current_setting('app.user_id', true), ''))
-      WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
-  END IF;
-END
-$$;
+CREATE POLICY samura_conversation_isolation ON public.conversation
+  FOR ALL TO samura_app
+  USING (user_id = NULLIF(current_setting('app.user_id', true), ''))
+  WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
+CREATE POLICY samura_message_isolation ON public.message
+  FOR ALL TO samura_app
+  USING (user_id = NULLIF(current_setting('app.user_id', true), ''))
+  WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
+CREATE POLICY samura_usage_record_isolation ON public.usage_record
+  FOR ALL TO samura_app
+  USING (user_id = NULLIF(current_setting('app.user_id', true), ''))
+  WITH CHECK (user_id = NULLIF(current_setting('app.user_id', true), ''));
