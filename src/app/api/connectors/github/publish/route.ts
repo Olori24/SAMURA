@@ -142,6 +142,11 @@ export async function POST(request: Request) {
     const commit = await github<{ sha: string; html_url: string }>(token, "/repos/" + repository + "/git/commits", "POST", {
       message: input.title, tree: tree.sha, parents: [base.object.sha],
     });
+    // Fail closed if the base moved while the patch was being prepared.
+    const latestBase = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
+    if (latestBase.object.sha !== base.object.sha) {
+      return NextResponse.json({ error: "The base branch changed while this patch was being prepared. Refresh repository context and review the diff again.", retryable: true }, { status: 409, headers: noStore });
+    }
     // Create the branch only after the commit exists; never overwrite an existing ref.
     // The commit parent is the base SHA inspected above, so unrelated files remain untouched.
     await github(token, "/repos/" + repository + "/git/refs", "POST", { ref: branchRef, sha: commit.sha });
