@@ -2,83 +2,114 @@
 
 **Build useful intelligence. Earn trust. Grow capability.**
 
-SAMURA is an independent AI engineering and research initiative named in honor of the founder's mother. Its long-term mission is to build an original, globally accessible AI platform through measurable engineering progress, responsible research, and reliable products.
+SAMURA is an independent AI engineering and research project focused on building a reliable AI platform through measurable engineering progress, responsible research, and useful products.
 
-## What SAMURA is building
+> **Current product:** SAMURA is deployed at [samura-ai.vercel.app](https://samura-ai.vercel.app). Deployment status alone does not mean every planned capability is complete; use the implementation, tests, and current configuration as the source of truth.
 
-1. **SAMURA Chat** — secure, persistent, streaming conversations.
-2. **Intelligence Gateway** — a provider-independent interface for authorized model providers.
-3. **Context & Memory** — transparent, user-controlled continuity across conversations and projects.
-4. **Agent Runtime** — permissioned tools, checkpoints, bounded execution, and verified outcomes.
-5. **Evaluation & Research** — reproducible quality measurement and a resource-aware path toward operating, adapting, and eventually training models.
+## Product direction
 
-SAMURA will identify third-party models accurately. Provider integration, model operation, fine-tuning, and training from scratch are distinct capabilities and will never be conflated.
+- **SAMURA Chat:** persistent conversations and model-provider integrations.
+- **Provider gateway:** a server-side interface for supported AI providers.
+- **Context and memory:** user-controlled continuity across conversations and projects.
+- **Connectors and tools:** permissioned integrations with bounded execution.
+- **Evaluation and research:** repeatable quality checks, observability, and cost controls.
 
-## Engineering principles
+Provider integration, operating a model, fine-tuning, and training a model from scratch are different capabilities. SAMURA will not present them as interchangeable.
 
-- **Evidence over claims:** report only tests, integrations, and deployments that actually ran.
-- **Secure by default:** server-side authorization, tenant isolation, secret protection, rate limits, and explicit approval for consequential actions.
-- **Modular, not overdistributed:** begin with a well-structured application and extract services only when evidence justifies it.
-- **Budget-aware:** meter usage, set limits, and do not assume APIs or infrastructure are free.
-- **User control:** users can inspect and delete saved memories and export their data.
-- **Original product:** use public documentation and established patterns; do not copy proprietary implementations or protected branding.
+## Engineering and security principles
 
-## Initial delivery sequence
+- **Evidence over claims:** document only features, tests, and deployments that have actually been verified.
+- **Server-side enforcement:** authenticate requests and authorize access on the server; never rely on UI visibility as an access control.
+- **Tenant isolation:** protect user-owned records with application authorization and database safeguards, including row-level security where applicable.
+- **Secret protection:** keep API keys, database credentials, OAuth secrets, and signing keys in managed server-side environment variables. Never commit secrets or expose them to browser bundles.
+- **Abuse resistance:** apply appropriate rate limits, input validation, and safe error handling.
+- **User control:** provide clear handling for saved data and account recovery.
+- **Incremental architecture:** prefer small, testable changes over unnecessary service sprawl.
 
-1. Repository and architecture foundation.
-2. Authentication, persistence, and security.
-3. Streaming multi-provider chat.
-4. Context, memory, and project continuity.
-5. Bounded agent execution and tool permissions.
-6. Evaluation, observability, and cost controls.
-7. Open-weight model experiments and research infrastructure.
-8. Production hardening and launch readiness.
+## Run locally
 
-## Architecture direction
+### Requirements
 
-Start as a modular monolith with explicit boundaries for the web UI, application API, provider adapters, conversation/context services, memory, tools, evaluations, and usage accounting. Select database, authentication, and deployment integrations based on the actual repository and available credentials rather than assumptions.
+- Node.js 22 or later
+- npm 10 or a compatible npm release
+- A configured database and the required application environment variables
+- An AI provider and model that the current application adapter supports
 
-Architectural decisions belong in `docs/adr/`. Security expectations and known limitations must remain documented as the implementation evolves.
+### Install and start
 
-## Status
+```bash
+npm install
+npm run dev
+```
 
-This repository is being initialized. The existence of this charter does **not** imply that chat, authentication, live provider calls, model training, or production deployment are already implemented. Track implemented capabilities, test evidence, and blockers in the project documentation.
+Open [http://localhost:3000](http://localhost:3000).
+
+The development server may require configuration before authentication, database-backed features, or AI requests will work. Consult the environment-variable usage in the source and deployment configuration; do not copy production secrets into local files or commit a populated `.env` file.
+
+## Environment and AI providers
+
+Provider configuration is server-side. Configure only the variables used by the provider adapter in the current code.
+
+### Ollama
+
+For local inference, install [Ollama](https://ollama.com/download), pull a model supported by your installation, and configure:
+
+- `SAMURA_AI_PROVIDER=ollama`
+- `SAMURA_OLLAMA_BASE_URL=http://127.0.0.1:11434/v1`
+- `SAMURA_OLLAMA_MODEL` to the model you pulled, if required by the application
+
+The exact model and supported features depend on the installed Ollama version and model. SAMURA's database, not Ollama, is responsible for SAMURA conversation persistence.
+
+**Deployment note:** `127.0.0.1` inside a hosted server refers to that server/container, not your personal computer. A hosted deployment needs a reachable inference endpoint protected by network access controls and authentication. Do not expose an unauthenticated Ollama service to the public internet.
+
+### OpenAI
+
+Configure `SAMURA_AI_PROVIDER=openai`, `OPENAI_API_KEY` as a server-side secret, and `SAMURA_OPENAI_MODEL` to a model available to your account. Never place provider credentials in client-side code.
+
+### Gemini
+
+If the current provider adapter supports Gemini, configure `SAMURA_AI_PROVIDER=gemini`, `GEMINI_API_KEY` as a server-side secret, and `SAMURA_GEMINI_MODEL` to a model currently available to your project. Check Google's current [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), [model documentation](https://ai.google.dev/gemini-api/docs/models), and [OpenAI compatibility guide](https://ai.google.dev/gemini-api/docs/openai) before choosing a model. Availability, pricing, quotas, and data-use terms can change; do not assume that any provider or model is free or suitable for confidential data.
+
+## Available scripts
+
+```bash
+npm run dev        # Start the development server
+npm run build      # Build the production application
+npm run start      # Start the built application
+npm run lint       # Run ESLint
+npm run typecheck  # Run TypeScript checks
+npm test           # Run the test suite
+npm run db:generate # Generate database migrations
+npm run db:migrate  # Apply configured database migrations
+```
+
+Run relevant checks before submitting changes. Database migrations should be reviewed and tested against a safe environment before being applied to production.
+
+## Production and security verification
+
+Before treating a release as production-ready, verify:
+
+- Authentication, session handling, and account recovery.
+- Server-side authorization and tenant isolation for every user-owned resource.
+- Connector OAuth state validation, token storage, and disconnect behavior.
+- Content Security Policy and other security headers.
+- Rate limiting, input validation, and safe production error responses.
+- Database migration status and the privileges of the actual runtime database role.
+- Build, typecheck, lint, and relevant automated tests.
+- A real smoke test against the deployed environment.
+
+A green deployment or a successful email-delivery event is useful evidence, but neither independently proves the complete security or account-recovery flow.
 
 ## Contributing
 
-Changes should follow:
+Follow this cycle:
 
 `INSPECT → PLAN → IMPLEMENT → TEST → FIX → VERIFY → DOCUMENT`
 
-Prefer small, reviewable increments. Protect user data, avoid destructive changes, and never commit credentials or environment files containing secrets.
+Prefer focused, reviewable pull requests. Include the reason for a change, tests run, results, and any remaining limitations. Avoid destructive changes unless their impact and recovery plan are understood.
 
+## Project status and roadmap
 
-## AI inference providers
+The project is under active development. Planned areas include stronger provider abstraction, context and memory controls, permissioned tools, evaluations, observability, and research infrastructure. A roadmap item is not a claim that the feature is complete. Confirm current behavior in the code and tests.
 
-SAMURA Chat uses a server-side provider adapter. The default provider is **Ollama** for local development, so a paid OpenAI API key is not required to run the chat integration locally.
-
-### Local Ollama setup
-
-1. Install Ollama from the official website: https://ollama.com/download.
-2. Pull the configured model: `ollama pull qwen3:8b` (or set `SAMURA_OLLAMA_MODEL` to another compatible model).
-3. Keep `SAMURA_AI_PROVIDER=ollama` and set `SAMURA_OLLAMA_BASE_URL=http://127.0.0.1:11434/v1`.
-4. Start the SAMURA app and send a test message.
-
-Ollama's OpenAI-compatible API supports common chat-completion features, but feature support varies by model. SAMURA stores conversation history in its database; Ollama itself does not replace the SAMURA persistence layer.
-
-### Deployment warning
-
-A Vercel-hosted server cannot reach your personal computer through `127.0.0.1`. To use Ollama from a deployed SAMURA instance, run it on a reachable server or use a secure private network/tunnel, then set `SAMURA_OLLAMA_BASE_URL` to that server's API base URL. Do not expose an unauthenticated Ollama endpoint to the public internet. For production, add network access controls, authentication at a gateway, usage limits, monitoring, and capacity planning.
-
-To use OpenAI instead, set `SAMURA_AI_PROVIDER=openai`, provide `OPENAI_API_KEY` as a server-side secret, and configure `SAMURA_OPENAI_MODEL`. No provider key belongs in browser code or source control.
-
-
-### Hosted free-tier option for a Vercel preview
-
-For a deployed preview that cannot reach a developer's local Ollama process, SAMURA can optionally use Gemini's OpenAI-compatible API:
-
-1. Create a Gemini API key in Google AI Studio.
-2. In Vercel Preview environment variables, set `SAMURA_AI_PROVIDER=gemini`, `GEMINI_API_KEY` (as a secret), and optionally `SAMURA_GEMINI_MODEL=gemini-3.8-flash`.
-3. Redeploy the preview and test a real authenticated conversation.
-
-Google documents an API free tier for eligible models and an OpenAI-compatible endpoint, but rate limits and availability can change. Free-tier requests may be used to improve Google's products; do not send confidential customer data without reviewing the provider's current data-use terms. This is an optional bridge for early testing, not SAMURA-owned model infrastructure. See Google's [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing) and [OpenAI compatibility guide](https://ai.google.dev/gemini-api/docs/openai).
+Architecture decisions and security limitations should be documented alongside the implementation as those documents are introduced.
