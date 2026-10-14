@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, GitPullRequest, LoaderCircle, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle2, LoaderCircle, ShieldCheck, Sparkles } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 
 type Repo = {
