@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 const schema = z.object({
   repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/).max(201),
-  baseBranch: z.string().min(1).max(250).refine(value => !/[\\s~^:?*\\[\\]\\\\]/.test(value)),
+  baseBranch: z.string().min(1).max(250).refine(value => !/[\s~^:?*\[\]\\]/.test(value)),
   title: z.string().trim().min(5).max(120),
   body: z.string().max(10_000).default(""),
   idempotencyKey: z.string().uuid(),
