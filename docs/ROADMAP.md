@@ -29,10 +29,11 @@
 - [ ] Add durable task checkpoints, idempotent recovery, and auditable approval events.
 
 ## Phase 3 — documents and artifact workspace
-- [ ] Authenticated document workspace with editable drafts and reliable Markdown/text export.
-- [ ] Add supported formats incrementally with explicit file-size and content validation.
-- [ ] Owner-scoped persistence, list/open/delete controls, and export tests for saved artifacts.
+- [x] Add authenticated local document editor with Markdown/plain-text export and bounded draft size.
+- [ ] Add automated tests for filename normalization, export formats, and oversized drafts.
 - [ ] Add AI-assisted document drafting using the configured server-side provider, with clear generation errors and spend controls.
+- [ ] Add owner-scoped server persistence, list/open/delete controls, and export tests for saved artifacts.
+- [ ] Expand formats only when their export/open behavior is tested.
 - [ ] Never execute uploaded/generated files implicitly; do not expose provider credentials to the browser.
 
 ## Phase 4 — context and memory
