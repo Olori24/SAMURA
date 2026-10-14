@@ -196,7 +196,7 @@ export default function ConnectPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {!githubConnected ? <a href="/api/connectors/github/authorize" className="inline-flex items-center gap-2 rounded-xl bg-teal-200 px-4 py-2.5 text-sm font-bold text-[#07120e]"><Github size={15}/> Connect GitHub</a> : <>
-              <button disabled={githubBusy} onClick={()=>void loadGithubRepos()} className="rounded-xl bg-teal-200 px-4 py-2.5 text-sm font-bold text-[#07120e] disabled:opacity-50">{githubBusy ? "Loading…" : "Load public repositories"}</button>
+              <button disabled={githubBusy} onClick={()=>void loadGithubRepos()} className="rounded-xl bg-teal-200 px-4 py-2.5 text-sm font-bold text-[#07120e] disabled:opacity-50">{githubBusy ? "Loading…" : "Load authorized repositories"}</button>
               <button disabled={githubBusy} onClick={()=>void disconnectGithub()} className="rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 disabled:opacity-50">Disconnect</button>
             </>}
           </div>
