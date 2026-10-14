@@ -9,7 +9,7 @@ import { auth } from "@/lib/auth";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { decryptConnectorToken, githubProviderId } from "@/lib/connectors/github-token";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
-import { isSafeGitHubPatchPath } from "@/lib/github-engine-validation";
+import { isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "@/lib/github-engine-validation";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 
 export const runtime = "nodejs";
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
     const branchRef = "refs/heads/" + branchSlug;
     const branchName = branchSlug;
     const base = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
-    if (base.object.sha !== input.expectedBaseCommit) {
+    if (!matchesExpectedBaseCommit(input.expectedBaseCommit, base.object.sha)) {
       return NextResponse.json({ error: "The selected branch changed after SAMURA inspected it. Regenerate the patch against the latest branch and review it again.", retryable: true }, { status: 409, headers: noStore });
     }
     const baseCommit = await github<{ tree: { sha: string }; parents: Array<{ sha: string }> }>(token, "/repos/" + repository + "/git/commits/" + base.object.sha);
