@@ -10,6 +10,7 @@ type Repo = {
   id: number; name: string; fullName: string; url: string; description: string | null;
   defaultBranch: string; isPrivate: boolean; permissions: { read: boolean; write: boolean; admin: boolean };
 };
+type GitHubAccount = { login: string; name: string | null; avatarUrl: string; profileUrl: string };
 type Change = { path: string; operation: "add" | "modify"; content: string; originalContent?: string | null };
 type Patch = {
   title: string; body: string; plan: string[]; risks: string[]; tests: string[];
@@ -25,6 +26,7 @@ export default function GitHubEngineeringPage() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [repos, setRepos] = useState<Repo[]>([]);
+  const [githubAccount, setGithubAccount] = useState<GitHubAccount | null>(null);
   const [repository, setRepository] = useState("");
   const [baseBranch, setBaseBranch] = useState("");
   const [task, setTask] = useState("");
@@ -120,6 +122,7 @@ export default function GitHubEngineeringPage() {
 
       {error && <p role="alert" className="mb-4 rounded-xl border border-amber-200/20 bg-amber-200/5 p-4 text-sm text-amber-100">{error}</p>}
 
+      {githubAccount && <div className="mb-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4"><img src={githubAccount.avatarUrl} alt="" className="h-10 w-10 rounded-full" /><div className="min-w-0 flex-1"><p className="text-sm font-medium">Connected as @{githubAccount.login}</p><p className="text-xs text-slate-400">{githubAccount.name ?? "GitHub account"} · repository permissions checked per request</p></div><a href={githubAccount.profileUrl} target="_blank" rel="noreferrer" className="text-xs text-teal-200 underline">View profile ↗</a></div>}
       <section className="space-y-5 rounded-3xl border border-white/10 bg-white/[0.035] p-5 sm:p-7">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm text-slate-300">Authorized GitHub repository
