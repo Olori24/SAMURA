@@ -72,7 +72,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const candidate = error as { name?: unknown; code?: unknown; message?: unknown };
     const safeMessage = typeof candidate?.message === "string"
-      ? candidate.message.replace(/(?:postgres(?:ql)?:\\/\\/|https?:\\/\\/)[^\\s"'<>]+/gi, "[redacted-url]").slice(0, 240)
+      ? candidate.message.replace(/(?:postgres(?:ql)?:\/\/|https?:\/\/)[^\s"'<>]+/gi, "[redacted-url]").slice(0, 240)
       : "No error message available";
     console.error("[samura:conversation-create] request failed", {
       stage: failureStage,
