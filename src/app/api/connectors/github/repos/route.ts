@@ -86,7 +86,9 @@ export async function GET() {
         description: repo.description, language: repo.language, stars: repo.stargazers_count,
         updatedAt: repo.updated_at, isPrivate: repo.private, defaultBranch: repo.default_branch,
         permissions: {
-          read: repo.permissions?.pull === true,
+          // /user/repos only returns repositories this token can access. Some
+          // GitHub responses omit the optional permissions object entirely.
+          read: repo.permissions?.pull === true || repo.permissions == null,
           write: repo.permissions?.push === true,
           admin: repo.permissions?.admin === true,
         },
