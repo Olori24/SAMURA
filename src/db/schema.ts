@@ -96,3 +96,17 @@ export const apiRateLimits = pgTable("api_rate_limit", {
   check("api_rate_limit_bucket_key_check", sql`length(${t.bucketKey}) = 64`),
   check("api_rate_limit_request_count_check", sql`${t.requestCount} > 0`),
 ]);
+
+export const userDocuments = pgTable("user_document", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 120 }).notNull().default("Untitled document"),
+  format: varchar("format", { length: 16 }).notNull().default("markdown"),
+  content: text("content").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("user_document_owner_updated_idx").on(t.userId, t.updatedAt),
+  check("user_document_format_check", sql`${t.format} IN ('markdown', 'text')`),
+  check("user_document_title_check", sql`length(trim(${t.title})) BETWEEN 1 AND 120`),
+]);

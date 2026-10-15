@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   const state = randomBytes(32).toString("hex");
   const response = NextResponse.redirect(
     "https://github.com/login/oauth/authorize?" + new URLSearchParams({
-      client_id: clientId, redirect_uri: callbackUrl, scope: "read:user user:email", state, allow_signup: "false",
+      client_id: clientId, redirect_uri: callbackUrl, scope: "read:user user:email repo", state, allow_signup: "false",
     }).toString(),
   );
   response.cookies.set("samura_github_oauth_state", state, {

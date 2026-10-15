@@ -159,6 +159,7 @@ export default function ConnectPage() {
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-teal-200">SAMURA Connect</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-5xl">Your tools, under your control.</h1>
         <p className="mt-4 text-sm leading-7 text-slate-400">Explore plugins, inspect permissions, and run available actions. GitHub can be connected with read-only identity access once its production OAuth settings are configured.</p>
+        <Link href="/studio/github-publish" className="mt-4 inline-flex items-center gap-2 rounded-xl border border-teal-200/25 bg-teal-200/[0.06] px-4 py-2.5 text-sm font-semibold text-teal-100 transition hover:bg-teal-200/10"><Github size={16}/> Open GitHub publishing workspace</Link>
       </header>
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -196,7 +197,7 @@ export default function ConnectPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {!githubConnected ? <a href="/api/connectors/github/authorize" className="inline-flex items-center gap-2 rounded-xl bg-teal-200 px-4 py-2.5 text-sm font-bold text-[#07120e]"><Github size={15}/> Connect GitHub</a> : <>
-              <button disabled={githubBusy} onClick={()=>void loadGithubRepos()} className="rounded-xl bg-teal-200 px-4 py-2.5 text-sm font-bold text-[#07120e] disabled:opacity-50">{githubBusy ? "Loading…" : "Load public repositories"}</button>
+              <button disabled={githubBusy} onClick={()=>void loadGithubRepos()} className="rounded-xl bg-teal-200 px-4 py-2.5 text-sm font-bold text-[#07120e] disabled:opacity-50">{githubBusy ? "Loading…" : "Load authorized repositories"}</button>
               <button disabled={githubBusy} onClick={()=>void disconnectGithub()} className="rounded-xl border border-white/15 px-4 py-2.5 text-sm text-slate-300 disabled:opacity-50">Disconnect</button>
             </>}
           </div>
