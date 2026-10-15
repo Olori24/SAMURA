@@ -100,10 +100,10 @@ export async function POST(request: Request) {
   const [account] = await getDb().select({ accessToken: accounts.accessToken, scope: accounts.scope })
     .from(accounts).where(and(eq(accounts.userId, session.user.id), eq(accounts.providerId, githubProviderId()))).limit(1);
   if (!account?.accessToken) return NextResponse.json({ error: "Connect GitHub before publishing." }, { status: 409, headers: noStore });
+  // The saved OAuth scope string can be incomplete for older linked accounts.
+  // GitHub's authenticated repository response below is authoritative: publishing
+  // proceeds only when it confirms push permission for this exact repository.
   const scopes = (account.scope ?? "").split(/[ ,]+/).filter(Boolean);
-  if (!scopes.includes("repo") && !scopes.includes("public_repo")) {
-    return NextResponse.json({ error: "GitHub write scope is missing. Reconnect GitHub and approve repository access." }, { status: 403, headers: noStore });
-  }
 
   try {
     const token = decryptConnectorToken(account.accessToken);
