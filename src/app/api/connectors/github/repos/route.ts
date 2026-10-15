@@ -74,8 +74,11 @@ export async function GET() {
       if (pageRepos.length < 100) break;
     }
 
-    const scopes = (account.scope ?? "").split(/[ ,]+/).filter(Boolean);
-    const hasRepoScope = scopes.includes("repo") || scopes.includes("public_repo");
+    // GitHub's effective per-repository permissions are the source of truth.
+    // Stored OAuth scope metadata can be incomplete for previously linked accounts;
+    // it must not hide repositories that GitHub confirms this token can write to.
+    const grantedScopeHeader = profileResponse.headers.get("x-oauth-scopes");
+    const scopes = (grantedScopeHeader ?? account.scope ?? "").split(/[ ,]+/).filter(Boolean);
     return NextResponse.json({
       account: { login: profile.login, name: profile.name, avatarUrl: profile.avatar_url, profileUrl: profile.html_url },
       repositories: repositories.map(repo => ({
@@ -84,14 +87,14 @@ export async function GET() {
         updatedAt: repo.updated_at, isPrivate: repo.private, defaultBranch: repo.default_branch,
         permissions: {
           read: repo.permissions?.pull === true,
-          write: repo.permissions?.push === true && hasRepoScope,
+          write: repo.permissions?.push === true,
           admin: repo.permissions?.admin === true,
         },
       })),
       capabilities: {
         read: true,
-        write: hasRepoScope,
-        requiresReauthorizationForWrite: !hasRepoScope,
+        write: repositories.some(repo => repo.permissions?.push === true),
+        requiresReauthorizationForWrite: false,
         scope: scopes,
       },
       truncated: repositories.length >= 300,
