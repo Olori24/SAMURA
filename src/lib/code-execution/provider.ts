@@ -31,7 +31,7 @@ export type TerminalExecutionConfig = {
 function truncate(value: string): string {
   const bytes = new TextEncoder().encode(value);
   if (bytes.byteLength <= MAX_OUTPUT_BYTES) return value;
-  return new TextDecoder().decode(bytes.subarray(0, MAX_OUTPUT_BYTES)) + "\\n[output truncated]";
+  return new TextDecoder().decode(bytes.subarray(0, MAX_OUTPUT_BYTES)) + "\n[output truncated]";
 }
 
 async function readBoundedJson(response: Response): Promise<unknown> {
