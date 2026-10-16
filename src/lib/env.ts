@@ -20,6 +20,9 @@ const envSchema = z.object({
   SAMURA_MAX_REQUESTS_PER_MINUTE: z.coerce.number().int().positive().max(1000).default(20),
   SAMURA_MAX_INPUT_CHARS: z.coerce.number().int().positive().max(50000).default(12000),
   SAMURA_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().max(4000).default(1200),
+  // Must point to a separately managed isolated execution service; never execute shell commands in this app process.
+  SAMURA_CODE_EXECUTION_URL: z.string().url().optional(),
+  SAMURA_CODE_EXECUTION_TOKEN: optionalSecret,
 });
 
 export function getServerEnv() {
@@ -42,5 +45,7 @@ export function getServerEnv() {
     SAMURA_MAX_REQUESTS_PER_MINUTE: process.env.SAMURA_MAX_REQUESTS_PER_MINUTE,
     SAMURA_MAX_INPUT_CHARS: process.env.SAMURA_MAX_INPUT_CHARS,
     SAMURA_MAX_OUTPUT_TOKENS: process.env.SAMURA_MAX_OUTPUT_TOKENS,
+    SAMURA_CODE_EXECUTION_URL: process.env.SAMURA_CODE_EXECUTION_URL,
+    SAMURA_CODE_EXECUTION_TOKEN: process.env.SAMURA_CODE_EXECUTION_TOKEN,
   });
 }
