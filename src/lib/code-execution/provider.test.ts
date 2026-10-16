@@ -69,10 +69,10 @@ describe("runTerminalCommand", () => {
       teamId: "team_test",
       runtime: "node22",
       timeout: 10_000,
-      resources: { vcpus: 1, memory: 2048 },
-      networkPolicy: { mode: "deny-all" },
+      resources: { vcpus: 1 },
+      networkPolicy: "deny-all",
     }));
-    expect(mockSandbox.runCommand).toHaveBeenCalledWith("bash", ["-lc", 'echo "TEST_OUTPUT"']);
+    expect(mockSandbox.runCommand).toHaveBeenCalledWith("bash", ["-lc", 'echo "TEST_OUTPUT"'], expect.objectContaining({ timeoutMs: 5_000 }));
     expect(mockSandbox.stop).toHaveBeenCalledOnce();
   });
 
