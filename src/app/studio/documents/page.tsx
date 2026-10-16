@@ -176,7 +176,11 @@ export default function DocumentsPage() {
     }
   }
 
-  function printDocument() {\n    window.print();\n  }\n\n  function download() {
+  function printDocument() {
+    window.print();
+  }
+
+  function download() {
     const extension = format === "markdown" ? "md" : "txt";
     const mime = format === "markdown" ? "text/markdown;charset=utf-8" : "text/plain;charset=utf-8";
     const blob = new Blob([content], { type: mime });
@@ -234,11 +238,14 @@ export default function DocumentsPage() {
             <div><label htmlFor="document-title" className="mb-2 block text-sm font-medium text-slate-200">Document title</label><input id="document-title" disabled={saving || drafting} value={title} onChange={event => { setTitle(event.target.value.slice(0, 120)); setDirty(true); }} maxLength={120} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-white outline-none focus:border-teal-200/50" /></div>
             <div><label htmlFor="document-format" className="mb-2 block text-sm font-medium text-slate-200">Format</label><select id="document-format" disabled={saving || drafting} value={format} onChange={event => { setFormat(event.target.value as DocumentFormat); setDirty(true); }} className="w-full rounded-xl border border-white/10 bg-[#111722] px-3 py-3 text-sm text-white outline-none focus:border-teal-200/50"><option value="markdown">Markdown (.md)</option><option value="text">Plain text (.txt)</option></select></div>
           </div>
-          <h1 className="document-print-title hidden">{title}</h1>\n          <pre className="document-print-content hidden">{content}</pre>\n          <textarea aria-label="Document content" className="document-content-editor min-h-[52vh] w-full resize-y bg-transparent p-4 font-mono text-sm leading-7 text-slate-100 outline-none placeholder:text-slate-600 sm:p-6" disabled={saving || drafting} value={content} onChange={event => { setContent(event.target.value.slice(0, MAX_DOCUMENT_CHARACTERS)); setDirty(true); setNotice(""); }} maxLength={MAX_DOCUMENT_CHARACTERS} spellCheck placeholder="Write your document…" />
+          <h1 className="document-print-title hidden">{title}</h1>
+          <pre className="document-print-content hidden">{content}</pre>
+          <textarea aria-label="Document content" className="document-content-editor min-h-[52vh] w-full resize-y bg-transparent p-4 font-mono text-sm leading-7 text-slate-100 outline-none placeholder:text-slate-600 sm:p-6" disabled={saving || drafting} value={content} onChange={event => { setContent(event.target.value.slice(0, MAX_DOCUMENT_CHARACTERS)); setDirty(true); setNotice(""); }} maxLength={MAX_DOCUMENT_CHARACTERS} spellCheck placeholder="Write your document…" />
           <div className="document-print-hidden flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-3 text-xs text-slate-500 sm:px-5"><span>{wordCount.toLocaleString()} words · {characterCount.toLocaleString()} / {MAX_DOCUMENT_CHARACTERS.toLocaleString()} characters</span><span>Save before leaving to keep your latest edits.</span></div>
           <div className="document-print-hidden flex flex-wrap gap-2 p-4 sm:px-5">
             <button type="button" disabled={saving || drafting || !dirty} onClick={() => void saveDocument()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-200 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-50"><Save size={16}/>{saving ? "Saving…" : documentId ? "Save changes" : "Save to account"}</button>
-            <button type="button" onClick={download} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/[0.04]"><ArrowDownToLine size={16}/> Export file</button>\n            <button type="button" onClick={printDocument} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/[0.04]"><Printer size={16}/> Print / Save PDF</button>
+            <button type="button" onClick={download} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/[0.04]"><ArrowDownToLine size={16}/> Export file</button>
+            <button type="button" onClick={printDocument} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/[0.04]"><Printer size={16}/> Print / Save PDF</button>
             {documentId && <button type="button" disabled={deleting || saving || drafting} onClick={() => void deleteDocument()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-300/20 px-4 py-3 text-sm font-medium text-rose-200 transition hover:bg-rose-300/[0.06] disabled:opacity-50"><Trash2 size={16}/>{deleting ? "Deleting…" : "Delete"}</button>}
           </div>
           {error && <p role="alert" className="mx-4 mb-4 rounded-xl border border-rose-300/20 bg-rose-300/[0.05] p-3 text-sm leading-5 text-rose-100 sm:mx-5">{error}</p>}
