@@ -19,9 +19,11 @@ async function currentUser() {
 
 export async function GET() {
   if (!isRuntimeConfigured()) return NextResponse.json({ error: "Conversation service is not configured." }, { status: 503 });
+  let failureStage = "authentication";
   try {
     const user = await currentUser();
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    failureStage = "conversation_query";
     const rows = await withUserTransaction(user.id, async (tx) => tx.select({
       id: conversations.id, title: conversations.title, createdAt: conversations.createdAt,
       updatedAt: conversations.updatedAt,
@@ -29,8 +31,16 @@ export async function GET() {
       .where(and(eq(conversations.userId, user.id), eq(conversations.archived, false)))
       .orderBy(desc(conversations.updatedAt)).limit(100));
     return NextResponse.json({ conversations: rows }, { headers: { "Cache-Control": "no-store" } });
-  } catch {
-    return NextResponse.json({ error: "Conversation service is temporarily unavailable." }, { status: 503 });
+  } catch (error) {
+    const candidate = error as { name?: unknown; code?: unknown };
+    console.error("[samura:conversation-history] request failed", {
+      stage: failureStage,
+      errorName: typeof candidate?.name === "string" ? candidate.name.slice(0, 80) : "UnknownError",
+      errorCode: typeof candidate?.code === "string" || typeof candidate?.code === "number" ? String(candidate.code).slice(0, 40) : undefined,
+      rlsEnabled: process.env.SAMURA_RLS_ENABLED === "true",
+      databaseUrlSource: process.env.SAMURA_DATABASE_URL ? "SAMURA_DATABASE_URL" : process.env.DATABASE_URL ? "DATABASE_URL" : "missing",
+    });
+    return NextResponse.json({ error: "Conversation service is temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
 
