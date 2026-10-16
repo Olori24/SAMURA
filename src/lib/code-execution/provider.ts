@@ -78,32 +78,28 @@ export async function runTerminalCommand(
       teamId: config.teamId,
       runtime: "node22",
       timeout: parsed.data.timeoutMs + 5_000,
-      resources: { vcpus: 1, memory: 2048 },
-      networkPolicy: { mode: "deny-all" },
+      resources: { vcpus: 1 },
+      networkPolicy: "deny-all",
     });
 
-    const execution = (async () => {
-      const command = await sandbox!.runCommand("bash", ["-lc", parsed.data.command]);
-      const [stdout, stderr] = await Promise.all([command.stdout(), command.stderr()]);
-      return { stdout, stderr, exitCode: command.exitCode ?? 1 };
-    })();
+    const commandController = new AbortController();
+    abortHandler = () => {
+      cancelled = true;
+      commandController.abort();
+    };
+    config.signal?.addEventListener("abort", abortHandler, { once: true });
+    timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      commandController.abort();
+    }, parsed.data.timeoutMs);
 
-    const deadline = new Promise<never>((_, reject) => {
-      timeoutHandle = setTimeout(() => {
-        timedOut = true;
-        reject(new Error("Terminal execution timed out."));
-      }, parsed.data.timeoutMs);
-    });
-
-    const cancellation = new Promise<never>((_, reject) => {
-      abortHandler = () => {
-        cancelled = true;
-        reject(abortedError());
-      };
-      config.signal?.addEventListener("abort", abortHandler, { once: true });
-    });
-
-    const result = await Promise.race([execution, deadline, cancellation]);
+    const command = await sandbox.runCommand(
+      "bash",
+      ["-lc", parsed.data.command],
+      { timeoutMs: parsed.data.timeoutMs, signal: commandController.signal },
+    );
+    const [stdout, stderr] = await Promise.all([command.stdout(), command.stderr()]);
+    const result = { stdout, stderr, exitCode: command.exitCode ?? 1 };
     const validated = outputSchema.safeParse(result);
     if (!validated.success) {
       return { status: "failed", stdout: "", stderr: "Sandbox returned an invalid result.", exitCode: null };
