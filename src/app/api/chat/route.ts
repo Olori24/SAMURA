@@ -186,8 +186,8 @@ export async function POST(request: Request) {
                     // Access is enabled. Never forward browser-supplied secrets or
                     // the application's environment into the sandbox.
                     token: request.headers.get("x-vercel-oidc-token") ?? env.VERCEL_TOKEN,
-                    projectId: env.VERCEL_PROJECT_ID,
-                    teamId: env.VERCEL_TEAM_ID ?? env.VERCEL_ORG_ID,
+                    projectId: env.SAMURA_VERCEL_PROJECT_ID,
+                    teamId: env.SAMURA_VERCEL_TEAM_ID,
                     signal: abortController.signal,
                   });
                 } else {
