@@ -137,7 +137,7 @@ export async function POST(request: Request) {
         type: "function",
         function: {
           name: "run_terminal_command",
-          description: "Run one non-destructive command in SAMURA's separately managed isolated terminal. Use only when the user explicitly asks to execute or test something. Never inspect secrets or run destructive commands.",
+          description: "Run one non-destructive command in a fresh Vercel Sandbox with outbound networking disabled. Use only when the user explicitly asks to execute or test something. Never inspect secrets or run destructive commands.",
           parameters: {
             type: "object",
             properties: {
