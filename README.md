@@ -78,6 +78,15 @@ Configure `SAMURA_AI_PROVIDER=openai`, `OPENAI_API_KEY` as a server-side secret,
 
 If the current provider adapter supports Gemini, configure `SAMURA_AI_PROVIDER=gemini`, `GEMINI_API_KEY` as a server-side secret, and `SAMURA_GEMINI_MODEL` to a model currently available to your project. Check Google's current [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), [model documentation](https://ai.google.dev/gemini-api/docs/models), and [OpenAI compatibility guide](https://ai.google.dev/gemini-api/docs/openai) before choosing a model. Availability, pricing, quotas, and data-use terms can change; do not assume that any provider or model is free or suitable for confidential data.
 
+## Isolated terminal execution
+
+Code mode runs requested commands in a fresh **Vercel Sandbox**, not in the SAMURA web process. Each command gets a short-lived sandbox with one vCPU, 2 GiB memory, outbound networking disabled, no application secrets forwarded, bounded runtime, bounded output, and best-effort cleanup.
+
+The route uses the request-scoped `x-vercel-oidc-token` supplied by Vercel when Secure Backend Access / OIDC is enabled. For environments where that is unavailable, an administrator can configure a server-side `VERCEL_TOKEN` and the `SAMURA_VERCEL_PROJECT_ID` and `SAMURA_VERCEL_TEAM_ID` values. Treat `VERCEL_TOKEN` as a secret; never expose it to client code, prompts, logs, or sandbox environment variables. Prefer OIDC over a long-lived access token.
+
+If authentication or project scoping is missing, execution reports `BLOCKED`. Sandboxed commands are untrusted workloads; network access stays disabled and commands must never receive production credentials. Verify Vercel Sandbox availability and billing/usage limits for the target account before enabling the feature for general users.
+
+
 ## Roadmap
 
 ![SAMURA roadmap](assets/visuals/samura-roadmap.svg)
