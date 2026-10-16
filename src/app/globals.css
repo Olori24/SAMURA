@@ -18,3 +18,18 @@ body { margin: 0; color: var(--foreground); background: radial-gradient(ellipse 
 button, a { -webkit-tap-highlight-color: transparent; }
 a { color: inherit; text-decoration: none; }
 ::selection { color: #06110d; background: var(--accent); }
+
+
+@media print {
+  @page { margin: 18mm; }
+  html, body { min-height: 0 !important; color: #111 !important; background: #fff !important; }
+  body { font-family: Arial, sans-serif !important; }
+  .document-workspace { min-height: 0 !important; padding: 0 !important; color: #111 !important; background: #fff !important; }
+  .document-workspace > div { max-width: none !important; }
+  .document-workspace section { display: block !important; }
+  .document-workspace section > div { border: 0 !important; background: #fff !important; box-shadow: none !important; }
+  .document-print-hidden, .document-content-editor { display: none !important; }
+  .document-print-title { display: block !important; margin: 0 0 1.25rem !important; color: #111 !important; font-family: Arial, sans-serif !important; font-size: 24pt !important; font-weight: 700 !important; line-height: 1.2 !important; overflow-wrap: anywhere; }
+  .document-print-content { display: block !important; margin: 0 !important; padding: 0 !important; color: #111 !important; background: #fff !important; font-family: Arial, sans-serif !important; font-size: 11pt !important; line-height: 1.55 !important; white-space: pre-wrap !important; overflow-wrap: anywhere !important; word-break: normal !important; }
+  * { print-color-adjust: economy !important; -webkit-print-color-adjust: economy !important; }
+}
