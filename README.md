@@ -80,14 +80,12 @@ If the current provider adapter supports Gemini, configure `SAMURA_AI_PROVIDER=g
 
 ## Isolated terminal execution
 
-Code mode can request the `run_terminal_command` tool, but commands are **not** executed inside the SAMURA Next.js/Vercel process. Actual execution requires a separately managed isolated execution service configured with server-side secrets:
+Code mode runs requested commands in a fresh **Vercel Sandbox**, not in the SAMURA web process. Each command gets a short-lived sandbox with one vCPU, 2 GiB memory, outbound networking disabled, no application secrets forwarded, bounded runtime, bounded output, and best-effort cleanup.
 
-- `SAMURA_CODE_EXECUTION_URL`: HTTPS endpoint for the execution service.
-- `SAMURA_CODE_EXECUTION_TOKEN`: bearer token used only by the server.
+The route uses the request-scoped `x-vercel-oidc-token` supplied by Vercel when Secure Backend Access / OIDC is enabled. For environments where that is unavailable, an administrator can configure a server-side `VERCEL_TOKEN` and the `VERCEL_PROJECT_ID` and `VERCEL_TEAM_ID` values. Treat `VERCEL_TOKEN` as a secret; never expose it to client code, prompts, logs, or sandbox environment variables. Prefer OIDC over a long-lived access token.
 
-The endpoint contract is `POST` JSON `{ "command": "...", "timeoutMs": 10000, "outputLimitBytes": 16000 }` and a JSON response `{ "stdout": "...", "stderr": "...", "exitCode": 0 }`. The service must execute each request in an ephemeral sandbox with CPU/memory/time limits, no host or cross-user filesystem access, no inherited production credentials, and network access disabled or explicitly allowlisted. It must enforce its own limits; the application-side timeout and output cap are defense in depth, not a substitute for sandboxing.
+If authentication or project scoping is missing, execution reports `BLOCKED`. Sandboxed commands are untrusted workloads; network access stays disabled and commands must never receive production credentials. Verify Vercel Sandbox availability and billing/usage limits for the target account before enabling the feature for general users.
 
-If either variable is missing, SAMURA reports terminal execution as blocked. Do not point these variables at an ordinary web server, a developer laptop, or an unauthenticated shell. Configure and verify a real sandbox service before treating terminal execution as operational.
 
 ## Roadmap
 
