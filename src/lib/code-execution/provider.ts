@@ -1,3 +1,4 @@
+import { Sandbox } from "@vercel/sandbox";
 import { z } from "zod";
 
 const commandSchema = z.object({
@@ -12,7 +13,6 @@ const outputSchema = z.object({
 });
 
 const MAX_OUTPUT_BYTES = 16_000;
-const MAX_PROVIDER_RESPONSE_BYTES = 128_000;
 
 export type TerminalExecutionResult = {
   status: "complete" | "failed" | "blocked";
@@ -22,9 +22,9 @@ export type TerminalExecutionResult = {
 };
 
 export type TerminalExecutionConfig = {
-  endpoint?: string;
   token?: string;
-  nodeEnv?: string;
+  projectId?: string;
+  teamId?: string;
   signal?: AbortSignal;
 };
 
@@ -34,50 +34,14 @@ function truncate(value: string): string {
   return new TextDecoder().decode(bytes.subarray(0, MAX_OUTPUT_BYTES)) + "\n[output truncated]";
 }
 
-async function readBoundedJson(response: Response): Promise<unknown> {
-  const declaredLength = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_PROVIDER_RESPONSE_BYTES) return null;
-  if (!response.body) return null;
-
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > MAX_PROVIDER_RESPONSE_BYTES) {
-        await reader.cancel().catch(() => undefined);
-        return null;
-      }
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  try {
-    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
-  } catch {
-    return null;
-  }
+function abortedError(): Error {
+  return new Error("Terminal execution was cancelled.");
 }
 
 /**
- * Calls a separately managed, isolated execution service. This Next.js app
- * deliberately does not execute shell commands in its own serverless process.
- *
- * The configured service must run each command in an ephemeral, isolated
- * workspace with no host credentials, bounded resources, and no cross-user
- * filesystem access. Its API contract is POST { command, timeoutMs,
- * outputLimitBytes } -> { stdout, stderr, exitCode }.
+ * Runs a command in a fresh Vercel Sandbox, never in the SAMURA web process.
+ * Sandboxes have outbound networking disabled, no application environment
+ * variables are forwarded, and the instance is stopped after one command.
  */
 export async function runTerminalCommand(
   input: unknown,
@@ -88,80 +52,89 @@ export async function runTerminalCommand(
     return { status: "blocked", stdout: "", stderr: "Invalid command request.", exitCode: null };
   }
 
-  if (!config.endpoint || !config.token) {
+  if (!config.token || !config.projectId || !config.teamId) {
     return {
       status: "blocked",
       stdout: "",
-      stderr: "Terminal execution is not connected. Configure a secured isolated execution provider before running commands.",
+      stderr: "Isolated terminal execution is not authenticated. Enable Vercel OIDC for this project or configure a server-side VERCEL_TOKEN with project and team IDs.",
       exitCode: null,
     };
   }
 
-  let endpoint: URL;
-  try {
-    endpoint = new URL(config.endpoint);
-  } catch {
-    return { status: "blocked", stdout: "", stderr: "Terminal execution provider URL is invalid.", exitCode: null };
+  if (config.signal?.aborted) {
+    return { status: "failed", stdout: "", stderr: "Terminal execution was cancelled.", exitCode: null };
   }
 
-  const localHost = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(endpoint.hostname.toLowerCase());
-  if (endpoint.username || endpoint.password || (endpoint.protocol !== "https:" && !(config.nodeEnv !== "production" && endpoint.protocol === "http:" && localHost))) {
-    return { status: "blocked", stdout: "", stderr: "Terminal execution provider must use HTTPS in production.", exitCode: null };
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), parsed.data.timeoutMs);
-  const abortFromCaller = () => controller.abort();
-  config.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  let sandbox: Awaited<ReturnType<typeof Sandbox.create>> | undefined;
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  let abortHandler: (() => void) | undefined;
+  let timedOut = false;
+  let cancelled = false;
 
   try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + config.token,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({
-        command: parsed.data.command,
-        timeoutMs: parsed.data.timeoutMs,
-        outputLimitBytes: MAX_OUTPUT_BYTES,
-      }),
-      signal: controller.signal,
-      cache: "no-store",
+    sandbox = await Sandbox.create({
+      token: config.token,
+      projectId: config.projectId,
+      teamId: config.teamId,
+      runtime: "node22",
+      timeout: parsed.data.timeoutMs + 5_000,
+      resources: { vcpus: 1, memory: 2048 },
+      networkPolicy: { mode: "deny-all" },
     });
 
-    if (!response.ok) {
-      return {
-        status: "failed",
-        stdout: "",
-        stderr: "Terminal execution provider returned HTTP " + response.status + ".",
-        exitCode: null,
-      };
-    }
+    const execution = (async () => {
+      const command = await sandbox!.runCommand("bash", ["-lc", parsed.data.command]);
+      const [stdout, stderr] = await Promise.all([command.stdout(), command.stderr()]);
+      return { stdout, stderr, exitCode: command.exitCode ?? 1 };
+    })();
 
-    const raw = await readBoundedJson(response);
-    const result = outputSchema.safeParse(raw);
-    if (!result.success) {
-      return { status: "failed", stdout: "", stderr: "Terminal execution provider returned an invalid response.", exitCode: null };
+    const deadline = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        timedOut = true;
+        reject(new Error("Terminal execution timed out."));
+      }, parsed.data.timeoutMs);
+    });
+
+    const cancellation = new Promise<never>((_, reject) => {
+      abortHandler = () => {
+        cancelled = true;
+        reject(abortedError());
+      };
+      config.signal?.addEventListener("abort", abortHandler, { once: true });
+    });
+
+    const result = await Promise.race([execution, deadline, cancellation]);
+    const validated = outputSchema.safeParse(result);
+    if (!validated.success) {
+      return { status: "failed", stdout: "", stderr: "Sandbox returned an invalid result.", exitCode: null };
     }
 
     return {
-      status: result.data.exitCode === 0 ? "complete" : "failed",
-      stdout: truncate(result.data.stdout),
-      stderr: truncate(result.data.stderr),
-      exitCode: result.data.exitCode,
+      status: validated.data.exitCode === 0 ? "complete" : "failed",
+      stdout: truncate(validated.data.stdout),
+      stderr: truncate(validated.data.stderr),
+      exitCode: validated.data.exitCode,
     };
   } catch {
-    const timedOut = controller.signal.aborted;
     return {
       status: "failed",
       stdout: "",
-      stderr: timedOut ? "Terminal execution timed out or was cancelled." : "Terminal execution provider could not be reached.",
+      stderr: timedOut
+        ? "Terminal execution timed out."
+        : cancelled || config.signal?.aborted
+          ? "Terminal execution was cancelled."
+          : "Isolated terminal execution failed. Check sandbox availability and authentication.",
       exitCode: null,
     };
   } finally {
-    clearTimeout(timeout);
-    config.signal?.removeEventListener("abort", abortFromCaller);
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+    if (abortHandler) config.signal?.removeEventListener("abort", abortHandler);
+    if (sandbox) {
+      try {
+        await sandbox.stop();
+      } catch {
+        // Best-effort cleanup; the sandbox has a server-enforced lifetime.
+      }
+    }
   }
 }
