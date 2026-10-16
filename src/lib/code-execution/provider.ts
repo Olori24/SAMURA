@@ -11,7 +11,8 @@ const outputSchema = z.object({
   exitCode: z.number().int(),
 });
 
-const MAX_OUTPUT_CHARS = 16_000;
+const MAX_OUTPUT_BYTES = 16_000;
+const MAX_PROVIDER_RESPONSE_BYTES = 128_000;
 
 export type TerminalExecutionResult = {
   status: "complete" | "failed" | "blocked";
@@ -28,9 +29,45 @@ export type TerminalExecutionConfig = {
 };
 
 function truncate(value: string): string {
-  return value.length > MAX_OUTPUT_CHARS
-    ? value.slice(0, MAX_OUTPUT_CHARS) + "\n[output truncated]"
-    : value;
+  const bytes = new TextEncoder().encode(value);
+  if (bytes.byteLength <= MAX_OUTPUT_BYTES) return value;
+  return new TextDecoder().decode(bytes.subarray(0, MAX_OUTPUT_BYTES)) + "\\n[output truncated]";
+}
+
+async function readBoundedJson(response: Response): Promise<unknown> {
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_PROVIDER_RESPONSE_BYTES) return null;
+  if (!response.body) return null;
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_PROVIDER_RESPONSE_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -88,7 +125,7 @@ export async function runTerminalCommand(
       body: JSON.stringify({
         command: parsed.data.command,
         timeoutMs: parsed.data.timeoutMs,
-        outputLimitBytes: MAX_OUTPUT_CHARS,
+        outputLimitBytes: MAX_OUTPUT_BYTES,
       }),
       signal: controller.signal,
       cache: "no-store",
@@ -103,7 +140,7 @@ export async function runTerminalCommand(
       };
     }
 
-    const raw = await response.json().catch(() => null);
+    const raw = await readBoundedJson(response);
     const result = outputSchema.safeParse(raw);
     if (!result.success) {
       return { status: "failed", stdout: "", stderr: "Terminal execution provider returned an invalid response.", exitCode: null };
