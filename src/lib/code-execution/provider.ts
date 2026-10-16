@@ -115,7 +115,7 @@ export async function runTerminalCommand(
       stderr: truncate(result.data.stderr),
       exitCode: result.data.exitCode,
     };
-  } catch (error) {
+  } catch {
     const timedOut = controller.signal.aborted;
     return {
       status: "failed",
