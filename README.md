@@ -78,6 +78,17 @@ Configure `SAMURA_AI_PROVIDER=openai`, `OPENAI_API_KEY` as a server-side secret,
 
 If the current provider adapter supports Gemini, configure `SAMURA_AI_PROVIDER=gemini`, `GEMINI_API_KEY` as a server-side secret, and `SAMURA_GEMINI_MODEL` to a model currently available to your project. Check Google's current [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), [model documentation](https://ai.google.dev/gemini-api/docs/models), and [OpenAI compatibility guide](https://ai.google.dev/gemini-api/docs/openai) before choosing a model. Availability, pricing, quotas, and data-use terms can change; do not assume that any provider or model is free or suitable for confidential data.
 
+## Isolated terminal execution
+
+Code mode can request the `run_terminal_command` tool, but commands are **not** executed inside the SAMURA Next.js/Vercel process. Actual execution requires a separately managed isolated execution service configured with server-side secrets:
+
+- `SAMURA_CODE_EXECUTION_URL`: HTTPS endpoint for the execution service.
+- `SAMURA_CODE_EXECUTION_TOKEN`: bearer token used only by the server.
+
+The endpoint contract is `POST` JSON `{ "command": "...", "timeoutMs": 10000, "outputLimitBytes": 16000 }` and a JSON response `{ "stdout": "...", "stderr": "...", "exitCode": 0 }`. The service must execute each request in an ephemeral sandbox with CPU/memory/time limits, no host or cross-user filesystem access, no inherited production credentials, and network access disabled or explicitly allowlisted. It must enforce its own limits; the application-side timeout and output cap are defense in depth, not a substitute for sandboxing.
+
+If either variable is missing, SAMURA reports terminal execution as blocked. Do not point these variables at an ordinary web server, a developer laptop, or an unauthenticated shell. Configure and verify a real sandbox service before treating terminal execution as operational.
+
 ## Roadmap
 
 ![SAMURA roadmap](assets/visuals/samura-roadmap.svg)
