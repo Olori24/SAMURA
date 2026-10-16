@@ -182,9 +182,12 @@ export async function POST(request: Request) {
                 }).safeParse(rawArgs);
                 if (args.success) {
                   result = await runTerminalCommand(args.data, {
-                    endpoint: env.SAMURA_CODE_EXECUTION_URL,
-                    token: env.SAMURA_CODE_EXECUTION_TOKEN,
-                    nodeEnv: env.NODE_ENV,
+                    // Vercel injects a request-scoped OIDC token when Secure Backend
+                    // Access is enabled. Never forward browser-supplied secrets or
+                    // the application's environment into the sandbox.
+                    token: request.headers.get("x-vercel-oidc-token") ?? env.VERCEL_TOKEN,
+                    projectId: env.VERCEL_PROJECT_ID,
+                    teamId: env.VERCEL_TEAM_ID ?? env.VERCEL_ORG_ID,
                     signal: abortController.signal,
                   });
                 } else {
