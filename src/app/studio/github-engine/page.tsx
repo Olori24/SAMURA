@@ -57,7 +57,7 @@ export default function GitHubEngineeringPage() {
         const list: Repo[] = data.repositories ?? [];
         setGithubAccount(data.account ?? null);
         setRepos(list);
-        const first = list.find(repo => repo.permissions?.write);
+        const first = list.find(repo => repo.permissions?.write) ?? list.find(repo => repo.permissions?.read);
         if (first) { setLoadingBranches(true); setRepository(first.fullName); setBaseBranch(first.defaultBranch); }
       })
       .catch(e => { if (active) setError(e instanceof Error ? e.message : "Could not load GitHub repositories."); })
@@ -85,6 +85,7 @@ export default function GitHubEngineeringPage() {
     return () => { active = false; };
   }, [repository, isPending, session?.user?.id]);
 
+  const selectableRepos = useMemo(() => repos.filter(repo => repo.permissions?.read), [repos]);
   const writableRepos = useMemo(() => repos.filter(repo => repo.permissions?.write), [repos]);
   const selectedRepo = repos.find(repo => repo.fullName === repository);
 
@@ -160,7 +161,7 @@ export default function GitHubEngineeringPage() {
               setPatch(null); setApproved(false); setResult(null);
             }} className="mt-2 w-full rounded-xl border border-white/10 bg-[#111722] px-3 py-3 text-white">
               <option value="">Select repository</option>
-              {writableRepos.map(repo => <option key={repo.id} value={repo.fullName}>{repo.fullName}{repo.isPrivate ? " · private" : ""}</option>)}
+              {selectableRepos.map(repo => <option key={repo.id} value={repo.fullName}>{repo.fullName}{repo.isPrivate ? " · private" : ""}{repo.permissions?.write ? "" : " · read-only"}</option>)}
             </select>
           </label>
           <label className="block text-sm text-slate-300">Base branch {loadingBranches ? "· loading…" : "· live GitHub branches"}
@@ -174,10 +175,11 @@ export default function GitHubEngineeringPage() {
         {selectedRepo && <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
           <p className="font-medium">{selectedRepo.fullName}</p>
           <p className="mt-1 text-xs text-slate-400">Default branch: {selectedRepo.defaultBranch} · {selectedRepo.isPrivate ? "Private" : "Public"} repository</p>
-          <p className="mt-1 text-xs text-teal-200">GitHub reports effective write access</p>
+          <p className={"mt-1 text-xs " + (selectedRepo.permissions?.write ? "text-teal-200" : "text-amber-200")}>{selectedRepo.permissions?.write ? "GitHub confirms effective write access" : "Read-only access · you can inspect and generate a patch, but publishing requires GitHub write permission"}</p>
           <a href={selectedRepo.url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-slate-300 underline">Open repository ↗</a>
         </div>}
-        {writableRepos.length === 0 && <p className="text-sm text-slate-400">No repository with effective write access is available. Reconnect GitHub and grant repository access, or select a repository where your account can write.</p>}
+        {selectableRepos.length === 0 && <p className="text-sm text-slate-400">No readable repositories were returned by GitHub. Use “Load authorized repositories” in Connect, or reconnect GitHub if access was revoked.</p>}
+        {selectableRepos.length > 0 && writableRepos.length === 0 && <p className="text-sm text-amber-100">Your readable repositories are available for inspection and patch generation, but GitHub has not confirmed write access to any repository. Publishing stays disabled until you choose a repository where your GitHub account has write permission.</p>}
         {recentCommits.length > 0 && <details className="rounded-xl border border-white/10 bg-black/20 p-4"><summary className="cursor-pointer text-sm font-medium">Recent commits from GitHub ({recentCommits.length})</summary><ul className="mt-3 space-y-3">{recentCommits.map(commit => <li key={commit.sha} className="border-t border-white/5 pt-3"><a href={commit.url} target="_blank" rel="noreferrer" className="font-mono text-xs text-teal-200 underline">{commit.shortSha}</a><p className="mt-1 text-xs text-slate-200">{commit.message}</p><p className="mt-1 text-[11px] text-slate-500">{commit.author}{commit.date ? " · " + new Date(commit.date).toLocaleString() : ""}</p></li>)}</ul></details>}
         <label className="block text-sm text-slate-300">Engineering task
           <textarea value={task} onChange={e => { setTask(e.target.value); setPatch(null); setApproved(false); setResult(null); }} maxLength={6000} rows={5} placeholder="Example: Add a small /api/version endpoint that returns the app version, follow the existing route conventions, and add focused tests." className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 p-4 text-sm leading-6 text-white"/>
@@ -228,7 +230,7 @@ export default function GitHubEngineeringPage() {
           <input type="checkbox" checked={approved} onChange={e => setApproved(e.target.checked)} className="mt-1 accent-teal-200"/>
           <span>I reviewed the pull request title, description, plan, risks, and exact content of every file. I authorize SAMURA to create a new branch and a draft pull request. I understand tests have not been run.</span>
         </label>
-        <button onClick={() => void publish()} disabled={!approved || publishing || !publishKey || !patch.changes.length || patch.title.trim().length < 5} className="inline-flex items-center gap-2 rounded-xl bg-teal-200 px-5 py-3 text-sm font-bold text-[#07120e] disabled:cursor-not-allowed disabled:opacity-40">
+        <button onClick={() => void publish()} disabled={!approved || publishing || !publishKey || !patch.changes.length || patch.title.trim().length < 5 || !selectedRepo?.permissions?.write} className="inline-flex items-center gap-2 rounded-xl bg-teal-200 px-5 py-3 text-sm font-bold text-[#07120e] disabled:cursor-not-allowed disabled:opacity-40">
           {publishing ? <LoaderCircle size={16} className="animate-spin"/> : <ShieldCheck size={16}/>}
           {publishing ? "Publishing and verifying…" : "Approve & publish branch"}
         </button>
