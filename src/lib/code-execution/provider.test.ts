@@ -1,38 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Sandbox } from "@vercel/sandbox";
 import { runTerminalCommand } from "./provider";
 
-vi.mock("@vercel/sandbox", () => ({
-  Sandbox: { create: vi.fn() },
-}));
+const config = { token: "test-token", projectId: "prj_test", teamId: "team_test" };
 
-const mockSandbox = {
-  runCommand: vi.fn(),
-  stop: vi.fn(),
-};
-
-function mockCommand(stdout: string, stderr: string, exitCode: number) {
-  return {
-    stdout: vi.fn().mockResolvedValue(stdout),
-    stderr: vi.fn().mockResolvedValue(stderr),
-    exitCode,
-  };
+function ndjson(stdout: string, stderr: string, exitCode: number) {
+  return [
+    JSON.stringify({ data: stdout, stream: "stdout" }),
+    JSON.stringify({ data: stderr, stream: "stderr" }),
+    JSON.stringify({ command: { exitCode } }),
+    "",
+  ].join("\n");
 }
 
-const config = {
-  token: "test-token",
-  projectId: "prj_test",
-  teamId: "team_test",
-};
-
 beforeEach(() => {
-  vi.mocked(Sandbox.create).mockResolvedValue(mockSandbox as never);
-  mockSandbox.runCommand.mockReset();
-  mockSandbox.stop.mockReset().mockResolvedValue(undefined);
+  vi.stubGlobal("fetch", vi.fn());
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("runTerminalCommand", () => {
@@ -42,7 +28,7 @@ describe("runTerminalCommand", () => {
       exitCode: null,
       stderr: expect.stringContaining("not authenticated"),
     });
-    expect(Sandbox.create).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("rejects invalid commands without creating a sandbox", async () => {
@@ -50,11 +36,15 @@ describe("runTerminalCommand", () => {
       status: "blocked",
       exitCode: null,
     });
-    expect(Sandbox.create).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("runs a command in a fresh network-isolated sandbox and returns real output", async () => {
-    mockSandbox.runCommand.mockResolvedValue(mockCommand("TEST_OUTPUT\n", "", 0));
+  it("creates a network-isolated sandbox, returns real output, and stops the session", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ session: { id: "sbx_test" } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(ndjson("TEST_OUTPUT\n", "", 0), { status: 200, headers: { "Content-Type": "application/x-ndjson" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ session: { id: "sbx_test", status: "stopped" } }), { status: 200 }));
 
     await expect(runTerminalCommand({ command: 'echo "TEST_OUTPUT"', timeoutMs: 5_000 }, config)).resolves.toEqual({
       status: "complete",
@@ -63,21 +53,38 @@ describe("runTerminalCommand", () => {
       exitCode: 0,
     });
 
-    expect(Sandbox.create).toHaveBeenCalledWith(expect.objectContaining({
-      token: "test-token",
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const [createUrl, createInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(createUrl).toContain("/v3/sandboxes?teamId=team_test");
+    expect((createInit.headers as Record<string, string>).Authorization).toBe("Bearer test-token");
+    expect(JSON.parse(String(createInit.body))).toMatchObject({
       projectId: "prj_test",
-      teamId: "team_test",
-      runtime: "node22",
+      resources: { vcpus: 1, memory: 2048 },
       timeout: 10_000,
-      resources: { vcpus: 1 },
-      networkPolicy: "deny-all",
-    }));
-    expect(mockSandbox.runCommand).toHaveBeenCalledWith("bash", ["-lc", 'echo "TEST_OUTPUT"'], expect.objectContaining({ timeoutMs: 5_000 }));
-    expect(mockSandbox.stop).toHaveBeenCalledOnce();
+      persistent: false,
+      networkPolicy: { mode: "deny-all" },
+      env: {},
+    });
+    const [commandUrl, commandInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(commandUrl).toContain("/v2/sandboxes/sessions/sbx_test/cmd?teamId=team_test");
+    expect(JSON.parse(String(commandInit.body))).toMatchObject({
+      command: "bash",
+      args: ["-lc", 'echo "TEST_OUTPUT"'],
+      sudo: false,
+      wait: true,
+      logs: true,
+      timeout: 5_000,
+      env: {},
+    });
+    expect(fetchMock.mock.calls[2]?.[0]).toContain("/v2/sandboxes/sessions/sbx_test/stop?teamId=team_test");
   });
 
   it("returns a nonzero exit code for failed commands", async () => {
-    mockSandbox.runCommand.mockResolvedValue(mockCommand("", "command not found", 127));
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ session: { id: "sbx_test" } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(ndjson("", "command not found", 127), { status: 200 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }));
     await expect(runTerminalCommand({ command: "unknown-command" }, config)).resolves.toMatchObject({
       status: "failed",
       stderr: "command not found",
@@ -86,11 +93,23 @@ describe("runTerminalCommand", () => {
   });
 
   it("truncates oversized output", async () => {
-    mockSandbox.runCommand.mockResolvedValue(mockCommand("x".repeat(20_000), "", 0));
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ session: { id: "sbx_test" } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(ndjson("x".repeat(20_000), "", 0), { status: 200 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }));
     const result = await runTerminalCommand({ command: "echo x" }, config);
     expect(result.status).toBe("complete");
     expect(new TextEncoder().encode(result.stdout).byteLength).toBeLessThan(16_100);
     expect(result.stdout).toContain("[output truncated]");
+  });
+
+  it("reports provider authorization errors without leaking response bodies", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("secret response body", { status: 403 }));
+    await expect(runTerminalCommand({ command: "pwd" }, config)).resolves.toMatchObject({
+      status: "failed",
+      stderr: "Vercel Sandbox authentication or project permission was denied.",
+    });
   });
 
   it("does not create a sandbox if the request is already cancelled", async () => {
@@ -100,12 +119,16 @@ describe("runTerminalCommand", () => {
       status: "failed",
       stderr: "Terminal execution was cancelled.",
     });
-    expect(Sandbox.create).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("always stops the sandbox after execution failure", async () => {
-    mockSandbox.runCommand.mockRejectedValue(new Error("internal details"));
+  it("stops the sandbox after command failure", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ session: { id: "sbx_test" } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response("internal failure", { status: 500 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }));
     await expect(runTerminalCommand({ command: "pwd" }, config)).resolves.toMatchObject({ status: "failed" });
-    expect(mockSandbox.stop).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
