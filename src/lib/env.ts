@@ -22,9 +22,8 @@ const envSchema = z.object({
   SAMURA_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().max(4000).default(1200),
   // Optional fallback token for Vercel Sandbox when request-scoped OIDC is unavailable.
   VERCEL_TOKEN: optionalSecret,
-  VERCEL_PROJECT_ID: optionalSecret,
-  VERCEL_TEAM_ID: optionalSecret,
-  VERCEL_ORG_ID: optionalSecret,
+  SAMURA_VERCEL_PROJECT_ID: optionalSecret,
+  SAMURA_VERCEL_TEAM_ID: optionalSecret,
 });
 
 export function getServerEnv() {
@@ -48,8 +47,7 @@ export function getServerEnv() {
     SAMURA_MAX_INPUT_CHARS: process.env.SAMURA_MAX_INPUT_CHARS,
     SAMURA_MAX_OUTPUT_TOKENS: process.env.SAMURA_MAX_OUTPUT_TOKENS,
     VERCEL_TOKEN: process.env.VERCEL_TOKEN,
-    VERCEL_PROJECT_ID: process.env.VERCEL_PROJECT_ID,
-    VERCEL_TEAM_ID: process.env.VERCEL_TEAM_ID,
-    VERCEL_ORG_ID: process.env.VERCEL_ORG_ID,
+    SAMURA_VERCEL_PROJECT_ID: process.env.SAMURA_VERCEL_PROJECT_ID,
+    SAMURA_VERCEL_TEAM_ID: process.env.SAMURA_VERCEL_TEAM_ID,
   });
 }
