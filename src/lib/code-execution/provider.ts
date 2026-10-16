@@ -34,10 +34,6 @@ function truncate(value: string): string {
   return new TextDecoder().decode(bytes.subarray(0, MAX_OUTPUT_BYTES)) + "\n[output truncated]";
 }
 
-function abortedError(): Error {
-  return new Error("Terminal execution was cancelled.");
-}
-
 /**
  * Runs a command in a fresh Vercel Sandbox, never in the SAMURA web process.
  * Sandboxes have outbound networking disabled, no application environment
