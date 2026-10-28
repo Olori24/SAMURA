@@ -16,6 +16,13 @@ export default function DataAnalysisPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const summaries = table ? summarizeNumericColumns(table) : [];
+  const chartSummary = summaries[0];
+  const chartColumnIndex = chartSummary && table ? table.headers.indexOf(chartSummary.column) : -1;
+  const chartRows = table && chartSummary ? table.rows.slice(0, 20).map((row, index) => ({
+    label: row[0]?.trim() || `Row ${index + 1}`,
+    value: Number(row[chartColumnIndex]),
+  })).filter((row) => Number.isFinite(row.value)) : [];
+  const chartScale = Math.max(1, ...chartRows.map((row) => Math.abs(row.value)));
 
   async function loadFile(file?: File) {
     if (!file) return;
@@ -86,6 +93,20 @@ export default function DataAnalysisPage() {
             </div>
             {table.rows.length > 25 && <p className="mt-3 text-xs text-slate-500">Showing the first 25 of {table.rows.length} rows.</p>}
           </section>
+
+          {chartSummary && chartRows.length > 0 && <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-5 sm:p-7">
+            <h2 className="text-lg font-semibold">Quick chart: {chartSummary.column}</h2>
+            <p className="mt-1 text-xs text-slate-500">First 20 rows. Bar length shows absolute magnitude; exact signed values are shown at the right.</p>
+            <div className="mt-5 space-y-3">
+              {chartRows.map((row, index) => <div key={index} className="grid grid-cols-[minmax(70px,1fr)_2fr_auto] items-center gap-3 text-xs">
+                <span className="truncate text-slate-400" title={row.label}>{row.label}</span>
+                <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]" role="img" aria-label={row.label + ": " + row.value}>
+                  <div className="h-full rounded-full bg-teal-200" style={{ width: (Math.abs(row.value) / chartScale * 100) + "%" }} />
+                </div>
+                <span className="min-w-14 text-right tabular-nums text-slate-200">{row.value.toLocaleString()}</span>
+              </div>)}
+            </div>
+          </section>}
 
           <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-5 sm:p-7">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Numeric summary</h2><p className="mt-1 text-xs text-slate-500">Columns containing non-empty text values are excluded from numeric statistics.</p></div><button type="button" onClick={exportSummary} disabled={!summaries.length} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-xs font-semibold hover:border-teal-200/30 disabled:opacity-40"><Download size={15} /> Export summary CSV</button></div>
