@@ -29,7 +29,7 @@ describe("SAMURA capability registry", () => {
     expect(result.find((item) => item.id === "documents")?.status).toBe("needs_configuration");
   });
 
-  it("does not report unimplemented capabilities as available", () => {
+  it("reports browser-local CSV analysis as available and keeps other unimplemented capabilities planned", () => {
     const result = buildCapabilityRegistry({
       runtimeConfigured: true,
       chatConfigured: true,
@@ -37,7 +37,9 @@ describe("SAMURA capability registry", () => {
       webSearchConfigured: false,
     });
 
-    for (const id of ["file_analysis", "data_analysis", "voice", "memory_projects", "agent_workflows"]) {
+    expect(result.find((item) => item.id === "data_analysis")?.status).toBe("available");
+    expect(result.find((item) => item.id === "data_analysis")?.description).toContain("CSV");
+    for (const id of ["file_analysis", "voice", "memory_projects", "agent_workflows"]) {
       expect(result.find((item) => item.id === id)?.status).toBe("planned");
     }
   });
