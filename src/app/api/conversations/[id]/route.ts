@@ -12,7 +12,12 @@ import { withUserTransaction } from "@/db/user-transaction";
 
 export const runtime = "nodejs";
 const idSchema = z.string().uuid();
-const updateSchema = z.object({ title: z.string().trim().min(1).max(160) }).strict();
+const updateSchema = z.object({
+  title: z.string().trim().min(1).max(160).optional(),
+  archived: z.boolean().optional(),
+}).strict().refine((value) => value.title !== undefined || value.archived !== undefined, {
+  message: "At least one conversation field must be provided.",
+});
 
 async function getCurrentUser() {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
@@ -62,9 +67,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     const updated = await withUserTransaction(user.id, async (tx) => {
       const [row] = await tx.update(conversations)
-        .set({ title: parsed.data.title, updatedAt: new Date() })
+        .set({ ...parsed.data, updatedAt: new Date() })
         .where(and(eq(conversations.id, id), eq(conversations.userId, user.id)))
-        .returning({ id: conversations.id, title: conversations.title, createdAt: conversations.createdAt, updatedAt: conversations.updatedAt });
+        .returning({ id: conversations.id, title: conversations.title, archived: conversations.archived, createdAt: conversations.createdAt, updatedAt: conversations.updatedAt });
       return row ?? null;
     });
     if (!updated) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
@@ -134,5 +139,27 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     return NextResponse.json({ deleted: true, id: removed.id }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Conversation could not be deleted." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
+}
+
+export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+  if (!isRuntimeConfigured()) return NextResponse.json({ error: "Conversation service is not configured." }, { status: 503 });
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+
+  const { id } = await context.params;
+  if (!idSchema.safeParse(id).success) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+
+  try {
+    const deleted = await withUserTransaction(user.id, async (tx) => {
+      const [row] = await tx.delete(conversations)
+        .where(and(eq(conversations.id, id), eq(conversations.userId, user.id)))
+        .returning({ id: conversations.id });
+      return row ?? null;
+    });
+    if (!deleted) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+    return NextResponse.json({ deleted: true, id: deleted.id }, { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    return NextResponse.json({ error: "Could not delete this conversation right now." }, { status: 503 });
   }
 }
