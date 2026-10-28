@@ -42,9 +42,8 @@ export function buildCapabilityRegistry(input: CapabilityInputs): Capability[] {
     {
       id: "documents",
       name: "Document workspace",
-      status: input.runtimeConfigured ? "available" : "needs_configuration",
-      description: "Create, edit, save, and export supported text documents.",
-      ...(!input.runtimeConfigured ? { requirement: "Application database and authentication configuration" } : {}),
+      status: "available",
+      description: "Create and edit local text drafts, then export Markdown or plain text. Account-synced draft storage is not yet implemented.",
     },
     {
       id: "image_generation",
