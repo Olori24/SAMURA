@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { buildCapabilityRegistry } from "@/lib/ai/capability-registry";
 import { getAIProviderConfig } from "@/lib/ai/provider-config";
+import { getImageProviderConfig } from "@/lib/ai/image-provider-config";
 import { auth } from "@/lib/auth";
 import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
@@ -30,7 +31,7 @@ export async function GET() {
     const capabilities = buildCapabilityRegistry({
       runtimeConfigured: isRuntimeConfigured(),
       chatConfigured,
-      imageConfigured: Boolean(env.OPENAI_API_KEY),
+      imageConfigured: Boolean(getImageProviderConfig(env)),
     });
 
     return NextResponse.json(
