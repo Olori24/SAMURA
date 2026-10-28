@@ -12,6 +12,7 @@ interface CapabilityInputs {
   runtimeConfigured: boolean;
   chatConfigured: boolean;
   imageConfigured: boolean;
+  webSearchConfigured: boolean;
 }
 
 export function buildCapabilityRegistry(input: CapabilityInputs): Capability[] {
@@ -55,8 +56,9 @@ export function buildCapabilityRegistry(input: CapabilityInputs): Capability[] {
     {
       id: "web_search",
       name: "Web search and research",
-      status: "planned",
-      description: "Search external sources and produce source-linked research.",
+      status: input.webSearchConfigured ? "available" : "needs_configuration",
+      description: "Search public web sources and produce a source-grounded report with links.",
+      ...(!input.webSearchConfigured ? { requirement: "An administrator-configured web search service key" } : {}),
     },
     {
       id: "file_analysis",
