@@ -42,6 +42,9 @@ export function parseCsv(input: string): CsvTable {
       quoted = true;
       continue;
     }
+    if (char === '"' && cell.length > 0) {
+      throw new Error("Invalid CSV: a quote appeared inside an unquoted cell.");
+    }
     if (char === ",") {
       row.push(cell.trim());
       cell = "";
