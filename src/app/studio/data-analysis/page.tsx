@@ -6,7 +6,8 @@ import { ArrowLeft, Download, FileSpreadsheet, Table2 } from "lucide-react";
 import { parseCsv, summarizeNumericColumns, type CsvTable } from "@/lib/csv-analysis";
 
 function csvEscape(value: string | number) {
-  const text = String(value);
+  let text = String(value);
+  if (/^[\t\r ]*[=+\-@]/.test(text)) text = "'" + text;
   return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
 }
 
