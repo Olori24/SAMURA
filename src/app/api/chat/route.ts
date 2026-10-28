@@ -151,6 +151,7 @@ export async function POST(request: Request) {
     async start(controller) {
       let outcome = "complete";
       const emit = (payload: Record<string, unknown>) => controller.enqueue(encoder.encode("data: " + JSON.stringify(payload) + "\n\n"));
+      emit({ type: "user_message", id: userMessage.id });
       try {
         for await (const part of stream) {
           if (part.usage) { inputTokens = part.usage.prompt_tokens; outputTokens = part.usage.completion_tokens; }
