@@ -1,8 +1,8 @@
 # SAMURA AI — ChatGPT Capability Parity Roadmap
 
-**Status:** Planning baseline; not a claim that these capabilities are implemented.
+**Status:** Active implementation; capabilities below remain targets until implemented and verified. This roadmap does not claim full ChatGPT parity.
 **Target repository:** `Olori24/SAMURA`
-**Working branch:** `chore/privacy-legal-risk-reduction`
+**Working branch:** `feat/chatgpt-capability-parity`
 **Product principle:** Build comparable user outcomes under SAMURA branding. Do not copy proprietary source code, trademarks, protected assets, or imply affiliation with OpenAI/ChatGPT.
 
 ## Outcome
@@ -10,6 +10,17 @@
 Evolve SAMURA from a chat application into a dependable multimodal AI workspace: chat, research, files, data analysis, image and voice workflows, memory, projects, tools/connectors, and safe agentic execution. Preserve existing SAMURA authentication, conversation history, provider gateway, document handling, image endpoint, GitHub connector, security controls, and UI unless a change is required for a verified capability.
 
 “Feature parity” means a documented, tested SAMURA implementation or a clearly labeled integration for each capability—not a promise that every ChatGPT model, proprietary backend, or hosted service can be reproduced exactly.
+
+## Verified implementation notes
+
+The following partial capabilities have been added on the working branch; they do not mean the broader categories are complete:
+
+- Conversation rename, archive, archived-list retrieval/restore controls, delete, export to Markdown, and latest-turn edit/regenerate flows.
+- Source-linked web research workspace and server-side capability-status registry.
+- Browser-local CSV preview and basic numeric summaries with CSV export; this tool does not upload the selected file to the SAMURA server.
+- CSV parser tests for quoted fields, BOM/duplicate headers, malformed quotes, row-width mismatch, and numeric summary calculations.
+
+Re-verify the latest CI run and deployed preview before treating any change as release-ready. Voice, projects/memory, broad file extraction, charts, and full connector parity remain incomplete.
 
 ## Capability inventory and target acceptance criteria
 
