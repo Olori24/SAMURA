@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, Braces, Cable, FileText, GitPullRequest, ImagePlus, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, Braces, Cable, FileSpreadsheet, FileText, GitPullRequest, ImagePlus, ShieldCheck, Sparkles } from "lucide-react";
 
 const items = [
   { title: "Code", eyebrow: "AVAILABLE NOW", description: "Switch to Code mode to generate, explain, review, and debug code with implementation-focused responses.", href: "/chat", icon: Braces, action: "Open Code workspace", ready: true },
@@ -8,6 +8,7 @@ const items = [
   { title: "Image creation", eyebrow: "PROVIDER SETUP REQUIRED", description: "Create original images from text prompts, choose canvas orientation, and download generated results. Requires an administrator-configured image provider key.", href: "/studio/create", icon: ImagePlus, action: "Open image studio", ready: true },
   { title: "Connectors & plugins", eyebrow: "PLUGIN WORKSPACE AVAILABLE", description: "Explore the connector catalog, review permissions, and run built-in text utilities. GitHub, Drive, and Slack are listed with setup requirements until OAuth is configured.", href: "/studio/connect", icon: Cable, action: "Open Connect marketplace", ready: true },
   { title: "Capability status", eyebrow: "LIVE CONFIGURATION", description: "See which capabilities are available, need configuration, or are still planned. Status is based on the current server-side registry.", href: "/studio/capabilities", icon: ShieldCheck, action: "View capability status", ready: true },
+  { title: "Data analysis", eyebrow: "LOCAL CSV · PRIVATE", description: "Preview CSV data, calculate numeric summaries, and export results. Your file is processed in your browser and is not uploaded by this tool.", href: "/studio/data-analysis", icon: FileSpreadsheet, action: "Open data analysis workspace", ready: true },
   { title: "Web research", eyebrow: "SEARCH SERVICE SETUP", description: "Search public sources and generate a source-linked report. Requires an administrator-configured search service key.", href: "/studio/research", icon: BookOpen, action: "Open research workspace", ready: true },
 ];
 
