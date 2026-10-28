@@ -24,7 +24,7 @@ Scope: repository review and non-destructive validation. No production changes a
 - src/proxy.ts constructs a nonce-based Content-Security-Policy. The actual deployed response headers and browser behaviour remain to be verified.
 - The repository tree reviewed on main did not contain clearly named public Privacy Policy, Terms of Service, cookie policy or data-retention documents. This does not rule out external hosted pages.
 - The latest 12 GitHub Actions runs reviewed included successful secret-scanning runs on main. A feature-branch CI run succeeded on 2026-10-16; current main CI needs a fresh run.
-- Vercel metadata reported live=false and the five deployment records returned errors for a feature branch. This is not proof that the custom production domain is unavailable; verify the domain and active deployment separately.
+- Vercel metadata reports `live=false`; the verified project domain list includes `samura-ai.vercel.app`. The latest preview deployment attempts on `chore/privacy-legal-risk-reduction` returned `BUILD_FAILED` with `Resource provisioning failed`. This is an infrastructure/provisioning error message, not evidence of an application compile failure. The currently served production response and deployment remain to be verified.
 
 ## Prioritised work plan
 
@@ -74,7 +74,7 @@ Scope: repository review and non-destructive validation. No production changes a
 | ID | Severity | Evidence / uncertainty | Next action |
 |---|---|---|---|
 | SAM-01 | High, pending verification | Email verification is not required in src/lib/auth.ts. Whether the product intends to require verified email is a product/security decision. | Verify email delivery and signup flows before enabling mandatory verification. |
-| SAM-02 | High, pending verification | RLS helper and migration exist; account/session/verification table protections and live role/grants have not been fully verified. | Inspect SQL, grants, and production configuration read-only; test in isolated database. |
+| SAM-02 | High, pending verification | Conversation/message/usage and user_document RLS policies exist in migration source. RLS coverage for auth tables (user/session/account/verification), runtime-role grants, and live production migration state remain unverified. | Verify migration journal and deployed database read-only; test least privilege and cross-user access in an isolated database. |
 | SAM-03 | High, legal readiness | No clearly named legal-policy files appeared in the reviewed repository tree. External pages not ruled out. | Confirm existing hosted policies and draft only after data mapping. |
 | SAM-04 | High, release readiness | Vercel metadata showed live=false and recent deployment records showed errors; custom domain availability remains unverified. | Check active deployment, domain response and logs without promoting or rolling back. |
 | SAM-05 | Medium | Legacy provider environment-variable alias exists in source; actual environment names/targets require read-only inventory. | Reconcile names without exposing values; do not remove aliases until dependencies are verified. |
@@ -85,6 +85,7 @@ Scope: repository review and non-destructive validation. No production changes a
 
 - Repository inspection: performed for selected files and metadata.
 - Branch created: yes.
+- Existing `drizzle/0005_user_documents.sql` was inspected after a duplicate migration draft was briefly added; the duplicate draft was removed from the branch before completion.
 - Application tests executed in a controlled runtime: not yet.
 - Production database or secrets changed: no.
 - Public policies published: no.
