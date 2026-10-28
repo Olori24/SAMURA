@@ -1,0 +1,92 @@
+export type CapabilityStatus = "available" | "needs_configuration" | "planned";
+
+export interface Capability {
+  id: string;
+  name: string;
+  status: CapabilityStatus;
+  description: string;
+  requirement?: string;
+}
+
+interface CapabilityInputs {
+  runtimeConfigured: boolean;
+  chatConfigured: boolean;
+  imageConfigured: boolean;
+}
+
+export function buildCapabilityRegistry(input: CapabilityInputs): Capability[] {
+  return [
+    {
+      id: "chat",
+      name: "AI chat",
+      status: input.runtimeConfigured && input.chatConfigured ? "available" : "needs_configuration",
+      description: "Streaming conversations with saved history.",
+      ...(!input.runtimeConfigured
+        ? { requirement: "Application database and authentication configuration" }
+        : !input.chatConfigured
+          ? { requirement: "A working server-side AI model connection" }
+          : {}),
+    },
+    {
+      id: "code",
+      name: "Code assistant",
+      status: input.runtimeConfigured && input.chatConfigured ? "available" : "needs_configuration",
+      description: "Code-focused answers through the existing chat workflow.",
+      ...(!input.runtimeConfigured
+        ? { requirement: "Application database and authentication configuration" }
+        : !input.chatConfigured
+          ? { requirement: "A working server-side AI model connection" }
+          : {}),
+    },
+    {
+      id: "documents",
+      name: "Document workspace",
+      status: input.runtimeConfigured ? "available" : "needs_configuration",
+      description: "Create, edit, save, and export supported text documents.",
+      ...(!input.runtimeConfigured ? { requirement: "Application database and authentication configuration" } : {}),
+    },
+    {
+      id: "image_generation",
+      name: "Image generation",
+      status: input.imageConfigured ? "available" : "needs_configuration",
+      description: "Generate images from text prompts.",
+      ...(!input.imageConfigured ? { requirement: "An administrator-configured image-generation service and valid access" } : {}),
+    },
+    {
+      id: "web_search",
+      name: "Web search and research",
+      status: "planned",
+      description: "Search external sources and produce source-linked research.",
+    },
+    {
+      id: "file_analysis",
+      name: "File analysis and citations",
+      status: "planned",
+      description: "Upload supported files, analyze their contents, and cite source passages.",
+    },
+    {
+      id: "data_analysis",
+      name: "Data analysis",
+      status: "planned",
+      description: "Analyze structured datasets and create downloadable charts and reports.",
+    },
+    {
+      id: "voice",
+      name: "Voice conversations",
+      status: "planned",
+      description: "Speech input and spoken responses with explicit recording controls.",
+    },
+    {
+      id: "memory_projects",
+      name: "Memory and projects",
+      status: "planned",
+      description: "User-controlled memory and isolated project context.",
+    },
+    {
+      id: "agent_workflows",
+      name: "Agent workflows",
+      status: "planned",
+      description: "Multi-step tasks using approved tools with reviewable actions.",
+    },
+  ];
+}
