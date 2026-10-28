@@ -12,12 +12,13 @@ type Conversation = { id: string; title: string; createdAt: string; updatedAt: s
 type Message = { id: string; role: "user" | "assistant"; content: string; status?: string; createdAt?: string };
 type SpeechRecognitionResultLike = { isFinal: boolean; [index: number]: { transcript: string } };
 type SpeechRecognitionEventLike = { resultIndex: number; results: ArrayLike<SpeechRecognitionResultLike> };
+type SpeechRecognitionErrorEventLike = { error: string; message?: string };
 type SpeechRecognitionLike = {
   lang: string;
   interimResults: boolean;
   continuous: boolean;
   onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
@@ -332,9 +333,18 @@ ${message.content}`),
         }
         speechTextRef.current = parts.filter(Boolean).join(" ");
       };
-      recognition.onerror = () => {
+      recognition.onerror = (event) => {
         setVoiceListening(false);
-        setError("Voice typing could not complete. Check microphone permission and try again.");
+        const messages: Record<string, string> = {
+          "not-allowed": "Microphone or speech-recognition access was denied. Check this site's microphone permission and your browser's speech settings.",
+          "service-not-allowed": "Your browser or device is blocking its speech-recognition service. Try Chrome with an active internet connection.",
+          "audio-capture": "No usable microphone input was found. Check that your microphone works and is not being used exclusively by another app.",
+          "network": "The browser's speech-recognition service could not connect. Check your internet connection and try again.",
+          "no-speech": "No speech was detected. Tap Voice and speak clearly after listening starts.",
+          "language-not-supported": "The browser speech service does not support the selected language. Check your device's speech-language settings.",
+          "aborted": "Voice typing was stopped before recognition completed.",
+        };
+        setError(messages[event.error] ?? `Voice typing failed (${event.error || "unknown error"}). Check your connection and browser microphone/speech settings, then try again.`);
       };
       recognition.onend = () => {
         const transcript = speechTextRef.current.trim();
