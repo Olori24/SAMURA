@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Braces, Cable, FileText, GitPullRequest, ImagePlus, Sparkles } from "lucide-react";
+import { ArrowRight, Braces, Cable, FileText, GitPullRequest, ImagePlus, ShieldCheck, Sparkles } from "lucide-react";
 
 const items = [
   { title: "Code", eyebrow: "AVAILABLE NOW", description: "Switch to Code mode to generate, explain, review, and debug code with implementation-focused responses.", href: "/chat", icon: Braces, action: "Open Code workspace", ready: true },
@@ -7,6 +7,7 @@ const items = [
   { title: "Documents & files", eyebrow: "LOCAL DRAFT · EXPORT", description: "Draft and edit documents, track word counts, and export Markdown or plain text files. This first version does not save drafts to your account.", href: "/studio/documents", icon: FileText, action: "Open document workspace", ready: true },
   { title: "Image creation", eyebrow: "PROVIDER SETUP REQUIRED", description: "Create original images from text prompts, choose canvas orientation, and download generated results. Requires an administrator-configured image provider key.", href: "/studio/create", icon: ImagePlus, action: "Open image studio", ready: true },
   { title: "Connectors & plugins", eyebrow: "PLUGIN WORKSPACE AVAILABLE", description: "Explore the connector catalog, review permissions, and run built-in text utilities. GitHub, Drive, and Slack are listed with setup requirements until OAuth is configured.", href: "/studio/connect", icon: Cable, action: "Open Connect marketplace", ready: true },
+  { title: "Capability status", eyebrow: "LIVE CONFIGURATION", description: "See which capabilities are available, need configuration, or are still planned. Status is based on the current server-side registry.", href: "/studio/capabilities", icon: ShieldCheck, action: "View capability status", ready: true },
 ];
 
 export default function StudioPage() {
