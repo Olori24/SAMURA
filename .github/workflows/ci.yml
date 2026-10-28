@@ -1,6 +1,7 @@
 name: SAMURA CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, "feat/**", "docs/**", "chore/**"]
   pull_request:
