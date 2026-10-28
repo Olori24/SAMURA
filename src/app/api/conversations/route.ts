@@ -17,18 +17,19 @@ async function currentUser() {
   return session?.user ?? null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!isRuntimeConfigured()) return NextResponse.json({ error: "Conversation service is not configured." }, { status: 503 });
   let failureStage = "authentication";
   try {
     const user = await currentUser();
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
     failureStage = "conversation_query";
+    const archived = new URL(request.url).searchParams.get("archived") === "true";
     const rows = await withUserTransaction(user.id, async (tx) => tx.select({
       id: conversations.id, title: conversations.title, createdAt: conversations.createdAt,
       updatedAt: conversations.updatedAt,
     }).from(conversations)
-      .where(and(eq(conversations.userId, user.id), eq(conversations.archived, false)))
+      .where(and(eq(conversations.userId, user.id), eq(conversations.archived, archived)))
       .orderBy(desc(conversations.updatedAt)).limit(100));
     return NextResponse.json({ conversations: rows }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
