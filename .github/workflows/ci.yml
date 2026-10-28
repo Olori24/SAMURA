@@ -29,10 +29,14 @@ jobs:
       - name: Enforce dependency security audit
         run: npm audit --audit-level=low
       - name: Typecheck
+        if: ${{ always() && !cancelled() }}
         run: npm run typecheck
       - name: Lint
+        if: ${{ always() && !cancelled() }}
         run: npm run lint
       - name: Unit tests
+        if: ${{ always() && !cancelled() }}
         run: npm test
       - name: Production build
+        if: ${{ always() && !cancelled() }}
         run: npm run build
