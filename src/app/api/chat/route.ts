@@ -36,16 +36,14 @@ export async function POST(request: Request) {
   let ai: ReturnType<typeof createAIClient>;
   try {
     ai = createAIClient(env);
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : "";
-    const message = detail.includes("OPENAI_API_KEY")
-      ? "OpenAI is selected but its server API key is not configured. Select Ollama or configure OPENAI_API_KEY."
-      : detail.includes("GEMINI_API_KEY")
-        ? "Gemini is selected but GEMINI_API_KEY is not configured. Add a server-side Gemini API key or select another provider."
-        : detail.includes("localhost in production")
-          ? "Ollama is configured for localhost, which Vercel cannot reach. Configure a reachable, secured Ollama endpoint."
-          : "AI provider configuration is invalid.";
-    return NextResponse.json({ error: message }, { status: 503 });
+  } catch {
+    // Keep provider names, endpoint details, and server environment-variable
+    // names out of public responses. Configuration diagnostics belong in
+    // trusted server-side observability, never in a client-visible API error.
+    return NextResponse.json(
+      { error: "The AI service is not configured correctly. Please try again later or contact support." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
   }
   const body = await parseBoundedJson(request, 20_000);
   if (!body.ok) return NextResponse.json(
