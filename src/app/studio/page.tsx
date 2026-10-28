@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Braces, Cable, FileText, GitPullRequest, ImagePlus, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, Braces, Cable, FileText, GitPullRequest, ImagePlus, ShieldCheck, Sparkles } from "lucide-react";
 
 const items = [
   { title: "Code", eyebrow: "AVAILABLE NOW", description: "Switch to Code mode to generate, explain, review, and debug code with implementation-focused responses.", href: "/chat", icon: Braces, action: "Open Code workspace", ready: true },
