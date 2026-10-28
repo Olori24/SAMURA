@@ -4,7 +4,7 @@ import { FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } fr
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { AudioWaveform, ChevronLeft, LoaderCircle, LogOut, Menu, MessageSquarePlus, Send, Square, Sparkles, X } from "lucide-react";
+import { AudioWaveform, ChevronLeft, LoaderCircle, LogOut, Menu, MessageSquarePlus, Search, Send, Square, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
@@ -15,6 +15,7 @@ export default function ChatPage() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversationSearch, setConversationSearch] = useState("");
   const [activeId, setActiveId] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
@@ -58,6 +59,10 @@ export default function ChatPage() {
   }, [session, isPending, router, loadConversations, openConversation]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: streaming ? "auto" : "smooth" }); }, [messages, streaming]);
+
+  const visibleConversations = conversations.filter((conversation) =>
+    conversation.title.toLocaleLowerCase().includes(conversationSearch.trim().toLocaleLowerCase())
+  );
 
   async function newConversation() {
     setError(""); setMessages([]); setActiveId(""); setSidebarOpen(false);
@@ -145,8 +150,9 @@ export default function ChatPage() {
     <aside className={(sidebarOpen ? "translate-x-0" : "-translate-x-full") + " fixed inset-y-0 left-0 z-30 flex w-[285px] flex-col border-r border-white/10 bg-[#0b0f18] p-4 transition-transform md:static md:z-auto md:translate-x-0"}>
       <div className="flex items-center justify-between px-2 py-2"><Link href="/" className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-[var(--accent)]"><AudioWaveform size={20}/></span><span className="font-[family-name:var(--font-space)] tracking-[0.16em]">SAMURA</span></Link><button aria-label="Close sidebar" onClick={()=>setSidebarOpen(false)} className="md:hidden"><X size={18}/></button></div>
       <button onClick={newConversation} className="mt-7 flex items-center gap-3 rounded-xl border border-white/10 px-4 py-3 text-sm text-slate-200 transition hover:border-[var(--accent)]/40 hover:bg-white/[0.04]"><MessageSquarePlus size={17} className="text-[var(--accent)]"/> New conversation</button>
-      <p className="mb-3 mt-8 px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Recent conversations</p>
-      <nav className="flex-1 space-y-1 overflow-y-auto">{conversations.map(c=><button key={c.id} onClick={()=>void openConversation(c.id)} className={"w-full truncate rounded-xl px-3 py-3 text-left text-sm transition " + (activeId===c.id ? "bg-white/[0.08] text-white" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200")}>{c.title}</button>)}{!conversations.length && <p className="px-3 py-2 text-xs leading-5 text-slate-600">Your conversations will appear here.</p>}</nav>
+      <label htmlFor="conversation-search" className="mb-2 mt-6 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5 text-slate-500 focus-within:border-[var(--accent)]/40"><Search size={15} aria-hidden="true"/><input id="conversation-search" type="search" value={conversationSearch} onChange={(event) => setConversationSearch(event.target.value)} placeholder="Search conversations" aria-label="Search conversation titles" className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"/></label>
+      <p className="mb-3 mt-4 px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{conversationSearch.trim() ? "Search results" : "Recent conversations"}</p>
+      <nav aria-label="Conversation history" className="flex-1 space-y-1 overflow-y-auto">{visibleConversations.map(c=><button key={c.id} onClick={()=>void openConversation(c.id)} className={"w-full truncate rounded-xl px-3 py-3 text-left text-sm transition " + (activeId===c.id ? "bg-white/[0.08] text-white" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200")}>{c.title}</button>)}{!visibleConversations.length && <p className="px-3 py-2 text-xs leading-5 text-slate-600">{conversations.length ? "No conversations match your search." : "Your conversations will appear here."}</p>}</nav>
       <div className="border-t border-white/10 pt-3"><div className="mb-3 truncate px-2 text-xs text-slate-500">{session?.user?.email}</div><button onClick={()=>void signOut()} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 hover:bg-white/[0.05] hover:text-white"><LogOut size={16}/> Sign out</button></div>
     </aside>
     <section className="flex min-w-0 flex-1 flex-col">
