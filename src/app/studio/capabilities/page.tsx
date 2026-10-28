@@ -39,8 +39,21 @@ export default function CapabilitiesPage() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    fetch("/api/capabilities", { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error ?? "Could not load capability status.");
+        if (active) setCapabilities(data.capabilities ?? []);
+      })
+      .catch((cause: unknown) => {
+        if (active) setError(cause instanceof Error ? cause.message : "Could not load capability status.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
 
   return (
     <main className="min-h-screen bg-[#080b12] px-4 py-8 text-white sm:px-8">
