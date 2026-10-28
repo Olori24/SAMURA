@@ -78,9 +78,9 @@ export function buildCapabilityRegistry(input: CapabilityInputs): Capability[] {
     },
     {
       id: "data_analysis",
-      name: "Data analysis",
-      status: "planned",
-      description: "Analyze structured datasets and create downloadable charts and reports.",
+      name: "CSV data analysis",
+      status: "available",
+      description: "Preview CSV files locally in the browser, calculate basic numeric summaries, and export a summary CSV. Spreadsheet formats and charts are not yet supported.",
     },
     {
       id: "voice",
