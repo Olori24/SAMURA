@@ -65,6 +65,25 @@ export default function ChatPage() {
     conversation.title.toLocaleLowerCase().includes(conversationSearch.trim().toLocaleLowerCase())
   );
 
+  async function renameConversation(conversation: Conversation) {
+    const entered = window.prompt("Rename conversation", conversation.title);
+    if (entered === null) return;
+    const title = entered.trim();
+    if (!title || title.length > 160) { setError("Conversation titles must contain 1 to 160 characters."); return; }
+    try {
+      const response = await fetch("/api/conversations/" + conversation.id, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error ?? "Could not rename this conversation.");
+      setConversations(previous => previous.map(item => item.id === conversation.id ? data.conversation : item));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not rename this conversation.");
+    }
+  }
+
   async function newConversation() {
     setError(""); setMessages([]); setActiveId(""); setSidebarOpen(false);
     try {
@@ -164,7 +183,7 @@ export default function ChatPage() {
       <button onClick={newConversation} className="mt-7 flex items-center gap-3 rounded-xl border border-white/10 px-4 py-3 text-sm text-slate-200 transition hover:border-[var(--accent)]/40 hover:bg-white/[0.04]"><MessageSquarePlus size={17} className="text-[var(--accent)]"/> New conversation</button>
       <label htmlFor="conversation-search" className="mb-2 mt-6 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5 text-slate-500 focus-within:border-[var(--accent)]/40"><Search size={15} aria-hidden="true"/><input id="conversation-search" type="search" value={conversationSearch} onChange={(event) => setConversationSearch(event.target.value)} placeholder="Search conversations" aria-label="Search conversation titles" className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"/></label>
       <p className="mb-3 mt-4 px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{conversationSearch.trim() ? "Search results" : "Recent conversations"}</p>
-      <nav aria-label="Conversation history" className="flex-1 space-y-1 overflow-y-auto">{visibleConversations.map(c=><button key={c.id} onClick={()=>void openConversation(c.id)} className={"w-full truncate rounded-xl px-3 py-3 text-left text-sm transition " + (activeId===c.id ? "bg-white/[0.08] text-white" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200")}>{c.title}</button>)}{!visibleConversations.length && <p className="px-3 py-2 text-xs leading-5 text-slate-600">{conversations.length ? "No conversations match your search." : "Your conversations will appear here."}</p>}</nav>
+      <nav aria-label="Conversation history" className="flex-1 space-y-1 overflow-y-auto">{visibleConversations.map(c=><div key={c.id} className={"group flex items-center gap-1 rounded-xl transition " + (activeId===c.id ? "bg-white/[0.08]" : "hover:bg-white/[0.04]")}><button onClick={()=>void openConversation(c.id)} title={c.title} className={"min-w-0 flex-1 truncate rounded-xl px-3 py-3 text-left text-sm transition " + (activeId===c.id ? "text-white" : "text-slate-400 hover:text-slate-200")}>{c.title}</button><button type="button" aria-label={"Rename " + c.title} title="Rename conversation" onClick={()=>void renameConversation(c)} className="mr-1 rounded-lg p-2 text-slate-500 opacity-100 transition hover:bg-white/[0.08] hover:text-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"><Pencil size={14}/></button></div>)}{!visibleConversations.length && <p className="px-3 py-2 text-xs leading-5 text-slate-600">{conversations.length ? "No conversations match your search." : "Your conversations will appear here."}</p>}</nav>
       <div className="border-t border-white/10 pt-3"><div className="mb-3 truncate px-2 text-xs text-slate-500">{session?.user?.email}</div><button onClick={()=>void signOut()} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 hover:bg-white/[0.05] hover:text-white"><LogOut size={16}/> Sign out</button></div>
     </aside>
     <section className="flex min-w-0 flex-1 flex-col">
