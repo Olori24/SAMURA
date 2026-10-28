@@ -42,6 +42,7 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const speechRef = useRef<SpeechRecognitionLike | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const speechTextRef = useRef("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -78,7 +79,11 @@ export default function ChatPage() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: streaming ? "auto" : "smooth" }); }, [messages, streaming]);
 
-  useEffect(() => () => { speechRef.current?.stop(); }, []);
+  useEffect(() => () => {
+    speechRef.current?.stop();
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+  }, []);
 
   const visibleConversations = conversations.filter((conversation) =>
     conversation.title.toLocaleLowerCase().includes(conversationSearch.trim().toLocaleLowerCase())
@@ -305,10 +310,16 @@ ${message.content}`),
     }
   }
 
-  function toggleVoiceInput() {
+  async function toggleVoiceInput() {
     if (voiceListening) {
       speechRef.current?.stop();
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
       setVoiceListening(false);
+      return;
+    }
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      setError("Microphone access requires a secure connection and a browser that supports microphone permissions. Open SAMURA over HTTPS in an up-to-date browser.");
       return;
     }
     const speechWindow = window as unknown as {
@@ -317,10 +328,16 @@ ${message.content}`),
     };
     const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
     if (!Recognition) {
-      setError("Voice typing is not supported by this browser. Try a browser with speech recognition support.");
+      setError("Voice typing is not supported by this browser. Try the latest Chrome browser.");
       return;
     }
+    setError("");
     try {
+      // Explicitly request microphone access from the browser before starting recognition.
+      // Keep the stream alive while dictation is active, then release it on stop/end/error.
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = stream;
       const recognition = new Recognition();
       recognition.lang = navigator.language || "en-NG";
       recognition.interimResults = false;
@@ -335,8 +352,10 @@ ${message.content}`),
       };
       recognition.onerror = (event) => {
         setVoiceListening(false);
+        mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
         const messages: Record<string, string> = {
-          "not-allowed": "Microphone or speech-recognition access was denied. Check this site's microphone permission and your browser's speech settings.",
+          "not-allowed": "Microphone or speech-recognition access was denied. Allow microphone access for this site in your browser settings.",
           "service-not-allowed": "Your browser or device is blocking its speech-recognition service. Try Chrome with an active internet connection.",
           "audio-capture": "No usable microphone input was found. Check that your microphone works and is not being used exclusively by another app.",
           "network": "The browser's speech-recognition service could not connect. Check your internet connection and try again.",
@@ -350,16 +369,27 @@ ${message.content}`),
         const transcript = speechTextRef.current.trim();
         if (transcript) setDraft((current) => [current.trim(), transcript].filter(Boolean).join(" "));
         setVoiceListening(false);
+        mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
         speechRef.current = null;
       };
       speechRef.current = recognition;
-      setError("");
       setVoiceListening(true);
       recognition.start();
-    } catch {
+    } catch (cause) {
       setVoiceListening(false);
       speechRef.current = null;
-      setError("Could not start voice typing. Check microphone permission and try again.");
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+      if (cause instanceof DOMException && cause.name === "NotAllowedError") {
+        setError("SAMURA could not access your microphone. When your browser asks, choose Allow. If no prompt appears, open the site permissions in Chrome and set Microphone to Allow, then reload SAMURA.");
+      } else if (cause instanceof DOMException && cause.name === "NotFoundError") {
+        setError("No microphone was found on this device. Connect or enable a microphone and try again.");
+      } else if (cause instanceof DOMException && cause.name === "NotReadableError") {
+        setError("Your microphone is unavailable or busy in another app. Close other apps using it and try again.");
+      } else {
+        setError(cause instanceof Error ? `Could not access the microphone: ${cause.message}` : "Could not access the microphone. Check site permissions and try again.");
+      }
     }
   }
 
