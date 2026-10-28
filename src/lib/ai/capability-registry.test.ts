@@ -53,6 +53,18 @@ describe("SAMURA capability registry", () => {
     expect(result.find((item) => item.id === "web_search")?.status).toBe("available");
   });
 
+  it("does not mark research available when the AI model is not configured", () => {
+    const result = buildCapabilityRegistry({
+      runtimeConfigured: true,
+      chatConfigured: false,
+      imageConfigured: false,
+      webSearchConfigured: true,
+    });
+
+    expect(result.find((item) => item.id === "web_search")?.status).toBe("needs_configuration");
+    expect(result.find((item) => item.id === "web_search")?.requirement).toContain("AI model");
+  });
+
   it("reports image generation as requiring configuration when no image service key is configured", () => {
     const result = buildCapabilityRegistry({
       runtimeConfigured: true,
