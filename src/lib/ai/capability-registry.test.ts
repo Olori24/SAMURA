@@ -26,7 +26,7 @@ describe("SAMURA capability registry", () => {
     });
 
     expect(result.find((item) => item.id === "chat")?.status).toBe("needs_configuration");
-    expect(result.find((item) => item.id === "documents")?.status).toBe("available");
+    expect(result.find((item) => item.id === "documents")?.status).toBe("needs_configuration");
   });
 
   it("reports browser-local CSV analysis as available and keeps other unimplemented capabilities planned", () => {
