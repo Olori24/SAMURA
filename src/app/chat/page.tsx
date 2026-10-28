@@ -157,13 +157,13 @@ ${message.content}`),
   }
 
   async function newConversation() {
-    setError(""); setMessages([]); setActiveId(""); setSidebarOpen(false);
+    setError(""); setMessages([]); setActiveId(""); setSidebarOpen(false); setShowArchived(false);
     try {
       const response = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
       if (!response.ok) { const data = await response.json().catch(()=>({})); throw new Error(data.error ?? "Could not create a conversation."); }
       const data = await response.json();
       setActiveId(data.conversation.id);
-      setConversations(prev => [data.conversation, ...prev.filter(c => c.id !== data.conversation.id)]);
+      await loadConversations(false);
     } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); }
   }
 
@@ -177,8 +177,8 @@ ${message.content}`),
       try {
         const created = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
         if (!created.ok) throw new Error("Could not create a conversation.");
-        const data = await created.json(); conversationId = data.conversation.id; setActiveId(conversationId);
-        setConversations(prev => [data.conversation, ...prev]);
+        const data = await created.json(); conversationId = data.conversation.id; setActiveId(conversationId); setShowArchived(false);
+        await loadConversations(false);
       } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); return; }
     }
     const requestId = crypto.randomUUID();
