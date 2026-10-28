@@ -49,16 +49,26 @@ export function buildCapabilityRegistry(input: CapabilityInputs): Capability[] {
     {
       id: "image_generation",
       name: "Image generation",
-      status: input.imageConfigured ? "available" : "needs_configuration",
+      status: input.runtimeConfigured && input.imageConfigured ? "available" : "needs_configuration",
       description: "Generate images from text prompts.",
-      ...(!input.imageConfigured ? { requirement: "An administrator-configured image-generation service and valid access" } : {}),
+      ...(!input.runtimeConfigured
+        ? { requirement: "Application database and authentication configuration" }
+        : !input.imageConfigured
+          ? { requirement: "An administrator-configured image-generation service and valid access" }
+          : {}),
     },
     {
       id: "web_search",
       name: "Web search and research",
-      status: input.webSearchConfigured ? "available" : "needs_configuration",
+      status: input.runtimeConfigured && input.chatConfigured && input.webSearchConfigured ? "available" : "needs_configuration",
       description: "Search public web sources and produce a source-grounded report with links.",
-      ...(!input.webSearchConfigured ? { requirement: "An administrator-configured web search service key" } : {}),
+      ...(!input.runtimeConfigured
+        ? { requirement: "Application database and authentication configuration" }
+        : !input.chatConfigured
+          ? { requirement: "A working server-side AI model connection" }
+          : !input.webSearchConfigured
+            ? { requirement: "An administrator-configured web search service key" }
+            : {}),
     },
     {
       id: "file_analysis",
