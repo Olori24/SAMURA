@@ -47,10 +47,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if ! git diff --quiet -- package.json package-lock.json; then
-            git add package.json package-lock.json
-            git commit -m "security(deps): patch Next.js and Zod advisories"
+            git stash push -u -m "verified dependency remediation"
             git fetch origin chore/privacy-legal-risk-reduction
             git rebase origin/chore/privacy-legal-risk-reduction
+            git stash pop
+            git add package.json package-lock.json
+            git commit -m "security(deps): patch Next.js and Zod advisories"
             git push origin HEAD:chore/privacy-legal-risk-reduction
           fi
       - name: Dispatch final CI against updated branch head
