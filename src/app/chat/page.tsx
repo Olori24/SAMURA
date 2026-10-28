@@ -77,6 +77,8 @@ export default function ChatPage() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: streaming ? "auto" : "smooth" }); }, [messages, streaming]);
 
+  useEffect(() => () => { speechRef.current?.stop(); }, []);
+
   const visibleConversations = conversations.filter((conversation) =>
     conversation.title.toLocaleLowerCase().includes(conversationSearch.trim().toLocaleLowerCase())
   );
