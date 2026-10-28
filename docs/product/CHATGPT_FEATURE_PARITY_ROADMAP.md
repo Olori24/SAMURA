@@ -177,3 +177,16 @@ The Neon integration product configuration explicitly states that preview deploy
 - The Vercel preview reaches Ready without a Neon branch-limit provisioning error.
 
 **Current state:** root cause verified; permanent configuration change is not yet applied. No branches or production database settings were changed as part of this diagnosis.
+
+
+### Latest infrastructure evidence (2026-10-28)
+
+- Vercel's installed Neon integration is on its **Free** billing plan. The configuration's Neon product metadata explicitly says preview branches get their own branch.
+- The Neon project inventory currently contains 10 branches. Besides protected primary `main`, the inventory includes branches created by Vercel for prior preview deployments; several are already archived. The current failure says the branch limit has been reached.
+- The integration-managed Postgres variables (`DATABASE_URL`, `POSTGRES_PRISMA_URL`, `PGHOST`, etc.) are marked as integration-store secrets for production and preview. Their values must not be copied into source control or exposed in logs.
+- A branch-specific restricted `SAMURA_DATABASE_URL` and auth settings also exist for the `security/rls-tenant-isolation` preview. This is an important warning against broad environment-variable edits: not every branch uses the same safe DB role.
+- Vercel's connector-project API did not expose this Marketplace Neon resource as a connector; the Neon installation is a Marketplace integration configuration, not a generic Vercel connector. The available connected tools expose read/list operations for this configuration but no safe disconnect/reconfigure operation.
+
+**Execution constraint:** do not modify production database variables or disconnect Neon automatically. The safe permanent change requires the project owner to disable the Neon integration's per-preview branch provisioning (if offered in integration settings) or disconnect the Marketplace integration after preparing stable direct Neon connection variables. Since disconnecting can affect integration-managed variables, it must be performed as a staged dashboard operation with the existing values preserved privately. Do not delete branches or upgrade billing without explicit user approval.
+
+**Safe next action in Vercel:** open Project Settings → Integrations / Neon (or the installed Neon integration's resource settings) and disable per-preview branch provisioning if the integration exposes that setting. If it does not, stop here and prepare the stable isolated preview connection first; then disconnect the integration and add explicit preview-only variables. Leave production integration variables unchanged until the production direct connection is verified. Re-deploy the feature branch and verify it reaches Ready and that a test conversation survives a second deployment.
