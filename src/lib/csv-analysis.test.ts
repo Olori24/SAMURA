@@ -22,7 +22,7 @@ describe("parseCsv", () => {
   });
 
   it("rejects quotes inside an unquoted cell", () => {
-    expect(() => parseCsv('name,note\\nAda,un"closed\\n')).toThrow("quote appeared inside an unquoted cell");
+    expect(() => parseCsv('name,note\nAda,un"closed\n')).toThrow("quote appeared inside an unquoted cell");
   });
 
   it("rejects inconsistent row widths", () => {
