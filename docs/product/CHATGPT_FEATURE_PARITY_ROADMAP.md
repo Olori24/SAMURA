@@ -149,3 +149,31 @@ A capability is “done” only when:
 5. Relevant telemetry exists without collecting unnecessary sensitive content.
 6. The feature is verified in a deployed non-production environment.
 7. Remaining limitations and required external credentials/costs are documented.
+
+
+## Operational blocker: Neon preview branch exhaustion (verified 2026-10-28)
+
+The Vercel deployment detail for the SAMURA feature branch shows the Neon integration failing at resource provisioning with: **“Branch limit reached. Upgrade your plan or delete unused branches.”** This is an integration provisioning failure, not evidence that the Next.js build failed.
+
+The Neon integration product configuration explicitly states that preview deployments get their own database branches. Repeated Git pushes therefore repeatedly attempt preview-branch provisioning. Deleting branches is only temporary relief and can destroy branch-only data.
+
+### Required permanent remediation
+
+1. **Freeze destructive cleanup.** Do not delete or reset Neon branches to clear the limit until data ownership and any branch-only user data are checked.
+2. **Inventory environment wiring without revealing secret values.** Record which database environment variables are integration-managed, their deployment targets, and which are manually managed. Never print or commit credentials.
+3. **Confirm canonical production data.** Verify the production database URL resolves to the protected, primary Neon `main` branch and verify application data (users, conversations, messages, memory if implemented) before changing environment configuration.
+4. **Provision one deliberate preview database.** It must be isolated from production and have stable credentials/URL. Verify schema migrations and test fixtures on it.
+5. **Stop per-deployment preview database creation.** Adjust the Vercel–Neon integration/environment setup so previews use the stable isolated preview connection rather than provisioning a new Neon branch per deployment. Preserve production's existing connection and auth settings.
+6. **Verify before removing the integration.** If disconnection is required, first confirm exactly which environment variables Vercel will remove or stop refreshing and stage replacements. Do not disconnect the integration or alter production variables until that dependency is known.
+7. **Run persistence acceptance tests.** Create a test user and conversation on the preview environment, redeploy a second preview using the same stable preview database, and verify the data remains. Verify production data remains untouched.
+8. **Only then clean up.** Archive/export any branch-only data first; delete only branches confirmed disposable.
+
+### Acceptance criteria
+
+- Feature-branch pushes no longer require a new Neon database branch.
+- Preview uses a stable, non-production database.
+- Production continues to use the same canonical database and retains all user data.
+- Login, conversation history, memory persistence (if enabled), and migrations pass smoke tests after redeploy.
+- The Vercel preview reaches Ready without a Neon branch-limit provisioning error.
+
+**Current state:** root cause verified; permanent configuration change is not yet applied. No branches or production database settings were changed as part of this diagnosis.
