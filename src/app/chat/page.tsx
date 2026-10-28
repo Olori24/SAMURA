@@ -183,8 +183,10 @@ ${message.content}`),
         const line = raw.split("\n").find(item => item.startsWith("data: "));
         if (!line) return;
         try {
-          const event = JSON.parse(line.slice(6)) as { type: string; text?: string; message?: string; status?: string };
-          if (event.type === "delta" && typeof event.text === "string") {
+          const event = JSON.parse(line.slice(6)) as { type: string; id?: string; text?: string; message?: string; status?: string };
+          if (event.type === "user_message" && typeof event.id === "string") {
+            setMessages(prev => prev.map(m => m.id === requestId && m.role === "user" ? { ...m, id: event.id as string } : m));
+          } else if (event.type === "delta" && typeof event.text === "string") {
             received += event.text;
             setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, content: received } : m));
           } else if (event.type === "error") {
