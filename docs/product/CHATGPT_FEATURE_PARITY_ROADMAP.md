@@ -190,3 +190,17 @@ The Neon integration product configuration explicitly states that preview deploy
 **Execution constraint:** do not modify production database variables or disconnect Neon automatically. The safe permanent change requires the project owner to disable the Neon integration's per-preview branch provisioning (if offered in integration settings) or disconnect the Marketplace integration after preparing stable direct Neon connection variables. Since disconnecting can affect integration-managed variables, it must be performed as a staged dashboard operation with the existing values preserved privately. Do not delete branches or upgrade billing without explicit user approval.
 
 **Safe next action in Vercel:** open Project Settings → Integrations / Neon (or the installed Neon integration's resource settings) and disable per-preview branch provisioning if the integration exposes that setting. If it does not, stop here and prepare the stable isolated preview connection first; then disconnect the integration and add explicit preview-only variables. Leave production integration variables unchanged until the production direct connection is verified. Re-deploy the feature branch and verify it reaches Ready and that a test conversation survives a second deployment.
+
+
+### Data-protection checkpoint completed (2026-10-28)
+
+Before changing any integration or environment wiring, created and verified a manual Neon snapshot of the canonical primary `main` branch:
+
+- Snapshot: `samura-main-before-preview-provisioning-fix-2026-10-28`
+- Snapshot ID: `snap-hidden-shape-b71xnbqs`
+- Source branch: `br-blue-shadow-b75r3shy` (`main`)
+- Created at: `2026-10-28T17:53:55Z`
+
+The snapshot is a recovery checkpoint, not proof that every preview-only record is in main. Preview branch inventory remains unchanged. The Neon integration configuration is still on its Free plan and its metadata has no supported setting for disabling per-preview branch creation. No integration disconnect, environment mutation, branch deletion, or production deployment has been performed.
+
+**Blocking owner action:** the Vercel dashboard must be used to disconnect or reconfigure the Marketplace Neon integration after the direct stable preview connection has been prepared. The available Vercel API tools do not expose a safe integration-disconnect operation. Do not disconnect until the direct preview connection and environment variable replacement plan are ready.
