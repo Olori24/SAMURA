@@ -7,6 +7,7 @@ describe("SAMURA capability registry", () => {
       runtimeConfigured: true,
       chatConfigured: true,
       imageConfigured: false,
+      webSearchConfigured: false,
     });
 
     expect(result.find((item) => item.id === "chat")?.status).toBe("available");
@@ -21,6 +22,7 @@ describe("SAMURA capability registry", () => {
       runtimeConfigured: false,
       chatConfigured: true,
       imageConfigured: false,
+      webSearchConfigured: false,
     });
 
     expect(result.find((item) => item.id === "chat")?.status).toBe("needs_configuration");
@@ -32,11 +34,23 @@ describe("SAMURA capability registry", () => {
       runtimeConfigured: true,
       chatConfigured: true,
       imageConfigured: true,
+      webSearchConfigured: false,
     });
 
-    for (const id of ["web_search", "file_analysis", "data_analysis", "voice", "memory_projects", "agent_workflows"]) {
+    for (const id of ["file_analysis", "data_analysis", "voice", "memory_projects", "agent_workflows"]) {
       expect(result.find((item) => item.id === id)?.status).toBe("planned");
     }
+  });
+
+  it("reports web research as available only when the search service is configured", () => {
+    const result = buildCapabilityRegistry({
+      runtimeConfigured: true,
+      chatConfigured: true,
+      imageConfigured: false,
+      webSearchConfigured: true,
+    });
+
+    expect(result.find((item) => item.id === "web_search")?.status).toBe("available");
   });
 
   it("reports image generation as requiring configuration when no image service key is configured", () => {
@@ -44,6 +58,7 @@ describe("SAMURA capability registry", () => {
       runtimeConfigured: true,
       chatConfigured: true,
       imageConfigured: false,
+      webSearchConfigured: false,
     });
 
     expect(result.find((item) => item.id === "image_generation")?.status).toBe("needs_configuration");
