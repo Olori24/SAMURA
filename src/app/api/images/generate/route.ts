@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { getServerEnv } from "@/lib/env";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
+import { getImageProviderConfig } from "@/lib/ai/image-provider-config";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Please sign in to create images." }, { status: 401 });
 
   const env = getServerEnv();
+  const imageConfig = getImageProviderConfig(env);
   const rate = await checkDistributedRateLimit("image:" + user.id, 5, 60_000);
   if (rate.unavailable) return NextResponse.json({ error: "Rate limiting is temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   if (!rate.allowed) {
@@ -35,17 +37,17 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(body.value);
   if (!parsed.success) return NextResponse.json({ error: "Enter a prompt between 3 and 2,000 characters." }, { status: 400 });
 
-  if (!env.OPENAI_API_KEY) {
+  if (!imageConfig) {
     return NextResponse.json(
-      { error: "Image creation is not configured yet. An administrator must add OPENAI_API_KEY as a server-side secret before this feature can generate images." },
-      { status: 503 },
+      { error: "Image creation is not configured yet. Ask an administrator to configure a compatible image-generation service." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }
 
   try {
-    const client = new OpenAI({ apiKey: env.OPENAI_API_KEY, timeout: 55_000, maxRetries: 0 });
+    const client = new OpenAI({ apiKey: imageConfig.apiKey, ...(imageConfig.baseURL ? { baseURL: imageConfig.baseURL } : {}), timeout: 55_000, maxRetries: 0 });
     const result = await client.images.generate({
-      model: "gpt-image-1",
+      model: imageConfig.model,
       prompt: parsed.data.prompt,
       size: parsed.data.size,
     });
