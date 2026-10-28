@@ -31,7 +31,7 @@ jobs:
           node-version: 22
           cache: npm
       - name: Upgrade patched dependencies and regenerate lockfile
-        run: npm install --save-exact next@16.4.3 zod@4.6.7
+        run: npm install --save-exact next@16.4.3 zod@4.6.7 openai@7.44.0
       - name: Enforce dependency security audit
         run: npm audit --audit-level=low
       - name: Typecheck
