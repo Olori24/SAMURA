@@ -16,6 +16,7 @@ const envSchema = z.object({
   SAMURA_IMAGE_API_KEY: optionalSecret,
   SAMURA_IMAGE_BASE_URL: z.string().url().optional(),
   SAMURA_IMAGE_MODEL: z.string().min(1).default("gpt-image-1"),
+  SAMURA_WEB_SEARCH_API_KEY: optionalSecret,
   OPENROUTER_API_KEY: optionalSecret,
   SAMURA_OPENROUTER_MODEL: z.string().min(1).default("openrouter/free"),
   GEMINI_API_KEY: optionalSecret,
@@ -40,6 +41,7 @@ export function getServerEnv() {
     SAMURA_IMAGE_API_KEY: process.env.SAMURA_IMAGE_API_KEY,
     SAMURA_IMAGE_BASE_URL: process.env.SAMURA_IMAGE_BASE_URL,
     SAMURA_IMAGE_MODEL: process.env.SAMURA_IMAGE_MODEL,
+    SAMURA_WEB_SEARCH_API_KEY: process.env.SAMURA_WEB_SEARCH_API_KEY,
     // Support the existing Vercel secret name while standardizing on OPENROUTER_API_KEY.
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ?? process.env.Openrouter,
     SAMURA_OPENROUTER_MODEL: process.env.SAMURA_OPENROUTER_MODEL,
