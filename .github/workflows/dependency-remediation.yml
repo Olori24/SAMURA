@@ -2,12 +2,10 @@ name: Patch vulnerable dependencies
 
 on:
   push:
-    branches: ["chore/privacy-legal-risk-reduction"]
+    branches:
+      - chore/privacy-legal-risk-reduction
     paths:
-      - ".github/workflows/dependency-remediation.yml"
-      - ".github/workflows/ci.yml"
-      - "package.json"
-      - "package-lock.json"
+      - .github/workflows/dependency-remediation.yml
 
 permissions:
   contents: write
@@ -15,7 +13,6 @@ permissions:
 
 jobs:
   patch-and-verify:
-    if: "${{ github.event.head_commit.message != 'security(deps): patch Next.js and Zod advisories' }}"
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -42,8 +39,6 @@ jobs:
       - name: Production build
         run: npm run build
       - name: Commit verified dependency update
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
