@@ -19,21 +19,18 @@ export default function PwaInstall() {
   useEffect(() => {
     if (isSessionPending) return;
 
-    const user = session?.user;
-    const userId = user?.id ?? null;
+    const userId = session?.user?.id ?? null;
 
     if (previousUserId.current === userId) return;
 
     if (previousUserId.current && !userId) {
       posthog.reset();
-    } else if (user && userId) {
+    } else if (userId) {
       if (previousUserId.current && previousUserId.current !== userId) {
         posthog.reset();
       }
-      posthog.identify(userId, {
-        ...(user.email ? { email: user.email } : {}),
-        ...(user.name ? { name: user.name } : {}),
-      });
+      // Use only the opaque internal account ID. Do not send email or display name.
+      posthog.identify(userId);
     }
 
     previousUserId.current = userId;
