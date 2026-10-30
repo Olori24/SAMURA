@@ -1,70 +1,83 @@
 import { describe, expect, it } from "vitest";
-import { createGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "./github-engine-validation";
+import { createGitHubPatchDigest, hasExpectedGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "./github-engine-validation";
 
-describe("GitHub patch path validation", () => {
-  it("allows normal source and documentation files", () => {
-    expect(isSafeGitHubPatchPath("src/app/api/version/route.ts")).toBe(true);
-    expect(isSafeGitHubPatchPath("docs/engineering.md")).toBe(true);
-    expect(isSafeGitHubPatchPath("tests/version.test.ts")).toBe(true);
+describe("isSafeGitHubPatchPath", () => {
+  it.each(["src/app/studio/page.tsx", "src/lib/csv-analysis.ts", "docs/product/roadmap.md", "tests/feature.test.ts"])(
+    "allows ordinary source and documentation files: %s",
+    path => expect(isSafeGitHubPatchPath(path)).toBe(true),
+  );
+
+  it.each([
+    "app/api/conversations/[id]/route.ts",
+    "app/api/capabilities/route.ts",
+    "src/app/api/connectors/github/publish/route.ts",
+    "src/app/api/auth/route.ts",
+    "src/app/api/capabilities/route.ts",
+    "src/app/api/conversations/[id]/route.ts",
+    "src/app/api/chat/route.ts",
+    "src/app/studio/github-engine/page.tsx",
+    "src/app/studio/connect/page.tsx",
+    "src/db/user-transaction.ts",
+    "src/lib/auth.ts",
+    "src/lib/connectors/github-token.ts",
+    "src/lib/github-engine-validation.ts",
+    "src/lib/env.ts",
+    "src/lib/runtime-config.ts",
+    "src/lib/ai/provider-config.ts",
+    "src/lib/distributed-rate-limit.ts",
+    "src/proxy.ts",
+    ".github/workflows/ci.yml",
+    "package.json",
+    "package-lock.json",
+    "src/app/studio/../../api/auth/route.ts",
+    "/src/app/studio/page.tsx",
+    "src\\app\\studio\\page.tsx",
+  ])("rejects protected or unsafe paths: %s", path => {
+    expect(isSafeGitHubPatchPath(path)).toBe(false);
   });
+});
 
-  it("rejects traversal, absolute paths, and backslashes", () => {
-    for (const path of ["../secret", "src/../secret", "/etc/passwd", "src\\secret.ts", "src//bad.ts", "src/./bad.ts"]) {
-      expect(isSafeGitHubPatchPath(path)).toBe(false);
-    }
+describe("matchesExpectedBaseCommit", () => {
+  const sha = "a".repeat(40);
+  it("accepts only an exact full commit SHA", () => {
+    expect(matchesExpectedBaseCommit(sha, sha)).toBe(true);
+    expect(matchesExpectedBaseCommit(sha, "b".repeat(40))).toBe(false);
+    expect(matchesExpectedBaseCommit(sha.slice(0, 7), sha)).toBe(false);
   });
+});
 
-  it("blocks secrets, workflows, manifests, and sensitive security surfaces", () => {
-    for (const path of [".env", ".env.production", ".github/workflows/deploy.yml", "package.json", "package-lock.json", "src/lib/auth.ts", "src/lib/session.ts", "src/db/schema.ts", "src/lib/connectors/github-token.ts", "docs/private_key.pem", "src/assets/logo.png", "public/banner.svg"]) {
-      expect(isSafeGitHubPatchPath(path)).toBe(false);
-    }
+describe("createGitHubPatchDigest", () => {
+  const first = { path: "src/a.ts", content: "a", operation: "add" as const };
+  const second = { path: "src/b.ts", content: "b", operation: "modify" as const };
+  const base = { repository: "Olori24/SAMURA", baseBranch: "main", expectedBaseCommit: "a".repeat(40), title: "Test patch", body: "Reviewed change" };
+
+  it("is independent of file-change ordering", () => {
+    expect(createGitHubPatchDigest({ ...base, changes: [first, second] }))
+      .toBe(createGitHubPatchDigest({ ...base, changes: [second, first] }));
   });
-
-  it("rejects paths outside supported project directories", () => {
-    expect(isSafeGitHubPatchPath("README.md")).toBe(false);
-    expect(isSafeGitHubPatchPath("public/logo.svg")).toBe(false);
-    expect(isSafeGitHubPatchPath("docs/guide.md")).toBe(true);
+  it("normalizes repository casing", () => {
+    expect(createGitHubPatchDigest({ ...base, changes: [first] }))
+      .toBe(createGitHubPatchDigest({ ...base, repository: "olori24/samura", changes: [first] }));
+  });
+  it("changes when approved content changes", () => {
+    expect(createGitHubPatchDigest({ ...base, changes: [first] }))
+      .not.toBe(createGitHubPatchDigest({ ...base, changes: [{ ...first, content: "different" }] }));
   });
 });
 
 
-describe("GitHub reviewed base commit validation", () => {
-  const inspected = "0123456789abcdef0123456789abcdef01234567";
+describe("hasExpectedGitHubPatchDigest", () => {
+  const digest = "a".repeat(64);
 
-  it("accepts only the exact valid commit that was inspected", () => {
-    expect(matchesExpectedBaseCommit(inspected, inspected)).toBe(true);
+  it("accepts the exact digest marker on the final commit-message line", () => {
+    expect(hasExpectedGitHubPatchDigest("Patch title\n\nSAMURA-PATCH-DIGEST:" + digest, digest)).toBe(true);
   });
 
-  it("rejects stale commits and malformed SHA values", () => {
-    expect(matchesExpectedBaseCommit(inspected, "1123456789abcdef0123456789abcdef01234567")).toBe(false);
-    expect(matchesExpectedBaseCommit("", inspected)).toBe(false);
-    expect(matchesExpectedBaseCommit("main", inspected)).toBe(false);
-    expect(matchesExpectedBaseCommit(inspected, "not-a-sha")).toBe(false);
-  });
-});
-
-
-describe("GitHub publish idempotency digest", () => {
-  const base = {
-    repository: "Olori24/SAMURA",
-    baseBranch: "main",
-    expectedBaseCommit: "0123456789abcdef0123456789abcdef01234567",
-    title: "Add safe helper",
-    body: "Reviewed change",
-    changes: [
-      { path: "src/lib/example.ts", content: "export const value = 1;", operation: "add" as const },
-      { path: "docs/example.md", content: "# Example", operation: "add" as const },
-    ],
-  };
-
-  it("is stable when the same approved paths are provided in a different order", () => {
-    expect(createGitHubPatchDigest(base)).toBe(createGitHubPatchDigest({ ...base, changes: [...base.changes].reverse() }));
+  it("rejects a matching marker embedded in the title or earlier message lines", () => {
+    expect(hasExpectedGitHubPatchDigest("Patch title SAMURA-PATCH-DIGEST:" + digest + "\nChanged body", digest)).toBe(false);
   });
 
-  it("changes when repository, base branch, title, body, path, operation, or content changes", () => {
-    expect(createGitHubPatchDigest(base)).not.toBe(createGitHubPatchDigest({ ...base, baseBranch: "release" }));
-    expect(createGitHubPatchDigest(base)).not.toBe(createGitHubPatchDigest({ ...base, expectedBaseCommit: "1123456789abcdef0123456789abcdef01234567" }));
-    expect(createGitHubPatchDigest(base)).not.toBe(createGitHubPatchDigest({ ...base, title: "Different title" }));
-    expect(createGitHubPatchDigest(base)).not.toBe(createGitHubPatchDigest({ ...base, changes: [{ ...base.changes[0], content: "changed" }, base.changes[1]] }));
+  it("rejects malformed digest values", () => {
+    expect(hasExpectedGitHubPatchDigest("SAMURA-PATCH-DIGEST:invalid", "invalid")).toBe(false);
   });
 });

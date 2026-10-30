@@ -8,7 +8,7 @@ import { auth } from "@/lib/auth";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { decryptConnectorToken, githubProviderId } from "@/lib/connectors/github-token";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
-import { createGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "@/lib/github-engine-validation";
+import { createGitHubPatchDigest, hasExpectedGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "@/lib/github-engine-validation";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 
 export const runtime = "nodejs";
@@ -18,7 +18,7 @@ const schema = z.object({
   repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/).max(201),
   baseBranch: z.string().min(1).max(250).refine(value => ![...value].some(char => " ~^:?*[]\\".includes(char))),
   expectedBaseCommit: z.string().regex(/^[0-9a-f]{40}$/i),
-  title: z.string().trim().min(5).max(120),
+  title: z.string().trim().min(5).max(120).refine(value => !/[\r\n]/.test(value)),
   body: z.string().max(10_000).default(""),
   idempotencyKey: z.string().uuid(),
   approved: z.literal(true),
@@ -140,31 +140,62 @@ export async function POST(request: Request) {
       const existingCommit = await github<{ sha: string; message: string }>(
         token, "/repos/" + repository + "/git/commits/" + existingRef.object.sha,
       );
-      if (!existingCommit.message.includes("SAMURA-PATCH-DIGEST:" + patchDigest)) {
+      if (existingCommit.sha !== existingRef.object.sha || !hasExpectedGitHubPatchDigest(existingCommit.message, patchDigest)) {
         return NextResponse.json({ error: "This idempotency key has already been used for a different patch. Generate a new approval key before publishing.", retryable: false }, { status: 409, headers: noStore });
       }
       const existingPulls = await github<Array<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>>(
         token, "/repos/" + repository + "/pulls?state=all&head=" + encodeURIComponent(repoInfo.full_name.split("/")[0] + ":" + branchName) + "&base=" + encodeURIComponent(input.baseBranch),
       );
       const existingPull = existingPulls.find(pull => pull.head.sha === existingCommit.sha);
-      if (!existingPull) {
-        return NextResponse.json({ error: "A matching SAMURA branch already exists, but its pull request could not be verified. Inspect the branch in GitHub before retrying.", retryable: false }, { status: 409, headers: noStore });
-      }
-      const verification = await github<{ sha: string; files?: Array<{ filename: string; status: string }> }>(
+      const verification = await github<{ sha: string; parents?: Array<{ sha: string }>; files?: Array<{ filename: string; status: string }> }>(
         token, "/repos/" + repository + "/commits/" + existingCommit.sha,
       );
       const expectedPaths = input.changes.map(change => change.path).sort();
       const actualPaths = (verification.files ?? []).map(file => file.filename).sort();
-      const verified = verification.sha === existingCommit.sha && expectedPaths.length === actualPaths.length && expectedPaths.every((path, index) => path === actualPaths[index]);
+      const verified = verification.sha === existingCommit.sha
+        && verification.parents?.length === 1
+        && verification.parents[0].sha === input.expectedBaseCommit
+        && expectedPaths.length === actualPaths.length
+        && expectedPaths.every((path, index) => path === actualPaths[index]);
+      if (!verified) {
+        return NextResponse.json({ error: "The existing SAMURA branch does not match the approved base commit and exact changed-file set. Inspect it in GitHub before retrying.", retryable: false }, { status: 409, headers: noStore });
+      }
+
+      let pull = existingPull ?? null;
+      if (!pull) {
+        const latestBase = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
+        if (latestBase.object.sha !== input.expectedBaseCommit) {
+          return NextResponse.json({ error: "The approved base branch has moved since this partial publish. Refresh the repository and review a new patch before recovering the draft pull request.", retryable: true }, { status: 409, headers: noStore });
+        }
+        try {
+          pull = await github<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>(
+            token, "/repos/" + repository + "/pulls", "POST", {
+              title: input.title,
+              body: input.body + "\n\n---\nRecovered by SAMURA after explicit user approval. Idempotency: " + input.idempotencyKey,
+              head: branchName,
+              base: input.baseBranch,
+              draft: true,
+            },
+          );
+        } catch (error) {
+          if (safeErrorStatus(error) !== 422) throw error;
+          const racedPulls = await github<Array<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>>(
+            token, "/repos/" + repository + "/pulls?state=all&head=" + encodeURIComponent(repoInfo.full_name.split("/")[0] + ":" + branchName) + "&base=" + encodeURIComponent(input.baseBranch),
+          );
+          pull = racedPulls.find(item => item.head.sha === existingCommit.sha) ?? null;
+          if (!pull) throw error;
+        }
+      }
       return NextResponse.json({
-        ok: verified, verified, branch: existingPull.head.ref, baseBranch: existingPull.base.ref,
+        ok: true, verified: true, branch: pull.head.ref, baseBranch: pull.base.ref,
         commitSha: existingCommit.sha, commitUrl: "https://github.com/" + input.repository + "/commit/" + existingCommit.sha,
-        pullRequestUrl: existingPull.html_url, pullRequestNumber: existingPull.number,
-        pullRequestState: existingPull.state, changedFiles: actualPaths, patchDigest,
-        message: verified ? "Recovered the existing verified draft pull request for this approval key." : "An existing pull request was found, but its changed-file set did not match the approved patch. Review it manually.",
+        pullRequestUrl: pull.html_url, pullRequestNumber: pull.number,
+        pullRequestState: pull.state, changedFiles: actualPaths, patchDigest,
+        message: existingPull ? "Recovered the existing verified draft pull request for this approval key." : "Recovered the verified SAMURA branch by creating its missing draft pull request.",
         recovered: true,
-      }, { status: verified ? 200 : 502, headers: noStore });
+      }, { status: 200, headers: noStore });
     }
+
 
     const base = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
     if (!matchesExpectedBaseCommit(input.expectedBaseCommit, base.object.sha)) {

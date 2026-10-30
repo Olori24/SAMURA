@@ -1,0 +1,76 @@
+# SAMURA AI Capability Baseline
+
+**Snapshot branch:** `feat/chatgpt-capability-parity`
+**Assessment date:** 2026-10-28
+**Evidence level:** Source inspection only unless explicitly marked otherwise. This is not a live production verification.
+
+## Confirmed in source
+
+| Area | Source evidence | Current status | What remains to verify or build |
+|---|---|---|---|
+| Authentication | Better Auth session usage in chat; login redirect; sign-out | Implemented in source | Verify signup/login/reset flows against a deployed preview |
+| Chat streaming | `src/app/api/chat/route.ts` streams deltas and persists assistant output | Implemented in source | Test browser behavior, cancel/partial persistence, retries, provider failure |
+| Conversation persistence | `src/app/api/conversations/route.ts`, `src/app/api/conversations/[id]/route.ts` | Implemented in source | Rename/archive/delete, search message contents, export/share/fork are not confirmed |
+| Conversation search | Chat sidebar and server-side search endpoint; searches conversation titles and message content | Implemented in source | Verify relevance, pagination and ownership isolation in authenticated browser tests |
+| Copy response | `copyMessage` in chat page | Implemented in source | Browser permission and accessibility behavior need E2E verification |
+| Stop generation | AbortController in chat page and API stream cancellation | Implemented in source | Verify abort and persisted partial response under real provider conditions |
+| Chat/Code modes | Request schema and system prompt in chat route | Implemented in source | This is prompt-level mode selection, not a separate code execution sandbox |
+| Markdown | ReactMarkdown + remark-gfm | Implemented in source | Add safe-link/rendering regression checks |
+| Documents | Studio documents route and document APIs exist | Partial | Verify account persistence, formats, uploads, export and isolation |
+| Image generation | Studio image UI and `/api/images/generate` route exist | Provider-dependent | Verify provider key/config, rate/cost limits, error behavior, and actual output |
+| GitHub engineering | Studio GitHub engine/publish routes and connector OAuth endpoints exist | Partial | Test push/PR path end-to-end, user consent, branch safety, failure recovery |
+| Connector workspace | Studio connector catalog exists | Partial | A listed connector must not be presented as active until OAuth and action calls work |
+| Usage accounting | `usageRecords` writes in chat API | Implemented in source | Verify accuracy, limits, provider-specific usage and user-visible usage controls |
+| Database access isolation | User-scoped queries and transaction helper | Implemented in source | Verify production runtime role, RLS configuration, migrations and cross-user negative tests |
+| Security/legal docs | Draft policies and remediation plan in docs | Draft only | Legal review required; do not publish drafts without approval |
+
+## Not yet evidenced as complete
+
+- Edit a sent message and regenerate from that point
+- Regenerate an assistant answer using a persisted, correct request history
+- Rename, archive, delete, and restore conversations with ownership enforcement
+- Search message content across all accessible conversations
+- Share links with visibility/revocation controls
+- Conversation branching/forking
+- File upload/preview and robust extraction for PDF, spreadsheets, presentations, and images
+- Retrieval grounded in user files with page/section citations
+- Sandboxed code/data analysis and chart/artifact generation
+- Web search with source-backed citations and multi-step research
+- Projects with instructions, files, and isolated project context
+- User-controlled durable memory and deletion controls
+- Voice conversation, transcription, and speech output
+- Image understanding/editing beyond any configured provider's actual capabilities
+- Custom assistants with tools, knowledge, sharing and versioning
+- Permissioned agent execution with approvals and auditable verification
+- Scheduled tasks/reminders with reliable scheduler and delivery channel
+- User data export and deletion workflow
+- Full accessibility and end-to-end test coverage
+- Successful preview deployment and production-like smoke test
+
+## Evidence rules
+
+- “Source present” means the code exists, not that the workflow has been exercised successfully.
+- “Automated-tested” requires relevant tests to pass.
+- “Preview-verified” requires a working non-production deployment and recorded end-to-end test.
+- Provider-dependent functionality must identify required credentials, external costs, supported model capabilities, and graceful failure behavior.
+- Never label the overall product fully complete while a critical capability or deployment blocker remains unresolved.
+
+
+## Current evidence snapshot — 2026-10-30
+
+**Source commit:** `c993e8484082317b1d95bb13ac16b6dccfaf4f1a` on `feat/chatgpt-capability-parity`.
+
+- Vercel produced a READY preview for this exact commit: https://samura-1w3vp9f65-bakande11-2779s-projects.vercel.app
+- The exact commit's Vercel status check is successful. Vercel build output completed and enumerated the application routes. No GitHub Actions workflow run was returned for this commit, so dependency audit, typecheck, lint and unit-test results are not claimed here.
+- Public smoke checks returned HTTP 200 for `/api/health` and `/login`. The health endpoint reported `status: ok`. Authenticated browser journeys are not marked E2E-verified; protected API fetches could not be exercised through the temporary preview-access link.
+- Vercel's selected 24-hour runtime-error query returned no errors. This is not a substitute for authenticated browser E2E tests or Sentry ingestion.
+- Conversation rename/archive/restore/delete, latest-turn edit, server-side regenerate with usage accounting, Markdown export, and cursor-based older-message loading are present in source. They still require authenticated browser acceptance tests.
+- CSV analysis runs locally in the browser; parser behavior, numeric summaries, unique header naming, quoted whitespace preservation, and explicit empty-record preservation have unit tests in source. Chart rendering and summary export do not yet have dedicated browser/component tests. It does not upload the selected file.
+- Image generation now supports the existing Gemini API key through Google's Interactions API and the `gemini-nano-banana-2.1` image model, with OpenAI-compatible image providers retained as an override. No separate `SAMURA_IMAGE_API_KEY` is required when `GEMINI_API_KEY` is present. The integration still requires a live authenticated generation test and may incur image-model charges. Official API reference: https://ai.google.dev/gemini-api/docs/image-generation
+- Web research retains Tavily support and now includes Google Search grounding through Gemini 3.8 Flash. Because Google charges for executed search queries after its free allowance, this path is disabled by default and requires the explicit environment opt-in `SAMURA_GEMINI_GROUNDING_ENABLED=true`; the current Vercel environment does not contain a Tavily key or this opt-in. It is implemented but not active. Official pricing/behavior: https://ai.google.dev/gemini-api/docs/google-search/
+- Browser dictation is not full voice conversation, speech output, or realtime audio.
+- Projects, durable user memory, broad file extraction/citations, sharing/forking, scheduled tasks and permissioned agent execution remain incomplete.
+- The GitHub publish workflow is implemented in source, but preview OAuth is not configured with a GitHub client secret, and authenticated publish E2E remains unverified.
+- The application repository and Vercel environment inventory do not show Sentry or PostHog SDK configuration. The connected PostHog project currently reports zero outdated SDK issues and one `authorized_urls` health warning; this does not establish SAMURA event ingestion. Do not claim app-level monitoring or analytics are active.
+
+**Release boundary:** this evidence is from a feature-branch preview only. No merge to `main`, production deployment, production database change, or production secret change was performed.

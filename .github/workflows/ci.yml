@@ -1,10 +1,11 @@
 name: SAMURA CI
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main, "feat/**", "docs/**"]
+    branches: [main, "feat/**", "docs/**", "chore/**"]
   pull_request:
-    branches: [main, "feat/**"]
+    branches: [main, "feat/**", "chore/**"]
 
 permissions:
   contents: read
@@ -29,10 +30,14 @@ jobs:
       - name: Enforce dependency security audit
         run: npm audit --audit-level=low
       - name: Typecheck
+        if: ${{ always() && !cancelled() }}
         run: npm run typecheck
       - name: Lint
+        if: ${{ always() && !cancelled() }}
         run: npm run lint
       - name: Unit tests
+        if: ${{ always() && !cancelled() }}
         run: npm test
       - name: Production build
+        if: ${{ always() && !cancelled() }}
         run: npm run build

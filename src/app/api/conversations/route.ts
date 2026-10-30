@@ -1,13 +1,14 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, exists, ilike, or } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { conversations } from "@/db/schema";
+import { conversations, messages } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 import { withUserTransaction } from "@/db/user-transaction";
+import { escapeLikeSearchTerm } from "@/lib/conversation-search";
 
 export const runtime = "nodejs";
 const createSchema = z.object({ title: z.string().trim().min(1).max(160).optional() });
@@ -17,18 +18,42 @@ async function currentUser() {
   return session?.user ?? null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!isRuntimeConfigured()) return NextResponse.json({ error: "Conversation service is not configured." }, { status: 503 });
   let failureStage = "authentication";
   try {
     const user = await currentUser();
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
     failureStage = "conversation_query";
+    const params = new URL(request.url).searchParams;
+    const archived = params.get("archived") === "true";
+    const search = (params.get("q") ?? "").trim();
+    if (search.length > 120) return NextResponse.json({ error: "Search text is too long." }, { status: 400 });
+    if (search) {
+      const searchLimit = await checkDistributedRateLimit("conversation-search:" + user.id, 40, 60_000);
+      if (searchLimit.unavailable) return NextResponse.json({ error: "Search is temporarily unavailable." }, { status: 503 });
+      if (!searchLimit.allowed) return NextResponse.json(
+        { error: "Too many searches. Try again shortly." },
+        { status: 429, headers: { "Retry-After": String(searchLimit.retryAfterSeconds), "Cache-Control": "no-store" } },
+      );
+    }
+    const pattern = search ? `%${escapeLikeSearchTerm(search)}%` : "";
     const rows = await withUserTransaction(user.id, async (tx) => tx.select({
       id: conversations.id, title: conversations.title, createdAt: conversations.createdAt,
       updatedAt: conversations.updatedAt,
     }).from(conversations)
-      .where(and(eq(conversations.userId, user.id), eq(conversations.archived, false)))
+      .where(and(
+        eq(conversations.userId, user.id),
+        eq(conversations.archived, archived),
+        search ? or(
+          ilike(conversations.title, pattern),
+          exists(tx.select({ id: messages.id }).from(messages).where(and(
+            eq(messages.conversationId, conversations.id),
+            eq(messages.userId, user.id),
+            ilike(messages.content, pattern),
+          ))),
+        ) : undefined,
+      ))
       .orderBy(desc(conversations.updatedAt)).limit(100));
     return NextResponse.json({ conversations: rows }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

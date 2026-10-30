@@ -13,6 +13,16 @@ const envSchema = z.object({
   SAMURA_OLLAMA_MODEL: z.string().min(1).default("qwen3:8b"),
   OPENAI_API_KEY: optionalSecret,
   SAMURA_OPENAI_MODEL: z.string().min(1).default("gpt-4.1-mini"),
+  SAMURA_IMAGE_API_KEY: optionalSecret,
+  SAMURA_IMAGE_BASE_URL: z.string().url().refine((value) => {
+    const endpoint = new URL(value);
+    return endpoint.protocol === "https:" || (endpoint.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(endpoint.hostname));
+  }, "Image provider endpoints must use HTTPS unless they target loopback.").optional(),
+  SAMURA_IMAGE_MODEL: z.string().min(1).default("gpt-image-1"),
+  SAMURA_GEMINI_IMAGE_MODEL: z.string().min(1).default("gemini-nano-banana-2.1"),
+  SAMURA_WEB_SEARCH_API_KEY: optionalSecret,
+  // Gemini Search grounding can incur per-query charges; keep disabled until an admin opts in.
+  SAMURA_GEMINI_GROUNDING_ENABLED: z.enum(["true", "false"]).default("false").transform(value => value === "true"),
   OPENROUTER_API_KEY: optionalSecret,
   SAMURA_OPENROUTER_MODEL: z.string().min(1).default("openrouter/free"),
   GEMINI_API_KEY: optionalSecret,
@@ -34,6 +44,12 @@ export function getServerEnv() {
     SAMURA_OLLAMA_MODEL: process.env.SAMURA_OLLAMA_MODEL,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     SAMURA_OPENAI_MODEL: process.env.SAMURA_OPENAI_MODEL,
+    SAMURA_IMAGE_API_KEY: process.env.SAMURA_IMAGE_API_KEY,
+    SAMURA_IMAGE_BASE_URL: process.env.SAMURA_IMAGE_BASE_URL,
+    SAMURA_IMAGE_MODEL: process.env.SAMURA_IMAGE_MODEL,
+    SAMURA_GEMINI_IMAGE_MODEL: process.env.SAMURA_GEMINI_IMAGE_MODEL,
+    SAMURA_WEB_SEARCH_API_KEY: process.env.SAMURA_WEB_SEARCH_API_KEY,
+    SAMURA_GEMINI_GROUNDING_ENABLED: process.env.SAMURA_GEMINI_GROUNDING_ENABLED,
     // Support the existing Vercel secret name while standardizing on OPENROUTER_API_KEY.
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ?? process.env.Openrouter,
     SAMURA_OPENROUTER_MODEL: process.env.SAMURA_OPENROUTER_MODEL,

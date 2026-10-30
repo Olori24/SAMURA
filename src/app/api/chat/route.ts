@@ -37,15 +37,18 @@ export async function POST(request: Request) {
   try {
     ai = createAIClient(env);
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "";
-    const message = detail.includes("OPENAI_API_KEY")
-      ? "OpenAI is selected but its server API key is not configured. Select Ollama or configure OPENAI_API_KEY."
-      : detail.includes("GEMINI_API_KEY")
-        ? "Gemini is selected but GEMINI_API_KEY is not configured. Add a server-side Gemini API key or select another provider."
-        : detail.includes("localhost in production")
-          ? "Ollama is configured for localhost, which Vercel cannot reach. Configure a reachable, secured Ollama endpoint."
-          : "AI provider configuration is invalid.";
-    return NextResponse.json({ error: message }, { status: 503 });
+    // Keep diagnostics server-side and bounded. Strip URLs and common credential
+    // assignments before emitting anything to trusted server logs.
+    const rawMessage = error instanceof Error ? error.message : "";
+    const safeMessage = rawMessage
+      .replace(/https?:\/\/[^\s"'<>]+/gi, "[redacted-url]")
+      .replace(/(api[_-]?key|token|authorization|secret|password)(\s*[:=]\s*)[^\s,;]+/gi, "$1$2[redacted]")
+      .slice(0, 300);
+    console.error("[SAMURA] AI client configuration failed:", safeMessage || "No diagnostic message available.");
+    return NextResponse.json(
+      { error: "The AI service is not configured correctly. Please try again later or contact support." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
   }
   const body = await parseBoundedJson(request, 20_000);
   if (!body.ok) return NextResponse.json(
@@ -69,7 +72,7 @@ export async function POST(request: Request) {
   try {
     setup = await withUserTransaction(user.id, async (tx) => {
       const [conversation] = await tx.select({ id: conversations.id, title: conversations.title })
-        .from(conversations).where(and(eq(conversations.id, parsed.data.conversationId), eq(conversations.userId, user.id))).limit(1);
+        .from(conversations).where(and(eq(conversations.id, parsed.data.conversationId), eq(conversations.userId, user.id))).limit(1).for("update");
       if (!conversation) return { status: "not_found" as const };
 
       const [existing] = await tx.select({ id: messages.id })
@@ -153,6 +156,7 @@ export async function POST(request: Request) {
     async start(controller) {
       let outcome = "complete";
       const emit = (payload: Record<string, unknown>) => controller.enqueue(encoder.encode("data: " + JSON.stringify(payload) + "\n\n"));
+      emit({ type: "user_message", id: userMessage.id });
       try {
         for await (const part of stream) {
           if (part.usage) { inputTokens = part.usage.prompt_tokens; outputTokens = part.usage.completion_tokens; }
@@ -166,20 +170,37 @@ export async function POST(request: Request) {
       } catch {
         outcome = abortController.signal.aborted ? "cancelled" : "failed";
       } finally {
-        await withUserTransaction(user.id, async (tx) => {
-          if (fullText.trim()) {
-            await tx.insert(messages).values({
-              conversationId: conversation.id, userId: user.id, role: "assistant",
-              content: fullText, status: outcome === "complete" ? "complete" : "partial",
-            });
+        const responseSaved = await withUserTransaction(user.id, async (tx) => {
+          let saved = false;
+          const [lockedConversation] = await tx.select({ id: conversations.id })
+            .from(conversations)
+            .where(and(eq(conversations.id, conversation.id), eq(conversations.userId, user.id)))
+            .limit(1)
+            .for("update");
+          if (lockedConversation && fullText.trim()) {
+            const [newestMessage] = await tx.select({ id: messages.id })
+              .from(messages)
+              .where(and(eq(messages.conversationId, conversation.id), eq(messages.userId, user.id)))
+              .orderBy(desc(messages.createdAt), desc(messages.id))
+              .limit(1);
+            if (newestMessage?.id === userMessage.id) {
+              await tx.insert(messages).values({
+                conversationId: conversation.id, userId: user.id, role: "assistant",
+                content: fullText, status: outcome === "complete" ? "complete" : "partial",
+              });
+              saved = true;
+            }
           }
           await tx.insert(usageRecords).values({
             userId: user.id, conversationId: conversation.id, provider: ai.provider,
             model: ai.model, inputTokens, outputTokens, status: outcome,
           });
-        }).catch(() => undefined);
+          return saved;
+        }).catch(() => false);
+        const responseUnsaved = Boolean(fullText.trim()) && !responseSaved;
         try {
-          if (outcome === "failed") emit({ type: "error", message: "Generation stopped unexpectedly. Refresh the conversation to see any saved partial response." });
+          if (responseUnsaved) emit({ type: "done", status: "unsaved" });
+          else if (outcome === "failed") emit({ type: "error", message: "Generation stopped unexpectedly. Refresh the conversation to see any saved partial response." });
           else emit({ type: "done", status: outcome });
           controller.close();
         } catch { /* client cancelled the stream */ }
@@ -196,8 +217,6 @@ export async function POST(request: Request) {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       "X-Content-Type-Options": "nosniff",
-      "X-SAMURA-Provider": ai.provider,
-      "X-SAMURA-Model": ai.model,
     },
   });
 }
