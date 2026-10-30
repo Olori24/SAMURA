@@ -289,18 +289,35 @@ ${message.content}`),
       setError("Only the most recent assistant response can be regenerated.");
       return;
     }
+
+    setError("");
+    setStreaming(true);
     try {
-      const response = await fetch("/api/conversations/" + activeId + "/messages/" + previousUser.id, { method: "DELETE" });
+      const response = await fetch(
+        "/api/conversations/" + activeId + "/messages/" + previousUser.id + "/regenerate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode }),
+        },
+      );
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Could not regenerate this response.");
-      const prompt = previousUser.content;
+      if (typeof data.answer !== "string" || typeof data.messageId !== "string") {
+        throw new Error("The regenerated response was incomplete. Your previous response has been preserved.");
+      }
       const userIndex = messages.findIndex((item) => item.id === previousUser.id);
-      setMessages((previous) => previous.slice(0, userIndex));
-      setDraft("");
-      setError("");
-      await sendMessage(undefined, prompt);
+      setMessages((previous) => [
+        ...previous.slice(0, userIndex + 1),
+        { id: data.messageId, role: "assistant", content: data.answer, status: "complete" },
+      ]);
+      await loadConversations();
     } catch (e) {
+      // The server commits the replacement only after generation succeeds;
+      // leave the existing user and assistant messages untouched on failure.
       setError(e instanceof Error ? e.message : "Could not regenerate this response.");
+    } finally {
+      setStreaming(false);
     }
   }
 
