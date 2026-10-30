@@ -22,13 +22,15 @@ if (!posthogProjectToken) {
   }
 }
 
+// Privacy-first default: collect AI generation metadata, never prompts or completions.
+// Any future exception must be explicitly reviewed and must not include sensitive user content.
 const posthog = posthogProjectToken && posthogHost
   ? new PostHog(posthogProjectToken, {
       host: posthogHost,
       enableExceptionAutocapture: true,
       flushAt: 1,
       flushInterval: 0,
-      privacyMode: false,
+      privacyMode: true,
     })
   : null;
 
