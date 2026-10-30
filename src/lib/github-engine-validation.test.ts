@@ -12,6 +12,8 @@ describe("isSafeGitHubPatchPath", () => {
     "src/app/api/auth/route.ts",
     "src/app/api/conversations/[id]/route.ts",
     "src/app/api/chat/route.ts",
+    "src/app/studio/github-engine/page.tsx",
+    "src/app/studio/connect/page.tsx",
     "src/db/user-transaction.ts",
     "src/lib/auth.ts",
     "src/lib/connectors/github-token.ts",
