@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -35,8 +35,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
       if (!conversation) return null;
       const history = await tx.select({
         id: messages.id, role: messages.role, content: messages.content, status: messages.status, createdAt: messages.createdAt,
-      }).from(messages).where(and(eq(messages.conversationId, id), eq(messages.userId, user.id))).orderBy(asc(messages.createdAt)).limit(500);
-      return { conversation, messages: history };
+      }).from(messages).where(and(eq(messages.conversationId, id), eq(messages.userId, user.id)))
+        .orderBy(desc(messages.createdAt), desc(messages.id))
+        .limit(500);
+      // Keep the most recent turns available while returning them in chronological order.
+      return { conversation, messages: history.reverse() };
     });
     if (!result) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
