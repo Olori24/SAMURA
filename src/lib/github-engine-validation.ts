@@ -66,3 +66,10 @@ export function isSafeGitHubPatchPath(path: string) {
 export function matchesExpectedBaseCommit(expected: string, actual: string) {
   return /^[0-9a-f]{40}$/i.test(expected) && /^[0-9a-f]{40}$/i.test(actual) && expected === actual;
 }
+
+
+export function hasExpectedGitHubPatchDigest(message: string, digest: string) {
+  if (!/^[0-9a-f]{64}$/i.test(digest)) return false;
+  const finalLine = message.replace(/\r\n/g, "\n").trimEnd().split("\n").at(-1);
+  return finalLine === "SAMURA-PATCH-DIGEST:" + digest;
+}

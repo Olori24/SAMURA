@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "./github-engine-validation";
+import { createGitHubPatchDigest, hasExpectedGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "./github-engine-validation";
 
 describe("isSafeGitHubPatchPath", () => {
   it.each(["src/app/studio/page.tsx", "src/lib/csv-analysis.ts", "docs/product/roadmap.md", "tests/feature.test.ts"])(
@@ -62,5 +62,22 @@ describe("createGitHubPatchDigest", () => {
   it("changes when approved content changes", () => {
     expect(createGitHubPatchDigest({ ...base, changes: [first] }))
       .not.toBe(createGitHubPatchDigest({ ...base, changes: [{ ...first, content: "different" }] }));
+  });
+});
+
+
+describe("hasExpectedGitHubPatchDigest", () => {
+  const digest = "a".repeat(64);
+
+  it("accepts the exact digest marker on the final commit-message line", () => {
+    expect(hasExpectedGitHubPatchDigest("Patch title\\n\\nSAMURA-PATCH-DIGEST:" + digest, digest)).toBe(true);
+  });
+
+  it("rejects a matching marker embedded in the title or earlier message lines", () => {
+    expect(hasExpectedGitHubPatchDigest("Patch title SAMURA-PATCH-DIGEST:" + digest + "\\nChanged body", digest)).toBe(false);
+  });
+
+  it("rejects malformed digest values", () => {
+    expect(hasExpectedGitHubPatchDigest("SAMURA-PATCH-DIGEST:invalid", "invalid")).toBe(false);
   });
 });

@@ -8,7 +8,7 @@ import { auth } from "@/lib/auth";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { decryptConnectorToken, githubProviderId } from "@/lib/connectors/github-token";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
-import { createGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "@/lib/github-engine-validation";
+import { createGitHubPatchDigest, hasExpectedGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "@/lib/github-engine-validation";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 
 export const runtime = "nodejs";
@@ -18,7 +18,7 @@ const schema = z.object({
   repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/).max(201),
   baseBranch: z.string().min(1).max(250).refine(value => ![...value].some(char => " ~^:?*[]\\".includes(char))),
   expectedBaseCommit: z.string().regex(/^[0-9a-f]{40}$/i),
-  title: z.string().trim().min(5).max(120),
+  title: z.string().trim().min(5).max(120).refine(value => !/[\r\n]/.test(value)),
   body: z.string().max(10_000).default(""),
   idempotencyKey: z.string().uuid(),
   approved: z.literal(true),
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
       const existingCommit = await github<{ sha: string; message: string }>(
         token, "/repos/" + repository + "/git/commits/" + existingRef.object.sha,
       );
-      if (existingCommit.sha !== existingRef.object.sha || !existingCommit.message.includes("SAMURA-PATCH-DIGEST:" + patchDigest)) {
+      if (existingCommit.sha !== existingRef.object.sha || !hasExpectedGitHubPatchDigest(existingCommit.message, patchDigest)) {
         return NextResponse.json({ error: "This idempotency key has already been used for a different patch. Generate a new approval key before publishing.", retryable: false }, { status: 409, headers: noStore });
       }
       const existingPulls = await github<Array<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>>(
