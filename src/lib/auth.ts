@@ -49,11 +49,24 @@ export const auth = betterAuth({
       // account-enumeration timing differences while keeping work in the
       // Next.js request lifecycle.
       after(async () => {
+        console.info("[auth] Password recovery email callback started.");
         try {
           await sendPasswordResetEmail({ to: user.email, url });
+          console.info("[auth] Password recovery email delivery completed.");
         } catch (error) {
-          const reason = error instanceof Error ? error.message : "unknown delivery error";
-          console.error("[auth] Password recovery email delivery failed.", reason);
+          const message = error instanceof Error ? error.message : "";
+          const providerStatus = message.match(/HTTP (\\d{3})/)?.[1];
+          const failureCode = providerStatus
+            ? `provider_http_${providerStatus}`
+            : message.includes("not configured")
+              ? "email_not_configured"
+              : message.includes("untrusted password recovery URL")
+                ? "untrusted_reset_url"
+                : "delivery_error";
+          console.error("[auth] Password recovery email delivery failed.", {
+            failureCode,
+            errorName: error instanceof Error ? error.name : "UnknownError",
+          });
         }
       });
     },
