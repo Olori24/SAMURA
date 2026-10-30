@@ -83,7 +83,7 @@ export function parseCsv(input: string): CsvTable {
   if (quoted) throw new Error("Invalid CSV: a quoted cell was not closed.");
   if (cell.length > 0 || row.length > 0 || closedQuote) {
     row.push(cellWasQuoted ? cell : cell.trim());
-    if (row.some(value => value.length > 0) || recordHasStructure) records.push(row);
+    if (row.some(value => value.length > 0) || recordHasStructure) pushRecord();
   }
   if (records.length < 2) throw new Error("CSV must contain a header row and at least one data row.");
 
