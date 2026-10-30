@@ -41,6 +41,11 @@ describe("parseCsv", () => {
     expect(summarizeNumericColumns(table).find(column => column.column === "a")?.missing).toBe(1);
   });
 
+  it("rejects files that exceed the parsed-record limit", () => {
+    const input = "value\n" + "x\n".repeat(100_001);
+    expect(() => parseCsv(input)).toThrow("no more than 100,000 data rows");
+  });
+
   it("rejects unterminated quoted cells", () => {
     expect(() => parseCsv('name,note\nAda,"unfinished')).toThrow("quoted cell was not closed");
   });

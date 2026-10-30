@@ -178,15 +178,12 @@ export async function POST(request: Request) {
             .limit(1)
             .for("update");
           if (lockedConversation && fullText.trim()) {
-            const currentHistory = await tx.select({
-              id: messages.id,
-              role: messages.role,
-              createdAt: messages.createdAt,
-            }).from(messages)
+            const [newestMessage] = await tx.select({ id: messages.id })
+              .from(messages)
               .where(and(eq(messages.conversationId, conversation.id), eq(messages.userId, user.id)))
-              .orderBy(desc(messages.createdAt), desc(messages.id));
-            const userTurnIndex = currentHistory.findIndex((item) => item.id === userMessage.id);
-            if (userTurnIndex === 0) {
+              .orderBy(desc(messages.createdAt), desc(messages.id))
+              .limit(1);
+            if (newestMessage?.id === userMessage.id) {
               await tx.insert(messages).values({
                 conversationId: conversation.id, userId: user.id, role: "assistant",
                 content: fullText, status: outcome === "complete" ? "complete" : "partial",

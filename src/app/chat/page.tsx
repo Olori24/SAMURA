@@ -260,6 +260,10 @@ export default function ChatPage() {
       setError("There are no messages to export yet.");
       return;
     }
+    if (hasOlderMessages) {
+      setError("Load all older messages before exporting so the file includes the complete conversation.");
+      return;
+    }
     const markdown = [
       "# " + title,
       "",
@@ -290,7 +294,7 @@ ${message.content}`),
       activeIdRef.current = data.conversation.id; setActiveId(data.conversation.id);
       setActiveTitle(data.conversation.title);
       setHasOlderMessages(false); setHistoryCursor(null);
-      await loadConversations(false);
+      await loadConversations(false).catch(() => setError("Conversation created, but the history list could not be refreshed."));
     } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); }
   }
 
@@ -305,7 +309,7 @@ ${message.content}`),
         const created = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
         if (!created.ok) throw new Error("Could not create a conversation.");
         const data = await created.json(); conversationId = data.conversation.id; activeIdRef.current = conversationId; setActiveId(conversationId); setActiveTitle(data.conversation.title); setArchiveMode(false); setHasOlderMessages(false); setHistoryCursor(null);
-        await loadConversations(false);
+        await loadConversations(false).catch(() => setError("Conversation created, but the history list could not be refreshed."));
       } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); return; }
     }
     const requestId = crypto.randomUUID();
@@ -367,7 +371,9 @@ ${message.content}`),
         status: streamUnsaved ? "unsaved" : streamCancelled ? "stopped" : received ? (streamFailed ? "partial" : "complete") : "failed",
       } : m));
       if (!received && !streamFailed && !streamCancelled) setError("The model returned an empty response. You can try again.");
-      await loadConversations(showArchivedRef.current);
+      await loadConversations(showArchivedRef.current).catch(() => {
+        setError("Your response was saved, but the conversation list could not be refreshed.");
+      });
     } catch(e) {
       const stopped = e instanceof DOMException && e.name === "AbortError";
       setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, status: stopped ? "stopped" : "failed", content: m.content } : m));
@@ -429,7 +435,9 @@ ${message.content}`),
         ...previous.slice(0, userIndex + 1),
         { id: data.messageId, role: "assistant", content: data.answer, status: "complete" },
       ]);
-      await loadConversations(showArchivedRef.current);
+      await loadConversations(showArchivedRef.current).catch(() => {
+        setError("Your regenerated response was saved, but the conversation list could not be refreshed.");
+      });
     } catch (e) {
       // The server commits the replacement only after generation succeeds;
       // leave the existing user and assistant messages untouched on failure.

@@ -1,3 +1,5 @@
+const MAX_CSV_RECORDS = 100_001;
+
 export type CsvTable = { headers: string[]; rows: string[][] };
 export type NumericSummary = {
   column: string;
@@ -19,6 +21,12 @@ export function parseCsv(input: string): CsvTable {
   let closedQuote = false;
   let cellWasQuoted = false;
   let recordHasStructure = false;
+  const pushRecord = () => {
+    if (records.length >= MAX_CSV_RECORDS) {
+      throw new Error("CSV files must contain no more than 100,000 data rows.");
+    }
+    records.push(row);
+  };
 
   for (let i = 0; i < text.length; i += 1) {
     const char = text[i];
@@ -60,7 +68,7 @@ export function parseCsv(input: string): CsvTable {
     if (char === "\n" || char === "\r") {
       if (char === "\r" && text[i + 1] === "\n") i += 1;
       row.push(cellWasQuoted ? cell : cell.trim());
-      if (row.some(value => value.length > 0) || recordHasStructure) records.push(row);
+      if (row.some(value => value.length > 0) || recordHasStructure) pushRecord();
       row = [];
       cell = "";
       closedQuote = false;

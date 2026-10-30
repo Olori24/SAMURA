@@ -51,9 +51,22 @@ export async function POST(request: Request) {
       prompt: parsed.data.prompt,
       size: parsed.data.size,
     });
-    const encoded = result.data?.[0]?.b64_json;
-    if (!encoded) return NextResponse.json({ error: "The image provider returned no image. Please try again." }, { status: 502 });
-    return NextResponse.json({ image: "data:image/png;base64," + encoded, revisedPrompt: result.data?.[0]?.revised_prompt ?? null });
+    const imageData = result.data?.[0];
+    const revisedPrompt = imageData?.revised_prompt ?? null;
+    if (imageData?.b64_json) {
+      return NextResponse.json({ image: "data:image/png;base64," + imageData.b64_json, revisedPrompt }, { headers: { "Cache-Control": "private, no-store" } });
+    }
+    if (imageData?.url) {
+      let imageUrl: URL;
+      try { imageUrl = new URL(imageData.url); } catch {
+        return NextResponse.json({ error: "The image provider returned an invalid image URL." }, { status: 502 });
+      }
+      if (imageUrl.protocol !== "https:" || imageUrl.username || imageUrl.password) {
+        return NextResponse.json({ error: "The image provider returned an unsafe image URL. HTTPS is required." }, { status: 502 });
+      }
+      return NextResponse.json({ image: imageUrl.toString(), revisedPrompt }, { headers: { "Cache-Control": "private, no-store" } });
+    }
+    return NextResponse.json({ error: "The image provider returned no image. Please try again." }, { status: 502 });
   } catch (error) {
     if (error instanceof OpenAI.APIError && error.status === 429) {
       return NextResponse.json({ error: "The image provider is busy or its quota is exhausted. Try again later." }, { status: 429 });
