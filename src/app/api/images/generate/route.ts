@@ -46,6 +46,30 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (imageConfig.provider === "gemini") {
+      const aspectRatio = parsed.data.size === "1536x1024" ? "3:2" : parsed.data.size === "1024x1536" ? "2:3" : "1:1";
+      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": imageConfig.apiKey },
+        body: JSON.stringify({
+          model: imageConfig.model,
+          input: parsed.data.prompt,
+          response_format: { type: "image", mime_type: "image/png", aspect_ratio: aspectRatio, image_size: "1K" },
+        }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(55_000),
+      });
+      if (response.status === 429) return NextResponse.json({ error: "Gemini image generation is busy or its quota is exhausted. Try again later." }, { status: 429 });
+      if (!response.ok) return NextResponse.json({ error: "Gemini could not generate this image. Check API access, model availability and billing." }, { status: 502 });
+      const interaction = await response.json() as { output_image?: { data?: string; mime_type?: string } };
+      const imageData = interaction.output_image?.data;
+      const mimeType = interaction.output_image?.mime_type ?? "image/png";
+      if (!imageData || !/^image\/(png|jpeg|webp)$/.test(mimeType)) {
+        return NextResponse.json({ error: "Gemini returned no supported image output. Please try again." }, { status: 502 });
+      }
+      return NextResponse.json({ image: "data:" + mimeType + ";base64," + imageData, revisedPrompt: null }, { headers: { "Cache-Control": "private, no-store" } });
+    }
+
     const client = new OpenAI({ apiKey: imageConfig.apiKey, ...(imageConfig.baseURL ? { baseURL: imageConfig.baseURL } : {}), timeout: 55_000, maxRetries: 0 });
     const result = await client.images.generate({
       model: imageConfig.model,
