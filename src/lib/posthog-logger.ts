@@ -19,7 +19,18 @@ export function logConversationCreate(outcome: ConversationCreateOutcome, stage?
 }
 
 export async function flushPostHogLogs() {
-  if (loggerProvider) {
-    await loggerProvider.forceFlush().catch(() => undefined);
+  if (!loggerProvider) return;
+
+  const flush = loggerProvider.forceFlush().catch(() => undefined);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      flush,
+      new Promise<void>(resolve => {
+        timeout = setTimeout(resolve, 750);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
 }
