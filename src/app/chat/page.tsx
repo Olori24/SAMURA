@@ -29,10 +29,14 @@ export default function ChatPage() {
   const [draft, setDraft] = useState("");
   const [mode, setMode] = useState<"chat" | "code">("chat");
   const [loadingHistory, setLoadingHistory] = useState(true);
-  const [streaming, setStreaming] = useState(false);\n  const [voiceListening, setVoiceListening] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [voiceListening, setVoiceListening] = useState(false);
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);\n  const speechRef = useRef<SpeechRecognitionLike | null>(null);\n  const mediaStreamRef = useRef<MediaStream | null>(null);\n  const speechTextRef = useRef("");
+  const abortRef = useRef<AbortController | null>(null);
+  const speechRef = useRef<SpeechRecognitionLike | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const speechTextRef = useRef("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadConversations = useCallback(async () => {
