@@ -1,4 +1,5 @@
 name: Apply non-breaking npm security fixes
+# Keep this temporary branch-only lockfile remediation isolated from production.
 
 on:
   push:
