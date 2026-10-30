@@ -35,6 +35,10 @@ jobs:
         env:
           PR_BRANCH: ${{ github.head_ref }}
         run: |
+          cp package-lock.json /tmp/samura-package-lock.generated.json
+          git fetch --no-tags origin "${PR_BRANCH}"
+          git checkout -B lockfile-refresh FETCH_HEAD
+          cp /tmp/samura-package-lock.generated.json package-lock.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package-lock.json
