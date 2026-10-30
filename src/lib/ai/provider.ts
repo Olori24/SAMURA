@@ -12,7 +12,6 @@ const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 const posthog = posthogProjectToken && posthogHost
   ? new PostHog(posthogProjectToken, {
       host: posthogHost,
-      enableExceptionAutocapture: true,
       flushAt: 1,
       flushInterval: 0,
       privacyMode: true,
