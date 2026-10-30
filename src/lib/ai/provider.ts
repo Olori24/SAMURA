@@ -64,8 +64,15 @@ export async function flushAIObservability(ai: ReturnType<typeof createAIClient>
 
   // Telemetry is best-effort. Never let a slow PostHog flush delay a successful AI response.
   const flush = ai.posthog.flush().catch(() => undefined);
-  await Promise.race([
-    flush,
-    new Promise<void>(resolve => setTimeout(resolve, 750)),
-  ]);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      flush,
+      new Promise<void>(resolve => {
+        timeout = setTimeout(resolve, 750);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
