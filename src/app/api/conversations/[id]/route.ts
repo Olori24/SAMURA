@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, lt, or } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -21,8 +21,15 @@ async function currentUser() {
   return session?.user ?? null;
 }
 
-export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   if (!isRuntimeConfigured()) return NextResponse.json({ error: "Conversation service is not configured." }, { status: 503 });
+  const url = new URL(request.url);
+  const before = url.searchParams.get("before");
+  const beforeId = url.searchParams.get("beforeId");
+  const beforeDate = before ? new Date(before) : null;
+  if ((before || beforeId) && (!beforeDate || Number.isNaN(beforeDate.getTime()) || !beforeId || !z.string().uuid().safeParse(beforeId).success)) {
+    return NextResponse.json({ error: "Invalid conversation history cursor." }, { status: 400 });
+  }
   try {
     const user = await currentUser();
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
@@ -33,13 +40,24 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
         id: conversations.id, title: conversations.title, createdAt: conversations.createdAt, updatedAt: conversations.updatedAt,
       }).from(conversations).where(and(eq(conversations.id, id), eq(conversations.userId, user.id))).limit(1);
       if (!conversation) return null;
-      const history = await tx.select({
+      const filters = [eq(messages.conversationId, id), eq(messages.userId, user.id)];
+      if (beforeDate && beforeId) {
+        filters.push(or(lt(messages.createdAt, beforeDate), and(eq(messages.createdAt, beforeDate), lt(messages.id, beforeId))));
+      }
+      const rows = await tx.select({
         id: messages.id, role: messages.role, content: messages.content, status: messages.status, createdAt: messages.createdAt,
-      }).from(messages).where(and(eq(messages.conversationId, id), eq(messages.userId, user.id)))
+      }).from(messages).where(and(...filters))
         .orderBy(desc(messages.createdAt), desc(messages.id))
-        .limit(500);
-      // Keep the most recent turns available while returning them in chronological order.
-      return { conversation, messages: history.reverse() };
+        .limit(501);
+      const hasMoreMessages = rows.length > 500;
+      const page = rows.slice(0, 500);
+      const oldest = page[page.length - 1];
+      return {
+        conversation,
+        messages: page.reverse(),
+        hasMoreMessages,
+        nextCursor: hasMoreMessages && oldest ? { createdAt: oldest.createdAt.toISOString(), id: oldest.id } : null,
+      };
     });
     if (!result) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
