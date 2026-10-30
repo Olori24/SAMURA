@@ -18,7 +18,6 @@ if (posthogProjectToken && posthogHost) {
   posthog.init(posthogProjectToken, {
     api_host: posthogHost,
     defaults: "2026-08-30",
-    capture_exceptions: true,
     autocapture: false,
     capture_pageview: false,
     capture_pageleave: false,
