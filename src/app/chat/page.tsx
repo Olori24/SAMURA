@@ -177,7 +177,10 @@ export default function ChatPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Could not archive this conversation.");
       setConversations(previous => previous.filter(item => item.id !== conversation.id));
-      if (activeId === conversation.id) { setActiveId(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null); }
+      if (activeId === conversation.id) {
+        conversationLoadRef.current += 1; olderRequestRef.current += 1; preserveScrollRef.current = null; setLoadingOlderMessages(false);
+        setActiveId(""); setActiveTitle(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not archive this conversation.");
     }
@@ -205,7 +208,10 @@ export default function ChatPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Could not delete this conversation.");
       setConversations(previous => previous.filter(item => item.id !== conversation.id));
-      if (activeId === conversation.id) { setActiveId(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null); }
+      if (activeId === conversation.id) {
+        conversationLoadRef.current += 1; olderRequestRef.current += 1; preserveScrollRef.current = null; setLoadingOlderMessages(false);
+        setActiveId(""); setActiveTitle(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not delete this conversation.");
     }
