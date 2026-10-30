@@ -11,7 +11,7 @@
 | Authentication | Better Auth session usage in chat; login redirect; sign-out | Implemented in source | Verify signup/login/reset flows against a deployed preview |
 | Chat streaming | `src/app/api/chat/route.ts` streams deltas and persists assistant output | Implemented in source | Test browser behavior, cancel/partial persistence, retries, provider failure |
 | Conversation persistence | `src/app/api/conversations/route.ts`, `src/app/api/conversations/[id]/route.ts` | Implemented in source | Rename/archive/delete, search message contents, export/share/fork are not confirmed |
-| Conversation search | `src/app/chat/page.tsx` filters loaded conversation titles | Partial | Search is limited to the loaded list (API currently returns at most 100) and title search only |
+| Conversation search | Chat sidebar and server-side search endpoint; searches conversation titles and message content | Implemented in source | Verify relevance, pagination and ownership isolation in authenticated browser tests |
 | Copy response | `copyMessage` in chat page | Implemented in source | Browser permission and accessibility behavior need E2E verification |
 | Stop generation | AbortController in chat page and API stream cancellation | Implemented in source | Verify abort and persisted partial response under real provider conditions |
 | Chat/Code modes | Request schema and system prompt in chat route | Implemented in source | This is prompt-level mode selection, not a separate code execution sandbox |
@@ -58,18 +58,18 @@
 
 ## Current evidence snapshot — 2026-10-30
 
-**Source commit:** `5051750eaa5339ba8a0b4dab0eafca6b5e0d438e` on `feat/chatgpt-capability-parity`.
+**Source commit:** `c993e8484082317b1d95bb13ac16b6dccfaf4f1a` on `feat/chatgpt-capability-parity`.
 
-- GitHub Actions SAMURA CI passed dependency installation, configured dependency security audit, TypeScript typecheck, lint, unit tests, and production build: https://github.com/Olori24/SAMURA/actions/runs/41091538317
-- Vercel produced a READY preview for this exact commit: https://samura-ojr6b0841-bakande11-2779s-projects.vercel.app
-- Vercel's 24-hour runtime-error query returned no errors. This is not a substitute for browser E2E tests or Sentry ingestion.
-- Automated preview browsing remains blocked by deployment access protection, so authenticated signup, chat, voice, image, research, GitHub OAuth/publish, and persistence journeys are not marked E2E-verified.
-- Conversation rename/archive/restore/delete, latest-turn edit, server-side regenerate, Markdown export, and cursor-based older-message loading are present in source. They still require authenticated browser acceptance tests.
-- CSV analysis runs locally in the browser; parser behavior, numeric summaries, and unique header naming have unit coverage. Chart rendering and summary export are implemented but do not yet have dedicated browser/component tests. It does not upload the selected file.
+- Vercel produced a READY preview for this exact commit: https://samura-1w3vp9f65-bakande11-2779s-projects.vercel.app
+- The exact commit's Vercel status check is successful. Vercel build output completed and enumerated the application routes. No GitHub Actions workflow run was returned for this commit, so dependency audit, typecheck, lint and unit-test results are not claimed here.
+- Public smoke checks returned HTTP 200 for `/api/health` and `/login`. The health endpoint reported `status: ok`. Authenticated browser journeys are not marked E2E-verified; protected API fetches could not be exercised through the temporary preview-access link.
+- Vercel's selected 24-hour runtime-error query returned no errors. This is not a substitute for authenticated browser E2E tests or Sentry ingestion.
+- Conversation rename/archive/restore/delete, latest-turn edit, server-side regenerate with usage accounting, Markdown export, and cursor-based older-message loading are present in source. They still require authenticated browser acceptance tests.
+- CSV analysis runs locally in the browser; parser behavior, numeric summaries, unique header naming, quoted whitespace preservation, and explicit empty-record preservation have unit tests in source. Chart rendering and summary export do not yet have dedicated browser/component tests. It does not upload the selected file.
 - Image generation and web research are implemented as provider-dependent routes, but the Vercel environment inventory did not contain `SAMURA_IMAGE_API_KEY` or `SAMURA_WEB_SEARCH_API_KEY`; neither capability is confirmed operational.
 - Browser dictation is not full voice conversation, speech output, or realtime audio.
 - Projects, durable user memory, broad file extraction/citations, sharing/forking, scheduled tasks and permissioned agent execution remain incomplete.
-- The GitHub publish workflow is implemented in source, but preview OAuth is not configured with a GitHub client secret, and the protected preview prevents end-to-end confirmation.
-- The application repository and Vercel environment inventory do not show Sentry or PostHog SDK configuration. The connected PostHog project reported no ingested events and no events seen in the last 30 days. Do not claim app-level monitoring or analytics are active.
+- The GitHub publish workflow is implemented in source, but preview OAuth is not configured with a GitHub client secret, and authenticated publish E2E remains unverified.
+- The application repository and Vercel environment inventory do not show Sentry or PostHog SDK configuration. The connected PostHog project currently reports zero outdated SDK issues and one `authorized_urls` health warning; this does not establish SAMURA event ingestion. Do not claim app-level monitoring or analytics are active.
 
 **Release boundary:** this evidence is from a feature-branch preview only. No merge to `main`, production deployment, production database change, or production secret change was performed.

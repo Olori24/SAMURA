@@ -108,10 +108,23 @@ The following is retained historical evidence only. Its exact source commit and 
 This section is historical and superseded by the later feature-branch commits. It supersedes no historical findings; it records the verification point for the source commit listed below.
 
 - Branch: `feat/chatgpt-capability-parity`
-- Source commit: `5051750eaa5339ba8a0b4dab0eafca6b5e0d438e` (historical)
+- Source commit: `5051750eaa5339ba8a0b4dab0eafca6b5e0d438e` (historical) (historical)
 - Lockfile blob at that commit: `eeaea3c05fa4e6853b88a67aeac43b205423239f`
 - GitHub Actions run: https://github.com/Olori24/SAMURA/actions/runs/41091538317
 - The configured dependency audit, TypeScript typecheck, lint, unit tests and production build all passed for that source commit.
 - Matching Vercel preview deployment reached READY: `samura-ojr6b0841-bakande11-2779s-projects.vercel.app`.
 - Vercel's selected 24-hour runtime-error query returned no errors; authenticated browser E2E remains blocked by preview access protection.
 - No production merge, deployment, database mutation, or production secret modification was performed.
+
+
+## Latest feature-branch verification — 2026-10-30
+
+- Branch: `feat/chatgpt-capability-parity`
+- Source commit: `c993e8484082317b1d95bb13ac16b6dccfaf4f1a`
+- Vercel deployment: READY, exact source commit, preview URL https://samura-1w3vp9f65-bakande11-2779s-projects.vercel.app
+- Vercel commit status: success. Build completed and route manifest was emitted.
+- Public smoke checks: `/api/health` and `/login` returned HTTP 200. Authenticated E2E is not verified; protected API checks could not be exercised through the temporary preview access link.
+- Vercel 24-hour runtime-error query: no runtime errors returned.
+- GitHub Actions workflow-run lookup returned no run for this exact commit; no claim is made that dependency audit, typecheck, lint or unit tests passed for this revision.
+- CodeRabbit full review requested for this exact revision; findings remain pending.
+- No production merge, deployment, database mutation or production secret modification was performed.
