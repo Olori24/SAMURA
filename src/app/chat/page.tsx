@@ -49,6 +49,10 @@ export default function ChatPage() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const speechTextRef = useRef("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const conversationLoadRef = useRef(0);
+  const olderRequestRef = useRef(0);
+  const preserveScrollRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
 
   const loadConversations = useCallback(async (archived = false) => {
     const response = await fetch("/api/conversations" + (archived ? "?archived=true" : ""), { cache: "no-store" });
@@ -60,11 +64,17 @@ export default function ChatPage() {
   }, [router]);
 
   const openConversation = useCallback(async (id: string) => {
+    const loadId = ++conversationLoadRef.current;
+    olderRequestRef.current += 1;
+    preserveScrollRef.current = null;
+    setLoadingOlderMessages(false);
     setError(""); setActiveId(id); setSidebarOpen(false); setMessages([]);
     setHasOlderMessages(false); setHistoryCursor(null);
     const response = await fetch("/api/conversations/" + id, { cache: "no-store" });
+    if (loadId !== conversationLoadRef.current) return;
     if (!response.ok) { setError(response.status === 404 ? "That conversation could not be found." : "Could not restore this conversation."); return; }
     const data = await response.json();
+    if (loadId !== conversationLoadRef.current) return;
     setActiveTitle(data.conversation.title);
     setMessages(data.messages);
     setHasOlderMessages(Boolean(data.hasMoreMessages));
@@ -73,21 +83,31 @@ export default function ChatPage() {
   
   async function loadOlderMessages() {
     const conversationId = activeId;
-    if (!conversationId || !historyCursor || loadingOlderMessages) return;
+    const cursor = historyCursor;
+    if (!conversationId || !cursor || loadingOlderMessages) return;
+    const loadId = conversationLoadRef.current;
+    const requestId = ++olderRequestRef.current;
+    const scrollContainer = messagesScrollRef.current;
+    const scrollPosition = scrollContainer
+      ? { scrollHeight: scrollContainer.scrollHeight, scrollTop: scrollContainer.scrollTop }
+      : null;
     setLoadingOlderMessages(true);
     try {
-      const params = new URLSearchParams({ before: historyCursor.createdAt, beforeId: historyCursor.id });
+      const params = new URLSearchParams({ before: cursor.createdAt, beforeId: cursor.id });
       const response = await fetch("/api/conversations/" + conversationId + "?" + params.toString(), { cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not load older messages.");
-      if (activeId !== conversationId) return;
+      if (requestId !== olderRequestRef.current || loadId !== conversationLoadRef.current || activeId !== conversationId) return;
+      preserveScrollRef.current = scrollPosition;
       setMessages(previous => [...data.messages, ...previous]);
       setHasOlderMessages(Boolean(data.hasMoreMessages));
       setHistoryCursor(data.nextCursor ?? null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load older messages.");
+      if (requestId === olderRequestRef.current && loadId === conversationLoadRef.current) {
+        setError(e instanceof Error ? e.message : "Could not load older messages.");
+      }
     } finally {
-      setLoadingOlderMessages(false);
+      if (requestId === olderRequestRef.current) setLoadingOlderMessages(false);
     }
   }
 
@@ -105,7 +125,16 @@ export default function ChatPage() {
     return () => { cancelled = true; };
   }, [session, isPending, router, loadConversations, openConversation]);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: streaming ? "auto" : "smooth" }); }, [messages, streaming]);
+  useEffect(() => {
+    const container = messagesScrollRef.current;
+    const previousPosition = preserveScrollRef.current;
+    if (container && previousPosition) {
+      preserveScrollRef.current = null;
+      container.scrollTop = previousPosition.scrollTop + (container.scrollHeight - previousPosition.scrollHeight);
+      return;
+    }
+    bottomRef.current?.scrollIntoView({ behavior: streaming ? "auto" : "smooth" });
+  }, [messages, streaming]);
 
   useEffect(() => () => {
     speechRef.current?.stop();
@@ -209,6 +238,7 @@ ${message.content}`),
   }
 
   async function newConversation() {
+    conversationLoadRef.current += 1; olderRequestRef.current += 1; preserveScrollRef.current = null; setLoadingOlderMessages(false);
     setError(""); setMessages([]); setActiveId(""); setActiveTitle(""); setSidebarOpen(false); setShowArchived(false); setHasOlderMessages(false); setHistoryCursor(null);
     try {
       const response = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
@@ -466,7 +496,7 @@ ${message.content}`),
     </aside>
     <section className="flex min-w-0 flex-1 flex-col">
       <header className="flex h-[65px] shrink-0 items-center justify-between border-b border-white/[0.08] px-4 sm:px-6"><div className="flex items-center gap-3"><button aria-label="Open navigation" onClick={()=>setSidebarOpen(true)} className="rounded-lg p-2 hover:bg-white/[0.06] md:hidden"><Menu size={19}/></button><div><p className="text-sm font-semibold">SAMURA Chat</p><p className="text-[11px] text-slate-500">Your private intelligence workspace</p></div></div><div className="flex items-center gap-1">{activeId && messages.length > 0 && <button type="button" onClick={exportActiveConversation} aria-label="Export conversation as Markdown" title="Export conversation" className="rounded-lg p-2 text-slate-400 hover:bg-white/[0.06] hover:text-white"><Download size={15}/></button>}<Link href="/studio" className="rounded-xl px-3 py-2 text-xs text-[var(--accent)] hover:bg-white/[0.06]">Studio</Link><button onClick={()=>void newConversation()} className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-400 hover:bg-white/[0.06] hover:text-white"><ChevronLeft className="hidden sm:block" size={15}/> New chat</button></div></header>
-      <div className="flex-1 overflow-y-auto">
+      <div ref={messagesScrollRef} className="flex-1 overflow-y-auto">
         {messages.length === 0 ? <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-center px-5 py-12"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl border border-[var(--accent)]/20 bg-[var(--accent)]/[0.07] text-[var(--accent)]"><Sparkles size={23}/></div><p className="text-xs font-bold uppercase tracking-[0.23em] text-[var(--accent)]">Your thinking space</p><h1 className="mt-3 font-[family-name:var(--font-space)] text-4xl tracking-tight sm:text-5xl">What are we working<br className="hidden sm:block"/> on today?</h1><p className="mt-5 max-w-lg text-sm leading-7 text-[var(--muted)]">Ask a question, explore an idea, or work through a challenge. Your conversations are saved to your account.</p><div className="mt-8 grid gap-3 sm:grid-cols-2">{["Help me turn an idea into a practical plan","Explain a complex topic in simple language","Review this code and help me debug it","Help me research a new business opportunity"].map(s=><button key={s} onClick={()=>setDraft(s)} className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-left text-sm text-slate-300 transition hover:border-[var(--accent)]/30 hover:bg-white/[0.045]">{s}<span className="mt-2 block text-xs text-slate-600">Use this prompt ↗</span></button>)}</div></div> :
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">{hasOlderMessages && <div className="mb-6 flex justify-center"><button type="button" onClick={() => void loadOlderMessages()} disabled={loadingOlderMessages} className="rounded-xl border border-white/10 px-4 py-2 text-xs text-slate-300 transition hover:bg-white/[0.05] disabled:opacity-50">{loadingOlderMessages ? "Loading older messages…" : "Load older messages"}</button></div>}{messages.map(m=><article key={m.id} className="mb-8 flex gap-3 sm:gap-4"><div className={"mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-xl " + (m.role==="assistant" ? "bg-[var(--accent)]/10 text-[var(--accent)]" : "bg-white/10 text-slate-300")}>{m.role==="assistant" ? <AudioWaveform size={17}/> : <span className="text-xs font-bold">YOU</span>}</div><div className="min-w-0 flex-1 pt-1"><div className="mb-2 flex items-center justify-between gap-3"><p className="text-xs font-semibold text-slate-400">{m.role==="assistant" ? "SAMURA" : "You"}</p><div className="flex items-center gap-1">{m.role === "user" && m.content && !streaming && messages.filter(item => item.role === "user").at(-1)?.id === m.id && <button type="button" onClick={() => void editLatestUserMessage(m)} aria-label="Edit latest message" title="Edit and resubmit this message" className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-200"><Pencil size={13}/><span>Edit</span></button>}{m.role === "assistant" && m.content && m.status !== "streaming" && <><button type="button" onClick={() => void regenerateResponse(m)} disabled={streaming || messages.filter(item => item.role === "assistant").at(-1)?.id !== m.id} aria-label="Regenerate response" title="Regenerate latest response" className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"><RotateCw size={13}/><span>Regenerate</span></button><button type="button" onClick={() => void copyMessage(m)} aria-label={copiedMessageId === m.id ? "Response copied" : "Copy response"} title={copiedMessageId === m.id ? "Copied" : "Copy response"} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-slate-500 transition hover:bg-white/[0.06] hover:text-slate-200">{copiedMessageId === m.id ? <Check size={13}/> : <Clipboard size={13}/>}<span>{copiedMessageId === m.id ? "Copied" : "Copy"}</span></button></>}</div></div>{m.content ? <div className="prose prose-invert prose-sm max-w-none break-words leading-7 prose-pre:overflow-x-auto prose-pre:rounded-xl prose-pre:border prose-pre:border-white/10 prose-pre:bg-black/30 prose-code:text-[var(--accent)] prose-a:text-[var(--accent)]"><ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown></div> : <span className="inline-flex items-center gap-2 text-sm text-slate-500"><LoaderCircle size={15} className="animate-spin"/>Thinking…</span>}{m.status==="failed" && <div className="mt-2 flex items-center gap-3 text-xs text-amber-300"><span>This response did not finish.</span><button onClick={() => { const previousUser = messages.slice(0, messages.indexOf(m)).reverse().find(item => item.role === "user"); if (previousUser) setDraft(previousUser.content); }} className="underline underline-offset-2 hover:text-white">Retry in composer</button></div>}{m.status==="stopped" && <p className="mt-2 text-xs text-slate-500">Generation stopped.</p>}</div></article>)}<div ref={bottomRef}/></div>}
       </div>
