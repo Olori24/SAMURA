@@ -46,6 +46,11 @@ describe("parseCsv", () => {
     expect(() => parseCsv(input)).toThrow("no more than 100,000 data rows");
   });
 
+  it("rejects an over-limit final record without a trailing newline", () => {
+    const input = "value\n" + "x\n".repeat(100_000) + "x";
+    expect(() => parseCsv(input)).toThrow("no more than 100,000 data rows");
+  });
+
   it("rejects unterminated quoted cells", () => {
     expect(() => parseCsv('name,note\nAda,"unfinished')).toThrow("quoted cell was not closed");
   });
