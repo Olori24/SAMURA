@@ -27,7 +27,8 @@
     "openai": "^5.8.2",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "@tailwindcss/typography": "^0.5.20"
+    "@tailwindcss/typography": "^0.5.20",
+    "@sentry/nextjs": "^11.10.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
