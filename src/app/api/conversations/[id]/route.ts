@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, or } from "drizzle-orm";
+import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -40,8 +40,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         id: conversations.id, title: conversations.title, createdAt: conversations.createdAt, updatedAt: conversations.updatedAt,
       }).from(conversations).where(and(eq(conversations.id, id), eq(conversations.userId, user.id))).limit(1);
       if (!conversation) return null;
+      const cursorTimestamp = sql`date_trunc('milliseconds', ${messages.createdAt})`;
       const cursorFilter = beforeDate && beforeId
-        ? or(lt(messages.createdAt, beforeDate), and(eq(messages.createdAt, beforeDate), lt(messages.id, beforeId)))
+        ? or(lt(cursorTimestamp, beforeDate), and(eq(cursorTimestamp, beforeDate), lt(messages.id, beforeId)))
         : undefined;
       const historyFilter = cursorFilter
         ? and(eq(messages.conversationId, id), eq(messages.userId, user.id), cursorFilter)
@@ -49,7 +50,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       const rows = await tx.select({
         id: messages.id, role: messages.role, content: messages.content, status: messages.status, createdAt: messages.createdAt,
       }).from(messages).where(historyFilter)
-        .orderBy(desc(messages.createdAt), desc(messages.id))
+        .orderBy(desc(cursorTimestamp), desc(messages.id))
         .limit(501);
       const hasMoreMessages = rows.length > 500;
       const page = rows.slice(0, 500);

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -31,6 +31,8 @@ export default function ChatPage() {
   const [searchResults, setSearchResults] = useState<Conversation[]>([]);
   const [conversationSearch, setConversationSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const showArchivedRef = useRef(false);
+  const activeIdRef = useRef("");
   const [copiedMessageId, setCopiedMessageId] = useState("");
   const [activeId, setActiveId] = useState("");
   const [activeTitle, setActiveTitle] = useState("");
@@ -52,6 +54,7 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
   const conversationLoadRef = useRef(0);
+  const setArchiveMode = (value: boolean) => { showArchivedRef.current = value; setShowArchived(value); };
   const olderRequestRef = useRef(0);
   const searchRequestRef = useRef(0);
   const preserveScrollRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
@@ -70,7 +73,7 @@ export default function ChatPage() {
     olderRequestRef.current += 1;
     preserveScrollRef.current = null;
     setLoadingOlderMessages(false);
-    setError(""); setActiveId(id); setSidebarOpen(false); setMessages([]);
+    setError(""); activeIdRef.current = id; setActiveId(id); setSidebarOpen(false); setMessages([]);
     setHasOlderMessages(false); setHistoryCursor(null);
     const response = await fetch("/api/conversations/" + id, { cache: "no-store" });
     if (loadId !== conversationLoadRef.current) return;
@@ -154,7 +157,7 @@ export default function ChatPage() {
     };
   }, [conversationSearch, showArchived, loadConversations, router]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = messagesScrollRef.current;
     const previousPosition = preserveScrollRef.current;
     if (container && previousPosition) {
@@ -170,6 +173,9 @@ export default function ChatPage() {
     mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
     mediaStreamRef.current = null;
   }, []);
+
+  useEffect(() => { showArchivedRef.current = showArchived; }, [showArchived]);
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
 
   const visibleConversations = conversationSearch.trim() ? searchResults : conversations;
 
@@ -206,7 +212,7 @@ export default function ChatPage() {
       setConversations(previous => previous.filter(item => item.id !== conversation.id));
       if (activeId === conversation.id) {
         conversationLoadRef.current += 1; olderRequestRef.current += 1; preserveScrollRef.current = null; setLoadingOlderMessages(false);
-        setActiveId(""); setActiveTitle(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null);
+        activeIdRef.current = ""; setActiveId(""); setActiveTitle(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not archive this conversation.");
@@ -237,7 +243,7 @@ export default function ChatPage() {
       setConversations(previous => previous.filter(item => item.id !== conversation.id));
       if (activeId === conversation.id) {
         conversationLoadRef.current += 1; olderRequestRef.current += 1; preserveScrollRef.current = null; setLoadingOlderMessages(false);
-        setActiveId(""); setActiveTitle(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null);
+        activeIdRef.current = ""; setActiveId(""); setActiveTitle(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not delete this conversation.");
@@ -272,12 +278,12 @@ ${message.content}`),
 
   async function newConversation() {
     conversationLoadRef.current += 1; olderRequestRef.current += 1; preserveScrollRef.current = null; setLoadingOlderMessages(false);
-    setError(""); setMessages([]); setActiveId(""); setActiveTitle(""); setSidebarOpen(false); setShowArchived(false); setHasOlderMessages(false); setHistoryCursor(null);
+    setError(""); setMessages([]); activeIdRef.current = ""; setActiveId(""); setActiveTitle(""); setSidebarOpen(false); setArchiveMode(false); setHasOlderMessages(false); setHistoryCursor(null);
     try {
       const response = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
       if (!response.ok) { const data = await response.json().catch(()=>({})); throw new Error(data.error ?? "Could not create a conversation."); }
       const data = await response.json();
-      setActiveId(data.conversation.id);
+      activeIdRef.current = data.conversation.id; setActiveId(data.conversation.id);
       setActiveTitle(data.conversation.title);
       setHasOlderMessages(false); setHistoryCursor(null);
       await loadConversations(false);
@@ -294,7 +300,7 @@ ${message.content}`),
       try {
         const created = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
         if (!created.ok) throw new Error("Could not create a conversation.");
-        const data = await created.json(); conversationId = data.conversation.id; setActiveId(conversationId); setActiveTitle(data.conversation.title); setShowArchived(false); setHasOlderMessages(false); setHistoryCursor(null);
+        const data = await created.json(); conversationId = data.conversation.id; activeIdRef.current = conversationId; setActiveId(conversationId); setActiveTitle(data.conversation.title); setArchiveMode(false); setHasOlderMessages(false); setHistoryCursor(null);
         await loadConversations(false);
       } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); return; }
     }
@@ -310,7 +316,7 @@ ${message.content}`),
         const data = await response.json().catch(() => ({}));
         // The server may have persisted the user turn before the provider failed.
         // Reload so the UI uses its durable message ID rather than the optimistic ID.
-        await openConversation(conversationId);
+        if (activeIdRef.current === conversationId) await openConversation(conversationId);
         throw new Error(data.error ?? "The response could not be generated.");
       }
       if (!response.body) throw new Error("Streaming is unavailable in this browser.");
@@ -357,7 +363,7 @@ ${message.content}`),
         status: streamUnsaved ? "unsaved" : streamCancelled ? "stopped" : received ? (streamFailed ? "partial" : "complete") : "failed",
       } : m));
       if (!received && !streamFailed && !streamCancelled) setError("The model returned an empty response. You can try again.");
-      await loadConversations(showArchived);
+      await loadConversations(showArchivedRef.current);
     } catch(e) {
       const stopped = e instanceof DOMException && e.name === "AbortError";
       setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, status: stopped ? "stopped" : "failed", content: m.content } : m));
@@ -396,11 +402,12 @@ ${message.content}`),
       return;
     }
 
+    const requestConversationId = activeId;
     setError("");
     setStreaming(true);
     try {
       const response = await fetch(
-        "/api/conversations/" + activeId + "/messages/" + previousUser.id + "/regenerate",
+        "/api/conversations/" + requestConversationId + "/messages/" + previousUser.id + "/regenerate",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -412,12 +419,13 @@ ${message.content}`),
       if (typeof data.answer !== "string" || typeof data.messageId !== "string") {
         throw new Error("The regenerated response was incomplete. Your previous response has been preserved.");
       }
+      if (activeIdRef.current !== requestConversationId) return;
       const userIndex = messages.findIndex((item) => item.id === previousUser.id);
       setMessages((previous) => [
         ...previous.slice(0, userIndex + 1),
         { id: data.messageId, role: "assistant", content: data.answer, status: "complete" },
       ]);
-      await loadConversations(showArchived);
+      await loadConversations(showArchivedRef.current);
     } catch (e) {
       // The server commits the replacement only after generation succeeds;
       // leave the existing user and assistant messages untouched on failure.

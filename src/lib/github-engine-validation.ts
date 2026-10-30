@@ -29,6 +29,7 @@ export function isSafeGitHubPatchPath(path: string) {
   // code outside the scope of model-generated patches.
   const protectedPrefixes = [
     "src/app/api/auth/",
+    "src/app/api/capabilities/",
     "src/app/api/connectors/",
     "src/app/api/conversations/",
     "src/app/api/chat/",

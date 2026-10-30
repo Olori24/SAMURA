@@ -10,6 +10,7 @@ describe("isSafeGitHubPatchPath", () => {
   it.each([
     "src/app/api/connectors/github/publish/route.ts",
     "src/app/api/auth/route.ts",
+    "src/app/api/capabilities/route.ts",
     "src/app/api/conversations/[id]/route.ts",
     "src/app/api/chat/route.ts",
     "src/app/studio/github-engine/page.tsx",

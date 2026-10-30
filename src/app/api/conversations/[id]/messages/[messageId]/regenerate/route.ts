@@ -70,6 +70,7 @@ export async function POST(request: Request, context: {
       return {
         status: "ok" as const,
         history: history.slice(0, targetIndex + 1) as HistoryMessage[],
+        snapshotIds: history.map((item) => item.id),
       };
     });
 
@@ -124,6 +125,7 @@ export async function POST(request: Request, context: {
       const targetIndex = history.findIndex((item) => item.id === messageId);
       if (targetIndex < 0 || history[targetIndex].role !== "user") return null;
       if (history.slice(targetIndex + 1).some((item) => item.role === "user")) return null;
+      if (history.length !== setup.snapshotIds.length || history.some((item, index) => item.id !== setup.snapshotIds[index])) return null;
 
       const removeIds = history.slice(targetIndex + 1).map((item) => item.id);
       if (removeIds.length) {
