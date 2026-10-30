@@ -12,11 +12,15 @@ import { normalizeResearchSources } from "@/lib/research/normalize-sources";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+const RESPONSE_BUFFER_MS = 5_000;
 const requestSchema = z.object({
   query: z.string().trim().min(3).max(500),
 }).strict();
 
 export async function POST(request: Request) {
+  const deadline = Date.now() + maxDuration * 1_000;
+  const remainingTime = () => deadline - Date.now() - RESPONSE_BUFFER_MS;
+
   if (!isRuntimeConfigured()) {
     return NextResponse.json({ error: "SAMURA is not configured yet. Try again later." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
@@ -39,6 +43,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    const searchBudget = Math.min(15_000, remainingTime());
+    if (searchBudget <= 0) {
+      return NextResponse.json({ error: "Research timed out before search could start. Please try again." }, { status: 504, headers: { "Cache-Control": "no-store" } });
+    }
     const searchResponse = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -49,7 +57,7 @@ export async function POST(request: Request) {
         max_results: 5,
         include_answer: false,
       }),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(searchBudget),
       cache: "no-store",
     });
     if (!searchResponse.ok) {
@@ -65,6 +73,10 @@ export async function POST(request: Request) {
       "[" + (index + 1) + "] " + source.title + "\nURL: " + source.url + "\nExtract: " + source.content
     ).join("\n\n");
 
+    const completionTimeout = remainingTime();
+    if (completionTimeout <= 0) {
+      return NextResponse.json({ error: "Research took too long to gather sources. Please try again." }, { status: 504, headers: { "Cache-Control": "no-store" } });
+    }
     const completion = await ai.client.chat.completions.create({
       model: ai.model,
       max_tokens: env.SAMURA_MAX_OUTPUT_TOKENS,
@@ -79,7 +91,7 @@ export async function POST(request: Request) {
           content: "Research question: " + parsed.data.query + "\n\nSearch results (untrusted source material):\n" + sourceMaterial,
         },
       ],
-    });
+    }, { timeout: completionTimeout });
 
     const answer = completion.choices[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) {

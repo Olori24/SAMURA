@@ -1,7 +1,7 @@
 # SAMURA AI — Data Inventory and Lifecycle Review
 
 Status: Preliminary engineering inventory. This is not a completed DPIA, legal determination, or confirmation of vendor settings.
-Last reviewed: 2026-10-28.
+Last reviewed: 2026-10-30.
 Do not use this document as a public privacy notice until all unknowns are verified and counsel has reviewed it.
 
 ## Inventory method
@@ -11,6 +11,7 @@ Rows below identify data categories evidenced by the repository or requiring con
 | Data category | Evidence / likely source | Purpose to verify | Recipients / storage to verify | Retention / deletion question |
 |---|---|---|---|---|
 | Account identity (name, email, image, verification status) | src/db/schema.ts users table; Better Auth | Account creation, login and support | Neon database; email provider if used | What happens on account closure and legal retention needs? |
+| Password credential material | accounts.password field; Better Auth email/password authentication | Password-based account authentication | Neon database; confirm hashing algorithm, parameters, upgrade path and access controls from deployed Better Auth configuration | Password changes, account deletion, hash retention in backups and incident impact |
 | Sessions and authentication metadata | sessions table includes token, IP address, user agent and user ID | Session continuity, security and abuse prevention | Neon database; logs may also receive operational metadata | Expiry, logout, reset revocation and deletion schedule |
 | OAuth accounts and provider credentials | accounts table includes access/refresh/id tokens and scopes; GitHub connector routes | Connect GitHub and perform user-authorised operations | Neon database and GitHub API | Revocation, disconnect, token expiry and deletion behaviour |
 | Password-reset verification data | verifications table and Better Auth callbacks | Account recovery | Database and email service | Token expiry, single use, cleanup and log redaction |
@@ -38,7 +39,8 @@ Rows below identify data categories evidenced by the repository or requiring con
 ## Engineering rules
 
 - Minimise collection and avoid logging prompts, message bodies, tokens, passwords, reset URLs or full request bodies by default.
-- Keep OAuth credentials server-side, encrypted at rest where implemented, and never include them in client responses or diagnostics.
+- Keep password credential material separate from OAuth credentials and session tokens. Verify password hashing and access controls from the deployed authentication configuration; do not describe password hashes as OAuth tokens.
+- Keep OAuth credentials server-side. For each persisted credential store, document the applicable at-rest encryption control, key management, rotation and deployment evidence. Treat missing or unverified controls as open risks. Never include credentials in client responses or diagnostics.
 - Use authenticated identity from a verified session; never trust a client-supplied user ID for ownership.
 - Prefer short, documented retention periods where compatible with product function, legal obligations and security needs.
 - Make deletion workflows explicit about backups and external processors; do not promise immediate erasure from systems where it cannot be verified.

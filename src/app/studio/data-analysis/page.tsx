@@ -7,8 +7,8 @@ import { parseCsv, summarizeNumericColumns, type CsvTable } from "@/lib/csv-anal
 
 function csvEscape(value: string | number) {
   let text = String(value);
-  if (typeof value === "string" && /^[\t\r ]*[=+\-@]/.test(text)) text = "'" + text;
-  return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+  if (typeof value === "string" && /^[\\t\\r ]*[=+\\-@]/.test(text)) text = "'" + text;
+  return /[",\\r\\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
 }
 
 export default function DataAnalysisPage() {
@@ -19,10 +19,13 @@ export default function DataAnalysisPage() {
   const summaries = table ? summarizeNumericColumns(table) : [];
   const chartSummary = summaries[0];
   const chartColumnIndex = chartSummary && table ? table.headers.indexOf(chartSummary.column) : -1;
-  const chartRows = table && chartSummary ? table.rows.slice(0, 20).map((row, index) => ({
-    label: row[0]?.trim() || `Row ${index + 1}`,
-    value: Number(row[chartColumnIndex]),
-  })).filter((row) => Number.isFinite(row.value)) : [];
+  const chartRows = table && chartSummary ? table.rows.slice(0, 20).map((row, index) => {
+    const rawValue = row[chartColumnIndex];
+    return {
+      label: row[0]?.trim() || `Row ${index + 1}`,
+      value: rawValue?.trim() ? Number(rawValue) : Number.NaN,
+    };
+  }).filter((row) => Number.isFinite(row.value)) : [];
   const chartScale = Math.max(1, ...chartRows.map((row) => Math.abs(row.value)));
 
   async function loadFile(file?: File) {
@@ -55,7 +58,7 @@ export default function DataAnalysisPage() {
       ["Column", "Count", "Missing", "Mean", "Median", "Minimum", "Maximum"],
       ...summaries.map((item) => [item.column, item.count, item.missing, item.mean, item.median, item.min, item.max]),
     ];
-    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
+    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\\r\\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a");
     anchor.href = url;

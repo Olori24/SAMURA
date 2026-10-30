@@ -6,7 +6,11 @@ export interface ImageProviderEnv {
 }
 
 export function getImageProviderConfig(env: ImageProviderEnv) {
-  const apiKey = env.SAMURA_IMAGE_API_KEY ?? env.OPENAI_API_KEY;
+  // A legacy key is safe only for the default compatible provider endpoint.
+  // Custom endpoints must have their own explicitly configured credential.
+  const apiKey = env.SAMURA_IMAGE_BASE_URL
+    ? env.SAMURA_IMAGE_API_KEY
+    : env.SAMURA_IMAGE_API_KEY ?? env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
   return {

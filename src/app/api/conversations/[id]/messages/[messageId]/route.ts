@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -41,25 +41,37 @@ export async function DELETE(_request: Request, context: {
         .limit(1);
       if (!conversation) return "not_found" as const;
 
+      // Look up the target directly under both ownership constraints. Do not
+      // let a bounded history window make older messages appear nonexistent.
+      const [target] = await tx.select({
+        id: messages.id,
+        role: messages.role,
+        createdAt: messages.createdAt,
+      }).from(messages).where(and(
+        eq(messages.id, messageId),
+        eq(messages.conversationId, id),
+        eq(messages.userId, user.id),
+      )).limit(1);
+      if (!target || target.role !== "user") return "not_found" as const;
+
+      // Read the complete scoped conversation so a large history cannot hide a
+      // later user turn. The ID is a deterministic tie-breaker for equal times.
       const history = await tx.select({
         id: messages.id,
         role: messages.role,
         createdAt: messages.createdAt,
       }).from(messages)
         .where(and(eq(messages.conversationId, id), eq(messages.userId, user.id)))
-        .orderBy(messages.createdAt, messages.id)
-        .limit(500);
+        .orderBy(asc(messages.createdAt), asc(messages.id));
 
-      const targetIndex = history.findIndex((message) => message.id === messageId);
-      if (targetIndex < 0 || history[targetIndex].role !== "user") return "not_found" as const;
-
-      // Editing is deliberately limited to the most recent user turn. This avoids
-      // silently rewriting earlier context or deleting later user messages.
+      const targetIndex = history.findIndex((message) => message.id === target.id);
+      if (targetIndex < 0) return "not_found" as const;
       if (history.slice(targetIndex + 1).some((message) => message.role === "user")) {
         return "not_latest" as const;
       }
 
       const idsToDelete = history.slice(targetIndex).map((message) => message.id);
+      if (!idsToDelete.length) return "not_found" as const;
       await tx.delete(messages).where(and(
         eq(messages.conversationId, id),
         eq(messages.userId, user.id),

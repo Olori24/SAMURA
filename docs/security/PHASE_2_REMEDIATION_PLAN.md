@@ -1,14 +1,15 @@
 # SAMURA AI — Phase 2 Privacy, Legal and Security Remediation Plan
 
 Status: Working document; not a certification or completed audit.
-Branch: chore/privacy-legal-risk-reduction
+Branch: Historical evidence from `chore/privacy-legal-risk-reduction`; this is not the current feature branch.
+Source commit for the historical evidence: not recorded in the retained audit notes. Do not treat the historical findings or CI run below as evidence for the current branch head.
 Baseline reviewed: repository main branch and available GitHub/Vercel metadata on 2026-10-28.
 Scope: repository review and non-destructive validation. No production changes authorized by this document.
 
 ## Operating guardrails
 
 - Preserve current product functionality, design, routes and customer data.
-- Work on this branch; do not merge, publish policies, or deploy without explicit approval.
+- Work on an isolated branch; do not merge, publish policies, or deploy without explicit approval.
 - Do not change production secrets, database roles, migrations, data, domains or traffic routing without a separate, specific confirmation.
 - Never place secret values, customer content, tokens, production records or personal data in reports.
 - Treat provider behaviour and legal applicability as unverified until checked against current authoritative terms and actual account settings.
@@ -84,18 +85,19 @@ Scope: repository review and non-destructive validation. No production changes a
 ## Current verification status
 
 - Repository inspection: performed for selected files and metadata.
-- Branch created: yes.
-- Existing `drizzle/0005_user_documents.sql` was inspected after a duplicate migration draft was briefly added; the duplicate draft was removed from the branch before completion.
-- Application tests executed in a controlled runtime: not yet.
+- Branch created: yes, on the historical Phase 2 workstream.
+- Application tests executed in a controlled runtime: not evidenced by the retained historical notes.
 - Production database or secrets changed: no.
 - Public policies published: no.
 - Main branch merged or production deployed: no.
 - Legal approval: not obtained.
 
-## CI evidence from Phase 2 branch (2026-10-28)
+## Historical CI evidence from Phase 2 branch (2026-10-28)
+
+The following is retained historical evidence only. Its exact source commit and lockfile revision were not recorded in the audit notes, so the version findings must not be represented as a current dependency audit.
 
 - The first branch CI run completed dependency installation and failed the dependency audit before typecheck, lint, unit tests, or production build could run.
-- Audit output reported 3 vulnerabilities: 1 critical affecting the installed Next.js range 16.0.0–16.4.0 (GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r, GHSA-673q-mjm6-r5xr) and 2 high findings including Zod memory exhaustion (GHSA-mrhx-c7xc-m3w5). The audit report says the straightforward Zod fix would force Zod 4, a breaking major-version change. Do not apply a blind forced dependency upgrade; first review the current lockfile, compatibility, and vendor advisories, then update and test on this branch.
+- The historical audit output reported 3 vulnerabilities: 1 critical affecting the installed Next.js range 16.0.0–16.4.0 (GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r, GHSA-673q-mjm6-r5xr) and 2 high findings including Zod memory exhaustion (GHSA-mrhx-c7xc-m3w5). The audit report said the straightforward Zod fix would force Zod 4, a breaking major-version change. Do not apply a blind forced dependency upgrade; review the current lockfile, compatibility, and vendor advisories first.
 - CI was adjusted so typecheck, lint, unit tests, and production build still execute after the audit step fails, while the overall workflow remains failed until the security audit passes. This prevents a dependency finding from masking unrelated regressions.
-- The chat streaming response no longer returns `X-SAMURA-Provider` and `X-SAMURA-Model` headers. No UI consumer of those headers was found in the repository search; provider selection remains server-side. This is a limited metadata-disclosure reduction, not a substitute for broader security testing.
-- Current CI run for the first pass: https://github.com/Olori24/SAMURA/actions/runs/40725461514. It failed at dependency audit, so no claim is made that typecheck, lint, tests, or build passed on that run.
+- The chat streaming response no longer returns `X-SAMURA-Provider` and `X-SAMURA-Model` headers. This is a limited metadata-disclosure reduction, not a substitute for broader security testing.
+- Historical CI run: https://github.com/Olori24/SAMURA/actions/runs/40725461514. It failed at dependency audit, so no claim is made that typecheck, lint, tests, or build passed on that run.
