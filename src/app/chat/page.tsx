@@ -162,7 +162,7 @@ export default function ChatPage() {
       mediaStreamRef.current?.getTracks().forEach(track => track.stop());
       return;
     }
-    if (voiceStartingRef.current || streaming) return;
+    if (voiceStartingRef.current || speechRef.current || streaming) return;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
       setError("Microphone access requires HTTPS and a browser that supports microphone permissions.");
       return;
