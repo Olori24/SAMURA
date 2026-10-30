@@ -53,6 +53,7 @@ export default function ChatPage() {
   const messagesScrollRef = useRef<HTMLDivElement>(null);
   const conversationLoadRef = useRef(0);
   const olderRequestRef = useRef(0);
+  const searchRequestRef = useRef(0);
   const preserveScrollRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
 
   const loadConversations = useCallback(async (archived = false) => {
@@ -127,6 +128,35 @@ export default function ChatPage() {
   }, [session, isPending, router, loadConversations, openConversation]);
 
   useEffect(() => {
+    const query = conversationSearch.trim();
+    if (!query) {
+      setSearchResults([]);
+      if (searchRequestRef.current > 0) {
+        void loadConversations(showArchived).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load conversations."));
+      }
+      return;
+    }
+    const requestId = ++searchRequestRef.current;
+    setSearchResults([]);
+    const timer = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ q: query, archived: String(showArchived) });
+        const response = await fetch("/api/conversations?" + params.toString(), { cache: "no-store" });
+        if (response.status === 401) { router.replace("/login"); return; }
+        if (!response.ok) throw new Error("Could not search your conversations.");
+        const data = await response.json();
+        if (requestId === searchRequestRef.current) setSearchResults(data.conversations);
+      } catch (cause) {
+        if (requestId === searchRequestRef.current) setError(cause instanceof Error ? cause.message : "Could not search your conversations.");
+      }
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+      if (searchRequestRef.current === requestId) searchRequestRef.current += 1;
+    };
+  }, [conversationSearch, showArchived, loadConversations, router]);
+
+  useEffect(() => {
     const container = messagesScrollRef.current;
     const previousPosition = preserveScrollRef.current;
     if (container && previousPosition) {
@@ -143,9 +173,7 @@ export default function ChatPage() {
     mediaStreamRef.current = null;
   }, []);
 
-  const visibleConversations = conversations.filter((conversation) =>
-    conversation.title.toLocaleLowerCase().includes(conversationSearch.trim().toLocaleLowerCase())
-  );
+  const visibleConversations = conversationSearch.trim() ? searchResults : conversations;
 
   async function renameConversation(conversation: Conversation) {
     const entered = window.prompt("Rename conversation", conversation.title);
@@ -508,10 +536,10 @@ ${message.content}`),
     <aside className={(sidebarOpen ? "translate-x-0" : "-translate-x-full") + " fixed inset-y-0 left-0 z-30 flex w-[285px] flex-col border-r border-white/10 bg-[#0b0f18] p-4 transition-transform md:static md:z-auto md:translate-x-0"}>
       <div className="flex items-center justify-between px-2 py-2"><Link href="/" className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-[var(--accent)]"><AudioWaveform size={20}/></span><span className="font-[family-name:var(--font-space)] tracking-[0.16em]">SAMURA</span></Link><button aria-label="Close sidebar" onClick={()=>setSidebarOpen(false)} className="md:hidden"><X size={18}/></button></div>
       <button onClick={newConversation} className="mt-7 flex items-center gap-3 rounded-xl border border-white/10 px-4 py-3 text-sm text-slate-200 transition hover:border-[var(--accent)]/40 hover:bg-white/[0.04]"><MessageSquarePlus size={17} className="text-[var(--accent)]"/> New conversation</button>
-      <label htmlFor="conversation-search" className="mb-2 mt-6 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5 text-slate-500 focus-within:border-[var(--accent)]/40"><Search size={15} aria-hidden="true"/><input id="conversation-search" type="search" value={conversationSearch} onChange={(event) => setConversationSearch(event.target.value)} placeholder="Search conversations" aria-label="Search conversation titles" className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"/></label>
+      <label htmlFor="conversation-search" className="mb-2 mt-6 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5 text-slate-500 focus-within:border-[var(--accent)]/40"><Search size={15} aria-hidden="true"/><input id="conversation-search" type="search" value={conversationSearch} onChange={(event) => setConversationSearch(event.target.value)} placeholder="Search conversations and messages" aria-label="Search conversation titles and messages" className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-600"/></label>
       <button type="button" onClick={() => { const next = !showArchived; setShowArchived(next); setConversationSearch(""); setError(""); void loadConversations(next).catch((e) => setError(e instanceof Error ? e.message : "Could not load archived conversations.")); }} className="mt-3 flex w-full items-center justify-between rounded-xl border border-white/10 px-3 py-2.5 text-xs text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span className="flex items-center gap-2"><Archive size={14}/>{showArchived ? "Back to recent conversations" : "View archived conversations"}</span><span>{showArchived ? "Recent" : "Archived"}</span></button>
       <p className="mb-3 mt-4 px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{conversationSearch.trim() ? "Search results" : showArchived ? "Archived conversations" : "Recent conversations"}</p>
-      <nav aria-label="Conversation history" className="flex-1 space-y-1 overflow-y-auto">{visibleConversations.map(c=><div key={c.id} className={"group flex items-center gap-0.5 rounded-xl transition " + (activeId===c.id ? "bg-white/[0.08]" : "hover:bg-white/[0.04]")}><button onClick={()=>void openConversation(c.id)} title={c.title} className={"min-w-0 flex-1 truncate rounded-xl px-3 py-3 text-left text-sm transition " + (activeId===c.id ? "text-white" : "text-slate-400 hover:text-slate-200")}>{c.title}</button><button type="button" aria-label={"Rename " + c.title} title="Rename conversation" onClick={()=>void renameConversation(c)} className="rounded-lg p-2 text-slate-500 transition hover:bg-white/[0.08] hover:text-white"><Pencil size={13}/></button>{showArchived ? <button type="button" aria-label={"Restore " + c.title} title="Restore conversation" onClick={()=>void restoreConversation(c)} className="rounded-lg p-2 text-slate-500 transition hover:bg-white/[0.08] hover:text-white"><RotateCw size={13}/></button> : <button type="button" aria-label={"Archive " + c.title} title="Archive conversation" onClick={()=>void archiveConversation(c)} className="rounded-lg p-2 text-slate-500 transition hover:bg-white/[0.08] hover:text-white"><Archive size={13}/></button>}<button type="button" aria-label={"Delete " + c.title} title="Delete conversation permanently" onClick={()=>void deleteConversation(c)} className="rounded-lg p-2 text-slate-500 transition hover:bg-red-400/10 hover:text-red-200"><Trash2 size={13}/></button></div>)}{!visibleConversations.length && <p className="px-3 py-2 text-xs leading-5 text-slate-600">{conversations.length ? "No conversations match your search." : "Your conversations will appear here."}</p>}</nav>
+      <nav aria-label="Conversation history" className="flex-1 space-y-1 overflow-y-auto">{visibleConversations.map(c=><div key={c.id} className={"group flex items-center gap-0.5 rounded-xl transition " + (activeId===c.id ? "bg-white/[0.08]" : "hover:bg-white/[0.04]")}><button onClick={()=>void openConversation(c.id)} title={c.title} className={"min-w-0 flex-1 truncate rounded-xl px-3 py-3 text-left text-sm transition " + (activeId===c.id ? "text-white" : "text-slate-400 hover:text-slate-200")}>{c.title}</button><button type="button" aria-label={"Rename " + c.title} title="Rename conversation" onClick={()=>void renameConversation(c)} className="rounded-lg p-2 text-slate-500 transition hover:bg-white/[0.08] hover:text-white"><Pencil size={13}/></button>{showArchived ? <button type="button" aria-label={"Restore " + c.title} title="Restore conversation" onClick={()=>void restoreConversation(c)} className="rounded-lg p-2 text-slate-500 transition hover:bg-white/[0.08] hover:text-white"><RotateCw size={13}/></button> : <button type="button" aria-label={"Archive " + c.title} title="Archive conversation" onClick={()=>void archiveConversation(c)} className="rounded-lg p-2 text-slate-500 transition hover:bg-white/[0.08] hover:text-white"><Archive size={13}/></button>}<button type="button" aria-label={"Delete " + c.title} title="Delete conversation permanently" onClick={()=>void deleteConversation(c)} className="rounded-lg p-2 text-slate-500 transition hover:bg-red-400/10 hover:text-red-200"><Trash2 size={13}/></button></div>)}{!visibleConversations.length && <p className="px-3 py-2 text-xs leading-5 text-slate-600">{conversationSearch.trim() ? "No conversations match your search." : "Your conversations will appear here."}</p>}</nav>
       <div className="border-t border-white/10 pt-3"><div className="mb-3 truncate px-2 text-xs text-slate-500">{session?.user?.email}</div><button onClick={()=>void signOut()} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-400 hover:bg-white/[0.05] hover:text-white"><LogOut size={16}/> Sign out</button></div>
     </aside>
     <section className="flex min-w-0 flex-1 flex-col">
