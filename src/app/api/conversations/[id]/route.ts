@@ -40,13 +40,15 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         id: conversations.id, title: conversations.title, createdAt: conversations.createdAt, updatedAt: conversations.updatedAt,
       }).from(conversations).where(and(eq(conversations.id, id), eq(conversations.userId, user.id))).limit(1);
       if (!conversation) return null;
-      const filters = [eq(messages.conversationId, id), eq(messages.userId, user.id)];
-      if (beforeDate && beforeId) {
-        filters.push(or(lt(messages.createdAt, beforeDate), and(eq(messages.createdAt, beforeDate), lt(messages.id, beforeId))));
-      }
+      const cursorFilter = beforeDate && beforeId
+        ? or(lt(messages.createdAt, beforeDate), and(eq(messages.createdAt, beforeDate), lt(messages.id, beforeId)))
+        : undefined;
+      const historyFilter = cursorFilter
+        ? and(eq(messages.conversationId, id), eq(messages.userId, user.id), cursorFilter)
+        : and(eq(messages.conversationId, id), eq(messages.userId, user.id));
       const rows = await tx.select({
         id: messages.id, role: messages.role, content: messages.content, status: messages.status, createdAt: messages.createdAt,
-      }).from(messages).where(and(...filters))
+      }).from(messages).where(historyFilter)
         .orderBy(desc(messages.createdAt), desc(messages.id))
         .limit(501);
       const hasMoreMessages = rows.length > 500;

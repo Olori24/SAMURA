@@ -148,7 +148,7 @@ export default function ChatPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Could not archive this conversation.");
       setConversations(previous => previous.filter(item => item.id !== conversation.id));
-      if (activeId === conversation.id) { setActiveId(""); setMessages([]); }
+      if (activeId === conversation.id) { setActiveId(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null); }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not archive this conversation.");
     }
@@ -209,13 +209,14 @@ ${message.content}`),
   }
 
   async function newConversation() {
-    setError(""); setMessages([]); setActiveId(""); setActiveTitle(""); setSidebarOpen(false); setShowArchived(false);
+    setError(""); setMessages([]); setActiveId(""); setActiveTitle(""); setSidebarOpen(false); setShowArchived(false); setHasOlderMessages(false); setHistoryCursor(null);
     try {
       const response = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
       if (!response.ok) { const data = await response.json().catch(()=>({})); throw new Error(data.error ?? "Could not create a conversation."); }
       const data = await response.json();
       setActiveId(data.conversation.id);
       setActiveTitle(data.conversation.title);
+      setHasOlderMessages(false); setHistoryCursor(null);
       await loadConversations(false);
     } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); }
   }
@@ -230,7 +231,7 @@ ${message.content}`),
       try {
         const created = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
         if (!created.ok) throw new Error("Could not create a conversation.");
-        const data = await created.json(); conversationId = data.conversation.id; setActiveId(conversationId); setActiveTitle(data.conversation.title); setShowArchived(false);
+        const data = await created.json(); conversationId = data.conversation.id; setActiveId(conversationId); setActiveTitle(data.conversation.title); setShowArchived(false); setHasOlderMessages(false); setHistoryCursor(null);
         await loadConversations(false);
       } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); return; }
     }
