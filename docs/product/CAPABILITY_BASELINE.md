@@ -65,7 +65,7 @@
 - Vercel's 24-hour runtime-error query returned no errors. This is not a substitute for browser E2E tests or Sentry ingestion.
 - Automated preview browsing remains blocked by deployment access protection, so authenticated signup, chat, voice, image, research, GitHub OAuth/publish, and persistence journeys are not marked E2E-verified.
 - Conversation rename/archive/restore/delete, latest-turn edit, server-side regenerate, Markdown export, and cursor-based older-message loading are present in source. They still require authenticated browser acceptance tests.
-- CSV analysis runs locally in the browser; its parser, numeric summaries, unique header naming, charting and CSV export have automated coverage. It does not upload the selected file.
+- CSV analysis runs locally in the browser; parser behavior, numeric summaries, and unique header naming have unit coverage. Chart rendering and summary export are implemented but do not yet have dedicated browser/component tests. It does not upload the selected file.
 - Image generation and web research are implemented as provider-dependent routes, but the Vercel environment inventory did not contain `SAMURA_IMAGE_API_KEY` or `SAMURA_WEB_SEARCH_API_KEY`; neither capability is confirmed operational.
 - Browser dictation is not full voice conversation, speech output, or realtime audio.
 - Projects, durable user memory, broad file extraction/citations, sharing/forking, scheduled tasks and permissioned agent execution remain incomplete.

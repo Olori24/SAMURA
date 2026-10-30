@@ -103,12 +103,12 @@ The following is retained historical evidence only. Its exact source commit and 
 - Historical CI run: https://github.com/Olori24/SAMURA/actions/runs/40725461514. It failed at dependency audit, so no claim is made that typecheck, lint, tests, or build passed on that run.
 
 
-## Current feature-branch verification — 2026-10-30
+## Historical feature-branch verification — 2026-10-30
 
-This section supersedes no historical findings; it records a separate current verification point.
+This section is historical and superseded by the later feature-branch commits. It supersedes no historical findings; it records the verification point for the source commit listed below.
 
 - Branch: `feat/chatgpt-capability-parity`
-- Source commit: `5051750eaa5339ba8a0b4dab0eafca6b5e0d438e`
+- Source commit: `5051750eaa5339ba8a0b4dab0eafca6b5e0d438e` (historical)
 - Lockfile blob at that commit: `eeaea3c05fa4e6853b88a67aeac43b205423239f`
 - GitHub Actions run: https://github.com/Olori24/SAMURA/actions/runs/41091538317
 - The configured dependency audit, TypeScript typecheck, lint, unit tests and production build all passed for that source commit.
