@@ -28,6 +28,7 @@ export default function ChatPage() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [searchResults, setSearchResults] = useState<Conversation[]>([]);
   const [conversationSearch, setConversationSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState("");
