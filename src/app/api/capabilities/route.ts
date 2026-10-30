@@ -32,7 +32,7 @@ export async function GET() {
       runtimeConfigured: isRuntimeConfigured(),
       chatConfigured,
       imageConfigured: Boolean(getImageProviderConfig(env)),
-      webSearchConfigured: Boolean(env.SAMURA_WEB_SEARCH_API_KEY),
+      webSearchConfigured: Boolean(env.SAMURA_WEB_SEARCH_API_KEY || (env.GEMINI_API_KEY && env.SAMURA_GEMINI_GROUNDING_ENABLED)),
     });
 
     return NextResponse.json(

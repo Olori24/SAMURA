@@ -21,3 +21,21 @@ describe("image provider endpoint transport", () => {
     expect(getServerEnv().SAMURA_IMAGE_BASE_URL).toBe("http://127.0.0.1:8080/v1");
   });
 });
+
+
+describe("Gemini Search grounding opt-in", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("is disabled by default to avoid unexpected per-query charges", () => {
+    expect(getServerEnv().SAMURA_GEMINI_GROUNDING_ENABLED).toBe(false);
+  });
+
+  it("enables grounding only for the explicit true value", () => {
+    vi.stubEnv("SAMURA_GEMINI_GROUNDING_ENABLED", "true");
+    expect(getServerEnv().SAMURA_GEMINI_GROUNDING_ENABLED).toBe(true);
+    vi.stubEnv("SAMURA_GEMINI_GROUNDING_ENABLED", "false");
+    expect(getServerEnv().SAMURA_GEMINI_GROUNDING_ENABLED).toBe(false);
+  });
+});
