@@ -17,6 +17,8 @@ export function parseCsv(input: string): CsvTable {
   let cell = "";
   let quoted = false;
   let closedQuote = false;
+  let cellWasQuoted = false;
+  let recordHasStructure = false;
 
   for (let i = 0; i < text.length; i += 1) {
     const char = text[i];
@@ -40,24 +42,30 @@ export function parseCsv(input: string): CsvTable {
     }
     if (char === '"' && cell.length === 0 && !closedQuote) {
       quoted = true;
+      cellWasQuoted = true;
+      recordHasStructure = true;
       continue;
     }
     if (char === '"' && cell.length > 0) {
       throw new Error("Invalid CSV: a quote appeared inside an unquoted cell.");
     }
     if (char === ",") {
-      row.push(cell.trim());
+      row.push(cellWasQuoted ? cell : cell.trim());
       cell = "";
       closedQuote = false;
+      cellWasQuoted = false;
+      recordHasStructure = true;
       continue;
     }
     if (char === "\n" || char === "\r") {
       if (char === "\r" && text[i + 1] === "\n") i += 1;
-      row.push(cell.trim());
-      if (row.some(value => value.length > 0)) records.push(row);
+      row.push(cellWasQuoted ? cell : cell.trim());
+      if (row.some(value => value.length > 0) || recordHasStructure) records.push(row);
       row = [];
       cell = "";
       closedQuote = false;
+      cellWasQuoted = false;
+      recordHasStructure = false;
       continue;
     }
     if (closedQuote && (char === " " || char === "\t")) continue;
@@ -66,8 +74,8 @@ export function parseCsv(input: string): CsvTable {
 
   if (quoted) throw new Error("Invalid CSV: a quoted cell was not closed.");
   if (cell.length > 0 || row.length > 0 || closedQuote) {
-    row.push(cell.trim());
-    if (row.some(value => value.length > 0)) records.push(row);
+    row.push(cellWasQuoted ? cell : cell.trim());
+    if (row.some(value => value.length > 0) || recordHasStructure) records.push(row);
   }
   if (records.length < 2) throw new Error("CSV must contain a header row and at least one data row.");
 

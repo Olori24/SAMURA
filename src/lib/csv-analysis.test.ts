@@ -23,6 +23,24 @@ describe("parseCsv", () => {
     expect(summarizeNumericColumns(table).map(column => column.column)).toEqual(["a (2)", "a (2) (2)"]);
   });
 
+  it("preserves whitespace inside quoted cells", () => {
+    const table = parseCsv(`sku,note
+" SKU-01 "," keep spaces "
+`);
+    expect(table.rows).toEqual([[" SKU-01 ", " keep spaces "]]);
+  });
+
+  it("preserves explicit empty records but skips blank separator lines", () => {
+    const table = parseCsv(`a,b
+1,2
+,
+
+3,4
+`);
+    expect(table.rows).toEqual([["1", "2"], ["", ""], ["3", "4"]]);
+    expect(summarizeNumericColumns(table).find(column => column.column === "a")?.missing).toBe(1);
+  });
+
   it("rejects unterminated quoted cells", () => {
     expect(() => parseCsv('name,note\nAda,"unfinished')).toThrow("quoted cell was not closed");
   });

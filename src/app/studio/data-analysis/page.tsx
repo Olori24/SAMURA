@@ -5,6 +5,10 @@ import { useState } from "react";
 import { ArrowLeft, Download, FileSpreadsheet, Table2 } from "lucide-react";
 import { parseCsv, summarizeNumericColumns, type CsvTable } from "@/lib/csv-analysis";
 
+function formatNumber(value: number) {
+  return new Intl.NumberFormat(undefined, { maximumSignificantDigits: 8 }).format(value);
+}
+
 function csvEscape(value: string | number) {
   let text = String(value);
   if (typeof value === "string" && /^[\t\r ]*[=+\-@]/.test(text)) text = "'" + text;
@@ -107,14 +111,14 @@ export default function DataAnalysisPage() {
                 <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]" role="img" aria-label={row.label + ": " + row.value}>
                   <div className="h-full rounded-full bg-teal-200" style={{ width: (Math.abs(row.value) / chartScale * 100) + "%" }} />
                 </div>
-                <span className="min-w-14 text-right tabular-nums text-slate-200">{row.value.toLocaleString()}</span>
+                <span className="min-w-14 text-right tabular-nums text-slate-200">{formatNumber(row.value)}</span>
               </div>)}
             </div>
           </section>}
 
           <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-5 sm:p-7">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Numeric summary</h2><p className="mt-1 text-xs text-slate-500">Columns containing non-empty text values are excluded from numeric statistics.</p></div><button type="button" onClick={exportSummary} disabled={!summaries.length} className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-xs font-semibold hover:border-teal-200/30 disabled:opacity-40"><Download size={15} /> Export summary CSV</button></div>
-            {summaries.length ? <div className="overflow-x-auto rounded-xl border border-white/10"><table className="min-w-full text-left text-xs"><thead className="bg-white/[0.05] text-slate-200"><tr>{["Column", "Count", "Missing", "Mean", "Median", "Minimum", "Maximum"].map((label) => <th key={label} className="whitespace-nowrap px-3 py-3 font-semibold">{label}</th>)}</tr></thead><tbody>{summaries.map((item) => <tr key={item.column} className="border-t border-white/[0.07]">{[item.column, item.count, item.missing, item.mean, item.median, item.min, item.max].map((value, i) => <td key={i} className="whitespace-nowrap px-3 py-3 text-slate-300">{typeof value === "number" ? Number(value.toFixed(4)).toLocaleString() : value}</td>)}</tr>)}</tbody></table></div> : <p className="rounded-xl border border-white/10 p-4 text-sm text-slate-400">No fully numeric columns were found in this dataset.</p>}
+            {summaries.length ? <div className="overflow-x-auto rounded-xl border border-white/10"><table className="min-w-full text-left text-xs"><thead className="bg-white/[0.05] text-slate-200"><tr>{["Column", "Count", "Missing", "Mean", "Median", "Minimum", "Maximum"].map((label) => <th key={label} className="whitespace-nowrap px-3 py-3 font-semibold">{label}</th>)}</tr></thead><tbody>{summaries.map((item) => <tr key={item.column} className="border-t border-white/[0.07]">{[item.column, item.count, item.missing, item.mean, item.median, item.min, item.max].map((value, i) => <td key={i} className="whitespace-nowrap px-3 py-3 text-slate-300">{typeof value === "number" ? formatNumber(value) : value}</td>)}</tr>)}</tbody></table></div> : <p className="rounded-xl border border-white/10 p-4 text-sm text-slate-400">No fully numeric columns were found in this dataset.</p>}
           </section>
         </>}
       </div>

@@ -64,7 +64,7 @@ export default function ResearchPage() {
         {result && <div className="mt-8">
           <article className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 sm:p-7">
             <h2 className="mb-5 text-lg font-semibold">Research report</h2>
-            <div className="prose prose-invert prose-sm max-w-none break-words leading-7 prose-pre:overflow-x-auto prose-pre:rounded-xl prose-pre:border prose-pre:border-white/10 prose-pre:bg-black/30 prose-a:text-teal-200 prose-code:text-teal-200"><ReactMarkdown remarkPlugins={[remarkGfm]}>{result.answer}</ReactMarkdown></div>
+            <div className="prose prose-invert prose-sm max-w-none break-words leading-7 prose-pre:overflow-x-auto prose-pre:rounded-xl prose-pre:border prose-pre:border-white/10 prose-pre:bg-black/30 prose-a:text-teal-200 prose-code:text-teal-200"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ img: ({ alt }) => <span className="text-slate-500">[Image omitted{alt ? ": " + alt : ""}]</span> }}>{result.answer}</ReactMarkdown></div>
           </article>
           <section className="mt-5">
             <h2 className="mb-3 text-sm font-semibold text-slate-200">Sources ({result.sources.length})</h2>

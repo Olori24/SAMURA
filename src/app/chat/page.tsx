@@ -193,6 +193,7 @@ export default function ChatPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Could not rename this conversation.");
       setConversations(previous => previous.map(item => item.id === conversation.id ? data.conversation : item));
+      setSearchResults(previous => previous.map(item => item.id === conversation.id ? data.conversation : item));
       if (activeId === conversation.id) setActiveTitle(data.conversation.title);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not rename this conversation.");
@@ -210,6 +211,7 @@ export default function ChatPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Could not archive this conversation.");
       setConversations(previous => previous.filter(item => item.id !== conversation.id));
+      setSearchResults(previous => previous.filter(item => item.id !== conversation.id));
       if (activeId === conversation.id) {
         conversationLoadRef.current += 1; olderRequestRef.current += 1; preserveScrollRef.current = null; setLoadingOlderMessages(false);
         activeIdRef.current = ""; setActiveId(""); setActiveTitle(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null);
@@ -229,6 +231,7 @@ export default function ChatPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Could not restore this conversation.");
       setConversations(previous => previous.filter(item => item.id !== conversation.id));
+      setSearchResults(previous => previous.filter(item => item.id !== conversation.id));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not restore this conversation.");
     }
@@ -241,6 +244,7 @@ export default function ChatPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Could not delete this conversation.");
       setConversations(previous => previous.filter(item => item.id !== conversation.id));
+      setSearchResults(previous => previous.filter(item => item.id !== conversation.id));
       if (activeId === conversation.id) {
         conversationLoadRef.current += 1; olderRequestRef.current += 1; preserveScrollRef.current = null; setLoadingOlderMessages(false);
         activeIdRef.current = ""; setActiveId(""); setActiveTitle(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null);

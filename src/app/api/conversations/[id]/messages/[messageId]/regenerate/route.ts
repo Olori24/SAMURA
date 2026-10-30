@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { conversations, messages } from "@/db/schema";
+import { conversations, messages, usageRecords } from "@/db/schema";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
@@ -97,14 +97,31 @@ export async function POST(request: Request, context: {
       },
       ...boundedHistory,
     ];
-    const completion = await ai.client.chat.completions.create({
-      model: ai.model,
-      messages: providerMessages,
-      stream: false,
-      max_tokens: env.SAMURA_MAX_OUTPUT_TOKENS,
-    }, { timeout: maxDuration * 1_000 - 5_000 });
-
+    const completion = await (async () => {
+      try {
+        return await ai.client.chat.completions.create({
+          model: ai.model,
+          messages: providerMessages,
+          stream: false,
+          max_tokens: env.SAMURA_MAX_OUTPUT_TOKENS,
+        }, { timeout: maxDuration * 1_000 - 5_000 });
+      } catch (error) {
+        await withUserTransaction(user.id, async (tx) => {
+          await tx.insert(usageRecords).values({ userId: user.id, conversationId: id, provider: ai.provider, model: ai.model, status: "failed" });
+        }).catch(() => undefined);
+        throw error;
+      }
+    })();
     const answer = completion.choices[0]?.message?.content;
+    await withUserTransaction(user.id, async (tx) => {
+      await tx.insert(usageRecords).values({
+        userId: user.id, conversationId: id, provider: ai.provider, model: ai.model,
+        inputTokens: completion.usage?.prompt_tokens ?? null,
+        outputTokens: completion.usage?.completion_tokens ?? null,
+        status: typeof answer === "string" && answer.trim() ? "complete" : "empty",
+      });
+    });
+
     if (typeof answer !== "string" || !answer.trim()) {
       return NextResponse.json({ error: "The provider returned an empty response. Your previous response was preserved." }, { status: 502 });
     }
