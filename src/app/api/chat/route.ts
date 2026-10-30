@@ -41,8 +41,8 @@ export async function POST(request: Request) {
     // assignments before emitting anything to trusted server logs.
     const rawMessage = error instanceof Error ? error.message : "";
     const safeMessage = rawMessage
-      .replace(/https?:\\/\\/[^\\s"'<>]+/gi, "[redacted-url]")
-      .replace(/(api[_-]?key|token|authorization|secret|password)(\\s*[:=]\\s*)[^\\s,;]+/gi, "$1$2[redacted]")
+      .replace(/https?:\/\/[^\s"'<>]+/gi, "[redacted-url]")
+      .replace(/(api[_-]?key|token|authorization|secret|password)(\s*[:=]\s*)[^\s,;]+/gi, "$1$2[redacted]")
       .slice(0, 300);
     console.error("[SAMURA] AI client configuration failed:", safeMessage || "No diagnostic message available.");
     return NextResponse.json(
