@@ -72,7 +72,7 @@ export async function POST(request: Request) {
   try {
     setup = await withUserTransaction(user.id, async (tx) => {
       const [conversation] = await tx.select({ id: conversations.id, title: conversations.title })
-        .from(conversations).where(and(eq(conversations.id, parsed.data.conversationId), eq(conversations.userId, user.id))).limit(1);
+        .from(conversations).where(and(eq(conversations.id, parsed.data.conversationId), eq(conversations.userId, user.id))).limit(1).for("update");
       if (!conversation) return { status: "not_found" as const };
 
       const [existing] = await tx.select({ id: messages.id })
@@ -171,11 +171,26 @@ export async function POST(request: Request) {
         outcome = abortController.signal.aborted ? "cancelled" : "failed";
       } finally {
         await withUserTransaction(user.id, async (tx) => {
-          if (fullText.trim()) {
-            await tx.insert(messages).values({
-              conversationId: conversation.id, userId: user.id, role: "assistant",
-              content: fullText, status: outcome === "complete" ? "complete" : "partial",
-            });
+          const [lockedConversation] = await tx.select({ id: conversations.id })
+            .from(conversations)
+            .where(and(eq(conversations.id, conversation.id), eq(conversations.userId, user.id)))
+            .limit(1)
+            .for("update");
+          if (lockedConversation && fullText.trim()) {
+            const currentHistory = await tx.select({
+              id: messages.id,
+              role: messages.role,
+              createdAt: messages.createdAt,
+            }).from(messages)
+              .where(and(eq(messages.conversationId, conversation.id), eq(messages.userId, user.id)))
+              .orderBy(desc(messages.createdAt), desc(messages.id));
+            const userTurnIndex = currentHistory.findIndex((item) => item.id === userMessage.id);
+            if (userTurnIndex === 0) {
+              await tx.insert(messages).values({
+                conversationId: conversation.id, userId: user.id, role: "assistant",
+                content: fullText, status: outcome === "complete" ? "complete" : "partial",
+              });
+            }
           }
           await tx.insert(usageRecords).values({
             userId: user.id, conversationId: conversation.id, provider: ai.provider,

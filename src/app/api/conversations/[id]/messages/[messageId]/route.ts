@@ -38,7 +38,8 @@ export async function DELETE(_request: Request, context: {
       const [conversation] = await tx.select({ id: conversations.id })
         .from(conversations)
         .where(and(eq(conversations.id, id), eq(conversations.userId, user.id)))
-        .limit(1);
+        .limit(1)
+        .for("update");
       if (!conversation) return "not_found" as const;
 
       // Look up the target directly under both ownership constraints. Do not

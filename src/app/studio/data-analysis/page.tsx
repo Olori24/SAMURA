@@ -58,7 +58,7 @@ export default function DataAnalysisPage() {
       ["Column", "Count", "Missing", "Mean", "Median", "Minimum", "Maximum"],
       ...summaries.map((item) => [item.column, item.count, item.missing, item.mean, item.median, item.min, item.max]),
     ];
-    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\\r\\n");
+    const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a");
     anchor.href = url;

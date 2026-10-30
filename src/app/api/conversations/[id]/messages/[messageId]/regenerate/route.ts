@@ -53,7 +53,8 @@ export async function POST(request: Request, context: {
       const [conversation] = await tx.select({ id: conversations.id })
         .from(conversations)
         .where(and(eq(conversations.id, id), eq(conversations.userId, user.id)))
-        .limit(1);
+        .limit(1)
+        .for("update");
       if (!conversation) return { status: "not_found" as const };
 
       const history = await tx.select({
@@ -108,6 +109,13 @@ export async function POST(request: Request, context: {
     }
 
     const committed = await withUserTransaction(user.id, async (tx) => {
+      const [conversation] = await tx.select({ id: conversations.id })
+        .from(conversations)
+        .where(and(eq(conversations.id, id), eq(conversations.userId, user.id)))
+        .limit(1)
+        .for("update");
+      if (!conversation) return null;
+
       const history = await tx.select({
         id: messages.id, role: messages.role, createdAt: messages.createdAt,
       }).from(messages)

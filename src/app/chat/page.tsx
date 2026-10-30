@@ -218,6 +218,9 @@ ${message.content}`),
       const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId, message: text, requestId, mode }), signal: controller.signal });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
+        // The server may have persisted the user turn before the provider failed.
+        // Reload so the UI uses its durable message ID rather than the optimistic ID.
+        await openConversation(conversationId);
         throw new Error(data.error ?? "The response could not be generated.");
       }
       if (!response.body) throw new Error("Streaming is unavailable in this browser.");
@@ -251,7 +254,7 @@ ${message.content}`),
       if (buffer.trim()) consumeEvent(buffer);
       setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, content: received, status: received ? (streamFailed ? "partial" : "complete") : "failed" } : m));
       if (!received && !streamFailed) setError("The model returned an empty response. You can try again.");
-      await loadConversations();
+      await loadConversations(showArchived);
     } catch(e) {
       const stopped = e instanceof DOMException && e.name === "AbortError";
       setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, status: stopped ? "stopped" : "failed", content: m.content } : m));
@@ -311,7 +314,7 @@ ${message.content}`),
         ...previous.slice(0, userIndex + 1),
         { id: data.messageId, role: "assistant", content: data.answer, status: "complete" },
       ]);
-      await loadConversations();
+      await loadConversations(showArchived);
     } catch (e) {
       // The server commits the replacement only after generation succeeds;
       // leave the existing user and assistant messages untouched on failure.
