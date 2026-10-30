@@ -170,7 +170,8 @@ export async function POST(request: Request) {
       } catch {
         outcome = abortController.signal.aborted ? "cancelled" : "failed";
       } finally {
-        await withUserTransaction(user.id, async (tx) => {
+        const responseSaved = await withUserTransaction(user.id, async (tx) => {
+          let saved = false;
           const [lockedConversation] = await tx.select({ id: conversations.id })
             .from(conversations)
             .where(and(eq(conversations.id, conversation.id), eq(conversations.userId, user.id)))
@@ -190,15 +191,19 @@ export async function POST(request: Request) {
                 conversationId: conversation.id, userId: user.id, role: "assistant",
                 content: fullText, status: outcome === "complete" ? "complete" : "partial",
               });
+              saved = true;
             }
           }
           await tx.insert(usageRecords).values({
             userId: user.id, conversationId: conversation.id, provider: ai.provider,
             model: ai.model, inputTokens, outputTokens, status: outcome,
           });
-        }).catch(() => undefined);
+          return saved;
+        }).catch(() => false);
+        const responseUnsaved = Boolean(fullText.trim()) && !responseSaved;
         try {
-          if (outcome === "failed") emit({ type: "error", message: "Generation stopped unexpectedly. Refresh the conversation to see any saved partial response." });
+          if (responseUnsaved) emit({ type: "done", status: "unsaved" });
+          else if (outcome === "failed") emit({ type: "error", message: "Generation stopped unexpectedly. Refresh the conversation to see any saved partial response." });
           else emit({ type: "done", status: outcome });
           controller.close();
         } catch { /* client cancelled the stream */ }

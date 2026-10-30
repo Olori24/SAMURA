@@ -17,6 +17,12 @@ describe("parseCsv", () => {
     expect(table.rows[0]).toEqual(["Ada", "Grace", "1", "2"]);
   });
 
+  it("keeps generated duplicate header names globally unique", () => {
+    const table = parseCsv("a,a,a (2)\\ntext,10,20\\n");
+    expect(table.headers).toEqual(["a", "a (2)", "a (2) (2)"]);
+    expect(summarizeNumericColumns(table).map(column => column.column)).toEqual(["a (2)", "a (2) (2)"]);
+  });
+
   it("rejects unterminated quoted cells", () => {
     expect(() => parseCsv('name,note\nAda,"unfinished')).toThrow("quoted cell was not closed");
   });

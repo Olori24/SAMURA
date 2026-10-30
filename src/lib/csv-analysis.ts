@@ -72,11 +72,18 @@ export function parseCsv(input: string): CsvTable {
   if (records.length < 2) throw new Error("CSV must contain a header row and at least one data row.");
 
   const rawHeaders = records[0].map((value, index) => value || `Column ${index + 1}`);
-  const used = new Map<string, number>();
+  const used = new Set<string>();
+  const nextSuffix = new Map<string, number>();
   const headers = rawHeaders.map((value) => {
-    const count = (used.get(value) ?? 0) + 1;
-    used.set(value, count);
-    return count === 1 ? value : `${value} (${count})`;
+    let count = nextSuffix.get(value) ?? 1;
+    let header = value;
+    while (used.has(header)) {
+      count += 1;
+      header = `${value} (${count})`;
+    }
+    nextSuffix.set(value, count);
+    used.add(header);
+    return header;
   });
   const width = headers.length;
   const rows = records.slice(1).map((record, index) => {
