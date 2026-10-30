@@ -8,22 +8,7 @@ import { getAIProviderConfig } from "@/lib/ai/provider-config";
 const posthogProjectToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
 const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
-if (!posthogProjectToken) {
-  if (process.env.NODE_ENV === "development") {
-    throw new Error(
-      "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN is configured",
-    );
-  }
-} else if (!posthogHost) {
-  if (process.env.NODE_ENV === "development") {
-    throw new Error(
-      "NEXT_PUBLIC_POSTHOG_HOST variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once NEXT_PUBLIC_POSTHOG_HOST is configured",
-    );
-  }
-}
-
-// Privacy-first default: collect AI generation metadata, never prompts or completions.
-// Any future exception must be explicitly reviewed and must not include sensitive user content.
+// PostHog is optional: missing telemetry configuration must never block AI requests.
 const posthog = posthogProjectToken && posthogHost
   ? new PostHog(posthogProjectToken, {
       host: posthogHost,
@@ -65,6 +50,8 @@ export function aiObservabilityOptions(
   return {
     posthogDistinctId: distinctId,
     posthogTraceId: traceId,
+    // Enforce redaction at the individual generation call boundary.
+    posthogPrivacyMode: true,
     posthogProperties: {
       $ai_session_id: sessionId,
       $ai_provider: ai.provider,
@@ -73,5 +60,12 @@ export function aiObservabilityOptions(
 }
 
 export async function flushAIObservability(ai: ReturnType<typeof createAIClient>) {
-  await ai.posthog?.flush().catch(() => undefined);
+  if (!ai.posthog) return;
+
+  // Telemetry is best-effort. Never let a slow PostHog flush delay a successful AI response.
+  const flush = ai.posthog.flush().catch(() => undefined);
+  await Promise.race([
+    flush,
+    new Promise<void>(resolve => setTimeout(resolve, 750)),
+  ]);
 }
