@@ -1,28 +1,30 @@
+import * as Sentry from "@sentry/nextjs";
 import posthog from "posthog-js";
+
+// Sentry remains active independently of optional PostHog configuration.
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
+  tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+  replaysSessionSampleRate: 0,
+  replaysOnErrorSampleRate: 0,
+});
+
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
 
 const posthogProjectToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
 const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
-if (!posthogProjectToken) {
-  if (process.env.NODE_ENV === "development") {
-    throw new Error(
-      "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN is configured",
-    );
-  }
-} else if (!posthogHost) {
-  if (process.env.NODE_ENV === "development") {
-    throw new Error(
-      "NEXT_PUBLIC_POSTHOG_HOST variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once NEXT_PUBLIC_POSTHOG_HOST is configured",
-    );
-  }
-} else {
+if (posthogProjectToken && posthogHost) {
   posthog.init(posthogProjectToken, {
     api_host: posthogHost,
     defaults: "2026-08-30",
     capture_exceptions: true,
-    // Use explicit SAMURA events only; avoid collecting arbitrary UI interactions.
+    // Only explicit SAMURA events are allowed. Do not emit automatic navigation events.
     autocapture: false,
-    // Session replay remains off until a separate privacy and consent review.
+    capture_pageview: false,
+    capture_pageleave: false,
+    // Session replay remains disabled pending a separate privacy and consent review.
     disable_session_recording: true,
     tracing_headers: [window.location.hostname],
   });
