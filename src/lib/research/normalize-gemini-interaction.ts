@@ -23,7 +23,7 @@ export function normalizeGeminiResearchInteraction(input: unknown): { answer: st
     : typeof interaction.output_text === "string" ? interaction.output_text : "";
   if (!answerText.trim()) return { answer: "", sources: [] };
 
-  const candidates: Array<{ start: number; end: number; title: string; url: string }> = [];
+  const candidates: Array<{ end: number; title: string; url: string }> = [];
   for (const block of blocks) {
     for (const annotation of block.annotations) {
       if (annotation.type !== "url_citation" || typeof annotation.url !== "string" ||
@@ -31,7 +31,6 @@ export function normalizeGeminiResearchInteraction(input: unknown): { answer: st
           !Number.isInteger(annotation.start_index) || !Number.isInteger(annotation.end_index) ||
           annotation.start_index < 0 || annotation.end_index <= annotation.start_index || annotation.end_index > block.text.length) continue;
       candidates.push({
-        start: block.offset + annotation.start_index,
         end: block.offset + annotation.end_index,
         title: typeof annotation.title === "string" ? annotation.title : "",
         url: annotation.url,
