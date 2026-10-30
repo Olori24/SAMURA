@@ -6,6 +6,21 @@ import { authClient } from "@/lib/auth-client";
 
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }> };
 
+function resetPostHogIdentityPreservingConsent() {
+  const consent = posthog.get_explicit_consent_status();
+  const optedIn = posthog.has_opted_in_capturing();
+  const optedOut = posthog.has_opted_out_capturing();
+
+  posthog.reset();
+
+  // reset() clears consent; restore the user's explicit choice immediately.
+  if (consent === "granted" || optedIn) {
+    posthog.opt_in_capturing({ captureEventName: false });
+  } else if (consent === "denied" || optedOut) {
+    posthog.opt_out_capturing();
+  }
+}
+
 export default function PwaInstall() {
   const { data: session, isPending: isSessionPending } = authClient.useSession();
   const previousUserId = useRef<string | null | undefined>(undefined);
@@ -20,16 +35,25 @@ export default function PwaInstall() {
     if (isSessionPending) return;
 
     const userId = session?.user?.id ?? null;
-
     if (previousUserId.current === userId) return;
 
-    if (previousUserId.current && !userId) {
-      posthog.reset();
-    } else if (userId) {
-      if (previousUserId.current && previousUserId.current !== userId) {
-        posthog.reset();
+    const persistedUserId = posthog.get_property("$user_id");
+    if (previousUserId.current === undefined) {
+      // A fresh app load may start signed out while an older identified account
+      // remains persisted in PostHog. Clear that identity before anonymous events.
+      if (!userId && typeof persistedUserId === "string" && persistedUserId.length > 0) {
+        resetPostHogIdentityPreservingConsent();
+      } else if (userId && typeof persistedUserId === "string" && persistedUserId !== userId) {
+        resetPostHogIdentityPreservingConsent();
       }
-      // Use only the opaque internal account ID. Do not send email or display name.
+    } else if (previousUserId.current && !userId) {
+      resetPostHogIdentityPreservingConsent();
+    } else if (userId && previousUserId.current && previousUserId.current !== userId) {
+      resetPostHogIdentityPreservingConsent();
+    }
+
+    if (userId) {
+      // Use only the opaque internal account ID. Never send email or display name.
       posthog.identify(userId);
     }
 
