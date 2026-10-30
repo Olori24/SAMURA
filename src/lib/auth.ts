@@ -55,7 +55,7 @@ export const auth = betterAuth({
           console.info("[auth] Password recovery email delivery completed.");
         } catch (error) {
           const message = error instanceof Error ? error.message : "";
-          const providerStatus = message.match(/HTTP (\\d{3})/)?.[1];
+          const providerStatus = message.match(/HTTP (\d{3})/)?.[1];
           const failureCode = providerStatus
             ? `provider_http_${providerStatus}`
             : message.includes("not configured")
