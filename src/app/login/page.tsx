@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AudioWaveform, LoaderCircle, ShieldCheck } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import posthog from "posthog-js";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function LoginPage() {
         ? await authClient.signUp.email({ name: name.trim(), email: email.trim().toLowerCase(), password })
         : await authClient.signIn.email({ email: email.trim().toLowerCase(), password });
       if (result.error) { setError("We couldn't authenticate those details. Check them and try again."); return; }
+      posthog.capture(mode === "signup" ? "user_signed_up" : "user_signed_in");
       router.replace("/chat"); router.refresh();
     } catch {
       setError("Authentication is temporarily unavailable. Please try again.");

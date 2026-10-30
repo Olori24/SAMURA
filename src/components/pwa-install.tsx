@@ -1,16 +1,43 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, Smartphone, ExternalLink } from "lucide-react";
+import posthog from "posthog-js";
+import { authClient } from "@/lib/auth-client";
 
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }> };
 
 export default function PwaInstall() {
+  const { data: session, isPending: isSessionPending } = authClient.useSession();
+  const previousUserId = useRef<string | null | undefined>(undefined);
   const [promptEvent, setPromptEvent] = useState<InstallPrompt | null>(null);
   const [installed, setInstalled] = useState(false);
   const [ios, setIos] = useState(false);
   const [android, setAndroid] = useState(false);
   const [help, setHelp] = useState(false);
   const [chromeIntent, setChromeIntent] = useState("");
+
+  useEffect(() => {
+    if (isSessionPending) return;
+
+    const user = session?.user;
+    const userId = user?.id ?? null;
+
+    if (previousUserId.current === userId) return;
+
+    if (previousUserId.current && !userId) {
+      posthog.reset();
+    } else if (user && userId) {
+      if (previousUserId.current && previousUserId.current !== userId) {
+        posthog.reset();
+      }
+      posthog.identify(userId, {
+        ...(user.email ? { email: user.email } : {}),
+        ...(user.name ? { name: user.name } : {}),
+      });
+    }
+
+    previousUserId.current = userId;
+  }, [isSessionPending, session?.user]);
 
   useEffect(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;

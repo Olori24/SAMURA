@@ -11,8 +11,9 @@ function createContentSecurityPolicy(nonce: string): string {
     "img-src 'self' data: https:",
     "font-src 'self' data: https:",
     "style-src 'self' 'unsafe-inline'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-    "connect-src 'self' https://api.github.com",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://*.posthog.com`,
+    "connect-src 'self' https://api.github.com https://*.posthog.com",
+    "worker-src 'self' blob:",
     "upgrade-insecure-requests",
   ].join("; ");
 }

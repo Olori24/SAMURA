@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, LoaderCircle, ShieldCheck, Sparkles } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import posthog from "posthog-js";
 
 type Repo = {
   id: number; name: string; fullName: string; url: string; description: string | null;
@@ -100,6 +101,7 @@ export default function GitHubEngineeringPage() {
       if (!response.ok) throw new Error(data.error ?? "Could not generate a patch.");
       setPatch(data as Patch);
       setPublishKey(crypto.randomUUID());
+      posthog.capture("github_patch_generated", { changed_file_count: data.changes?.length ?? 0 });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not generate a patch.");
     } finally { setGenerating(false); }
@@ -131,6 +133,7 @@ export default function GitHubEngineeringPage() {
       if (!response.ok) throw new Error(data.error ?? "GitHub publishing failed.");
       setResult(data as PublishResult);
       setApproved(false);
+      posthog.capture("github_patch_published", { changed_file_count: data.changedFiles?.length ?? 0, publish_verified: Boolean(data.verified) });
     } catch (e) { setError(e instanceof Error ? e.message : "GitHub publishing failed."); }
     finally { setPublishing(false); }
   }
