@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -5,7 +6,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { accounts } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { createAIClient } from "@/lib/ai/provider";
+import { aiObservabilityOptions, createAIClient, flushAIObservability } from "@/lib/ai/provider";
 import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
@@ -123,6 +124,7 @@ export async function POST(request: Request) {
   const parsed = inputSchema.safeParse(body.value);
   if (!parsed.success) return json({ error: "Provide a repository, base branch, and a task of at least 8 characters." }, 400);
   const input = parsed.data;
+  let ai: ReturnType<typeof createAIClient> | null = null;
 
   try {
     const [account] = await getDb().select({ accessToken: accounts.accessToken, scope: accounts.scope })
@@ -160,7 +162,7 @@ export async function POST(request: Request) {
     if (!contextFiles.length) return json({ error: "SAMURA could not retrieve bounded text files from this repository branch." }, 422);
 
     const env = getServerEnv();
-    const ai = createAIClient(env);
+    ai = createAIClient(env);
     const prompt = [
       "Return only one JSON object matching this exact shape: {title:string,body:string,plan:string[],risks:string[],tests:string[],changes:{path:string,operation:'add'|'modify',content:string}[]}.",
       "You are SAMURA's repository-aware coding engine. Generate a small, coherent, reviewable full-file patch based only on the supplied task and repository context.",
@@ -181,6 +183,7 @@ export async function POST(request: Request) {
       ],
       temperature: 0.1,
       max_tokens: 6000,
+      ...aiObservabilityOptions(ai, randomUUID(), session.user.id, randomUUID()),
     });
     const raw = completion.choices[0]?.message?.content?.trim();
     if (!raw) return json({ error: "The configured AI provider returned an empty coding response." }, 502);
@@ -224,5 +227,7 @@ export async function POST(request: Request) {
       : detail.includes("localhost in production") ? "Ollama points to localhost, which Vercel cannot reach. Configure a reachable, secured inference endpoint."
       : "SAMURA could not generate a patch. Check the configured AI provider and try again.";
     return json({ error: friendly }, 502);
+  } finally {
+    if (ai) await flushAIObservability(ai);
   }
 }

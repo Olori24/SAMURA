@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDownToLine, ArrowLeft, FilePlus2, FileText, LockKeyhole, Save, Sparkles, Trash2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { countWords, MAX_DOCUMENT_CHARACTERS, safeDocumentFilename, type DocumentFormat } from "@/lib/document-utils";
+import posthog from "posthog-js";
 
 type DocumentSummary = { id: string; title: string; format: DocumentFormat; createdAt: string; updatedAt: string };
 type SavedDocument = DocumentSummary & { content: string };
@@ -100,6 +101,7 @@ export default function DocumentsPage() {
 
   async function saveDocument() {
     if (!title.trim()) { setError("Give your document a title before saving."); return; }
+    const isNewDocument = !documentId;
     setSaving(true);
     setError("");
     setNotice("");
@@ -118,6 +120,7 @@ export default function DocumentsPage() {
       setContent(saved.content);
       setDirty(false);
       setNotice("Saved securely to your SAMURA account.");
+      posthog.capture(isNewDocument ? "document_created" : "document_updated", { document_format: saved.format });
       await loadDocuments();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save this document.");
@@ -146,6 +149,7 @@ export default function DocumentsPage() {
       if (!response.ok || typeof payload.content !== "string") throw new Error(payload.error || "Could not generate a draft.");
       setContent(payload.content.slice(0, MAX_DOCUMENT_CHARACTERS));
       setDirty(true);
+      posthog.capture("document_draft_generated", { document_format: format });
       setNotice((payload.note || "AI draft generated.") + " Review the result, then save it to your account.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not generate a draft.");
@@ -168,6 +172,7 @@ export default function DocumentsPage() {
       setContent(emptyContent);
       setDirty(true);
       setNotice("Document deleted. Start a new draft or open another document.");
+      posthog.capture("document_deleted");
       await loadDocuments();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not delete this document.");

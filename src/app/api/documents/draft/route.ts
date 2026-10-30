@@ -1,10 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { getServerEnv } from "@/lib/env";
-import { createAIClient } from "@/lib/ai/provider";
+import { aiObservabilityOptions, createAIClient, flushAIObservability } from "@/lib/ai/provider";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
       ],
       max_tokens: env.SAMURA_MAX_OUTPUT_TOKENS,
       temperature: 0.3,
+      ...aiObservabilityOptions(ai, randomUUID(), session.user.id, randomUUID()),
     });
     const content = completion.choices[0]?.message?.content;
     if (typeof content !== "string" || !content.trim()) {
@@ -87,5 +89,7 @@ export async function POST(request: Request) {
       ? "The AI provider is busy or its quota is exhausted. Try again later."
       : "SAMURA could not generate the draft. Check the selected AI provider and try again.";
     return NextResponse.json({ error: message }, { status: 502, headers: { "Cache-Control": "no-store" } });
+  } finally {
+    await flushAIObservability(ai);
   }
 }

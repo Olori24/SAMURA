@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -10,7 +11,7 @@ import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
-import { createAIClient } from "@/lib/ai/provider";
+import { aiObservabilityOptions, createAIClient, flushAIObservability } from "@/lib/ai/provider";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
     ...boundedHistory,
   ];
 
+  const aiTraceId = randomUUID();
   const abortController = new AbortController();
   request.signal.addEventListener("abort", () => abortController.abort(), { once: true });
   let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
@@ -129,6 +131,7 @@ export async function POST(request: Request) {
       stream: true,
       ...(ai.provider === "gemini" ? {} : { stream_options: { include_usage: true } }),
       max_tokens: env.SAMURA_MAX_OUTPUT_TOKENS,
+      ...aiObservabilityOptions(ai, conversation.id, user.id, aiTraceId),
     }, { signal: abortController.signal });
   } catch (error) {
     const message = error instanceof OpenAI.APIError && error.status === 429
@@ -142,6 +145,7 @@ export async function POST(request: Request) {
       await tx.update(messages).set({ status: "failed" })
         .where(and(eq(messages.id, userMessage.id), eq(messages.userId, user.id)));
     }).catch(() => undefined);
+    await flushAIObservability(ai);
     return NextResponse.json({ error: message }, { status: error instanceof OpenAI.APIError && error.status === 429 ? 429 : 502 });
   }
 
@@ -178,6 +182,7 @@ export async function POST(request: Request) {
             model: ai.model, inputTokens, outputTokens, status: outcome,
           });
         }).catch(() => undefined);
+        await flushAIObservability(ai);
         try {
           if (outcome === "failed") emit({ type: "error", message: "Generation stopped unexpectedly. Refresh the conversation to see any saved partial response." });
           else emit({ type: "done", status: outcome });

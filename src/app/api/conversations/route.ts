@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { conversations } from "@/db/schema";
 import { auth } from "@/lib/auth";
@@ -8,6 +8,7 @@ import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 import { withUserTransaction } from "@/db/user-transaction";
+import { flushPostHogLogs, logConversationCreate } from "@/lib/posthog-logger";
 
 export const runtime = "nodejs";
 const createSchema = z.object({ title: z.string().trim().min(1).max(160).optional() });
@@ -61,8 +62,16 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
     failureStage = "rate_limit";
     const limit = await checkDistributedRateLimit("conversation-create:" + user.id, 30, 60_000);
-    if (limit.unavailable) return NextResponse.json({ error: "Rate limiting is temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
-    if (!limit.allowed) return NextResponse.json({ error: "Too many new conversations. Try again shortly." }, { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds), "Cache-Control": "no-store" } });
+    if (limit.unavailable) {
+      logConversationCreate("service_unavailable", "rate_limit");
+      after(flushPostHogLogs);
+      return NextResponse.json({ error: "Rate limiting is temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    }
+    if (!limit.allowed) {
+      logConversationCreate("rate_limited", "rate_limit");
+      after(flushPostHogLogs);
+      return NextResponse.json({ error: "Too many new conversations. Try again shortly." }, { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds), "Cache-Control": "no-store" } });
+    }
     failureStage = "request_validation";
     const body = await parseBoundedJson(request, 4_096);
     if (!body.ok) return NextResponse.json(
@@ -78,6 +87,8 @@ export async function POST(request: Request) {
       }).returning({ id: conversations.id, title: conversations.title, createdAt: conversations.createdAt, updatedAt: conversations.updatedAt });
       return row;
     });
+    logConversationCreate("created", "database_insert");
+    after(flushPostHogLogs);
     return NextResponse.json({ conversation: created }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const candidate = error as { name?: unknown; code?: unknown; message?: unknown };
@@ -92,6 +103,8 @@ export async function POST(request: Request) {
       rlsEnabled: process.env.SAMURA_RLS_ENABLED === "true",
       databaseUrlSource: process.env.SAMURA_DATABASE_URL ? "SAMURA_DATABASE_URL" : process.env.DATABASE_URL ? "DATABASE_URL" : "missing",
     });
+    logConversationCreate("failed", failureStage);
+    after(flushPostHogLogs);
     return NextResponse.json({ error: "Could not create a conversation. Check database configuration." }, { status: 503 });
   }
 }

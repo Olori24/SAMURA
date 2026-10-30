@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { AudioWaveform, ChevronLeft, LoaderCircle, LogOut, Menu, MessageSquarePlus, Send, Square, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import posthog from "posthog-js";
 
 type Conversation = { id: string; title: string; createdAt: string; updatedAt: string };
 type Message = { id: string; role: "user" | "assistant"; content: string; status?: string; createdAt?: string };
@@ -67,6 +68,7 @@ export default function ChatPage() {
       const data = await response.json();
       setActiveId(data.conversation.id);
       setConversations(prev => [data.conversation, ...prev.filter(c => c.id !== data.conversation.id)]);
+      posthog.capture("conversation_created", { creation_source: "new_conversation" });
     } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); }
   }
 
@@ -82,6 +84,7 @@ export default function ChatPage() {
         if (!created.ok) throw new Error("Could not create a conversation.");
         const data = await created.json(); conversationId = data.conversation.id; setActiveId(conversationId);
         setConversations(prev => [data.conversation, ...prev]);
+        posthog.capture("conversation_created", { creation_source: "first_message" });
       } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); return; }
     }
     const requestId = crypto.randomUUID();
@@ -96,6 +99,7 @@ export default function ChatPage() {
         throw new Error(data.error ?? "The response could not be generated.");
       }
       if (!response.body) throw new Error("Streaming is unavailable in this browser.");
+      posthog.capture("chat_message_sent", { mode });
       const reader = response.body.getReader(); const decoder = new TextDecoder();
       let received = ""; let buffer = ""; let streamFailed = false;
       const consumeEvent = (raw: string) => {

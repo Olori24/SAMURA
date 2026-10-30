@@ -1,16 +1,64 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, Smartphone, ExternalLink } from "lucide-react";
+import posthog from "posthog-js";
+import { authClient } from "@/lib/auth-client";
 
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }> };
 
+function resetPostHogIdentityPreservingConsent() {
+  const consent = posthog.get_explicit_consent_status();
+  const optedIn = posthog.has_opted_in_capturing();
+  const optedOut = posthog.has_opted_out_capturing();
+
+  posthog.reset();
+
+  // reset() clears consent; restore the user's explicit choice immediately.
+  if (consent === "granted" || optedIn) {
+    posthog.opt_in_capturing({ captureEventName: false });
+  } else if (consent === "denied" || optedOut) {
+    posthog.opt_out_capturing();
+  }
+}
+
 export default function PwaInstall() {
+  const { data: session, isPending: isSessionPending } = authClient.useSession();
+  const previousUserId = useRef<string | null | undefined>(undefined);
   const [promptEvent, setPromptEvent] = useState<InstallPrompt | null>(null);
   const [installed, setInstalled] = useState(false);
   const [ios, setIos] = useState(false);
   const [android, setAndroid] = useState(false);
   const [help, setHelp] = useState(false);
   const [chromeIntent, setChromeIntent] = useState("");
+
+  useEffect(() => {
+    if (isSessionPending) return;
+
+    const userId = session?.user?.id ?? null;
+    if (previousUserId.current === userId) return;
+
+    const persistedUserId = posthog.get_property("$user_id");
+    if (previousUserId.current === undefined) {
+      // A fresh app load may start signed out while an older identified account
+      // remains persisted in PostHog. Clear that identity before anonymous events.
+      if (!userId && typeof persistedUserId === "string" && persistedUserId.length > 0) {
+        resetPostHogIdentityPreservingConsent();
+      } else if (userId && typeof persistedUserId === "string" && persistedUserId !== userId) {
+        resetPostHogIdentityPreservingConsent();
+      }
+    } else if (previousUserId.current && !userId) {
+      resetPostHogIdentityPreservingConsent();
+    } else if (userId && previousUserId.current && previousUserId.current !== userId) {
+      resetPostHogIdentityPreservingConsent();
+    }
+
+    if (userId) {
+      // Use only the opaque internal account ID. Never send email or display name.
+      posthog.identify(userId);
+    }
+
+    previousUserId.current = userId;
+  }, [isSessionPending, session?.user]);
 
   useEffect(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
