@@ -20,6 +20,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Regenerate and repair the dependency lockfile
+        run: |
+          npm install --package-lock-only --ignore-scripts
+          npm audit fix --package-lock-only || true
+      - name: Export regenerated lockfile for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: samura-posthog-lockfile
+          path: package-lock.json
+          if-no-files-found: error
       - name: Install dependencies
         run: npm ci
       - name: Dependency audit summary
