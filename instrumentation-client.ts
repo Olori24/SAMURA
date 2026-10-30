@@ -20,6 +20,10 @@ if (!posthogProjectToken) {
     api_host: posthogHost,
     defaults: "2026-08-30",
     capture_exceptions: true,
+    // Use explicit SAMURA events only; avoid collecting arbitrary UI interactions.
+    autocapture: false,
+    // Session replay remains off until a separate privacy and consent review.
+    disable_session_recording: true,
     tracing_headers: [window.location.hostname],
   });
 }
