@@ -70,6 +70,7 @@ export function matchesExpectedBaseCommit(expected: string, actual: string) {
 
 export function hasExpectedGitHubPatchDigest(message: string, digest: string) {
   if (!/^[0-9a-f]{64}$/i.test(digest)) return false;
-  const finalLine = message.replace(/\r\n/g, "\n").trimEnd().split("\n").at(-1);
+  const lines = message.replace(/\r\n/g, "\n").trimEnd().split("\n");
+  const finalLine = lines[lines.length - 1];
   return finalLine === "SAMURA-PATCH-DIGEST:" + digest;
 }

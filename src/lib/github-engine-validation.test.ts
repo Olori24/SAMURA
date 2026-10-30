@@ -70,11 +70,11 @@ describe("hasExpectedGitHubPatchDigest", () => {
   const digest = "a".repeat(64);
 
   it("accepts the exact digest marker on the final commit-message line", () => {
-    expect(hasExpectedGitHubPatchDigest("Patch title\\n\\nSAMURA-PATCH-DIGEST:" + digest, digest)).toBe(true);
+    expect(hasExpectedGitHubPatchDigest("Patch title\n\nSAMURA-PATCH-DIGEST:" + digest, digest)).toBe(true);
   });
 
   it("rejects a matching marker embedded in the title or earlier message lines", () => {
-    expect(hasExpectedGitHubPatchDigest("Patch title SAMURA-PATCH-DIGEST:" + digest + "\\nChanged body", digest)).toBe(false);
+    expect(hasExpectedGitHubPatchDigest("Patch title SAMURA-PATCH-DIGEST:" + digest + "\nChanged body", digest)).toBe(false);
   });
 
   it("rejects malformed digest values", () => {
