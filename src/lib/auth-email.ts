@@ -14,21 +14,34 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;");
 }
 
-export function isPasswordRecoveryEmailConfigured() {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.SAMURA_EMAIL_FROM?.trim();
-  const baseUrl = process.env.BETTER_AUTH_URL?.trim();
-  if (!apiKey || !from || !baseUrl || !from.includes("@") || /[\r\n]/.test(from)) {
-    return false;
-  }
+export function getPasswordRecoveryEmailConfigStatus() {
+  const apiKeyPresent = Boolean(process.env.RESEND_API_KEY?.trim());
+  const sender = process.env.SAMURA_EMAIL_FROM?.trim() ?? "";
+  const baseUrl = process.env.BETTER_AUTH_URL?.trim() ?? "";
+  const senderValid = Boolean(sender && sender.includes("@") && !/[\r\n]/.test(sender));
+
+  let baseUrlValid = false;
+  let baseUrlSecure = false;
   try {
     const url = new URL(baseUrl);
-    return url.protocol === (process.env.NODE_ENV === "production" ? "https:" : url.protocol)
-      && !url.username
-      && !url.password;
+    baseUrlSecure = process.env.NODE_ENV !== "production" || url.protocol === "https:";
+    baseUrlValid = !url.username && !url.password && baseUrlSecure;
   } catch {
-    return false;
+    // Report only validation state; never expose configured values.
   }
+
+  return {
+    apiKeyPresent,
+    senderPresent: Boolean(sender),
+    senderValid,
+    baseUrlPresent: Boolean(baseUrl),
+    baseUrlValid,
+    configured: apiKeyPresent && senderValid && baseUrlValid,
+  };
+}
+
+export function isPasswordRecoveryEmailConfigured() {
+  return getPasswordRecoveryEmailConfigStatus().configured;
 }
 
 export async function sendPasswordResetEmail({ to, url }: ResetEmailInput) {
