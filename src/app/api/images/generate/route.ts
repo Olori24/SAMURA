@@ -7,6 +7,7 @@ import { getServerEnv } from "@/lib/env";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 import { getImageProviderConfig } from "@/lib/ai/image-provider-config";
+import { getSafeProviderImageUrl } from "@/lib/ai/image-provider-image";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -57,14 +58,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ image: "data:image/png;base64," + imageData.b64_json, revisedPrompt }, { headers: { "Cache-Control": "private, no-store" } });
     }
     if (imageData?.url) {
-      let imageUrl: URL;
-      try { imageUrl = new URL(imageData.url); } catch {
-        return NextResponse.json({ error: "The image provider returned an invalid image URL." }, { status: 502 });
+      const safeImageUrl = getSafeProviderImageUrl(imageData.url);
+      if (!safeImageUrl) {
+        return NextResponse.json({ error: "The image provider returned an unsafe image URL. A valid HTTPS URL without embedded credentials is required." }, { status: 502 });
       }
-      if (imageUrl.protocol !== "https:" || imageUrl.username || imageUrl.password) {
-        return NextResponse.json({ error: "The image provider returned an unsafe image URL. HTTPS is required." }, { status: 502 });
-      }
-      return NextResponse.json({ image: imageUrl.toString(), revisedPrompt }, { headers: { "Cache-Control": "private, no-store" } });
+      return NextResponse.json({ image: safeImageUrl, revisedPrompt }, { headers: { "Cache-Control": "private, no-store" } });
     }
     return NextResponse.json({ error: "The image provider returned no image. Please try again." }, { status: 502 });
   } catch (error) {
