@@ -8,6 +8,8 @@ describe("isSafeGitHubPatchPath", () => {
   );
 
   it.each([
+    "app/api/conversations/[id]/route.ts",
+    "app/api/capabilities/route.ts",
     "src/app/api/connectors/github/publish/route.ts",
     "src/app/api/auth/route.ts",
     "src/app/api/capabilities/route.ts",

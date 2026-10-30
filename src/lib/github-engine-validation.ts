@@ -28,6 +28,7 @@ export function isSafeGitHubPatchPath(path: string) {
   // Keep identity, data isolation, connector, provider, and policy enforcement
   // code outside the scope of model-generated patches.
   const protectedPrefixes = [
+    "app/api/",
     "src/app/api/auth/",
     "src/app/api/capabilities/",
     "src/app/api/connectors/",
