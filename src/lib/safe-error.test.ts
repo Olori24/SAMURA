@@ -12,7 +12,7 @@ describe("safeErrorMessage", () => {
   });
 
   it("bounds messages and provides a safe fallback", () => {
-    expect(safeErrorMessage(new Error("x".repeat(500)))).toHaveLength(200);
+    expect(safeErrorMessage(new Error("provider error ".repeat(30)))).toHaveLength(200);
     expect(safeErrorMessage("not an Error")).toBe("Unknown error");
   });
 });
