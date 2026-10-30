@@ -176,7 +176,7 @@ export default function ChatPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Could not delete this conversation.");
       setConversations(previous => previous.filter(item => item.id !== conversation.id));
-      if (activeId === conversation.id) { setActiveId(""); setMessages([]); }
+      if (activeId === conversation.id) { setActiveId(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null); }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not delete this conversation.");
     }
