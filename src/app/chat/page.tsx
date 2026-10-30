@@ -32,6 +32,7 @@ export default function ChatPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState("");
   const [activeId, setActiveId] = useState("");
+  const [activeTitle, setActiveTitle] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [mode, setMode] = useState<"chat" | "code">("chat");
@@ -60,6 +61,7 @@ export default function ChatPage() {
     const response = await fetch("/api/conversations/" + id, { cache: "no-store" });
     if (!response.ok) { setError(response.status === 404 ? "That conversation could not be found." : "Could not restore this conversation."); return; }
     const data = await response.json();
+    setActiveTitle(data.conversation.title);
     setMessages(data.messages);
   }, []);
 
@@ -103,6 +105,7 @@ export default function ChatPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error ?? "Could not rename this conversation.");
       setConversations(previous => previous.map(item => item.id === conversation.id ? data.conversation : item));
+      if (activeId === conversation.id) setActiveTitle(data.conversation.title);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not rename this conversation.");
     }
@@ -154,13 +157,13 @@ export default function ChatPage() {
   }
 
   function exportActiveConversation() {
-    const conversation = conversations.find((item) => item.id === activeId);
-    if (!conversation || messages.length === 0) {
+    const title = activeTitle.trim() || "SAMURA conversation";
+    if (!activeId || messages.length === 0) {
       setError("There are no messages to export yet.");
       return;
     }
     const markdown = [
-      "# " + conversation.title,
+      "# " + title,
       "",
       ...messages.map((message) => `## ${message.role === "assistant" ? "SAMURA" : "You"}
 
@@ -170,7 +173,7 @@ ${message.content}`),
     const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const safeTitle = conversation.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "samura-conversation";
+    const safeTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "samura-conversation";
     link.href = url;
     link.download = safeTitle + ".md";
     document.body.appendChild(link);
@@ -180,12 +183,13 @@ ${message.content}`),
   }
 
   async function newConversation() {
-    setError(""); setMessages([]); setActiveId(""); setSidebarOpen(false); setShowArchived(false);
+    setError(""); setMessages([]); setActiveId(""); setActiveTitle(""); setSidebarOpen(false); setShowArchived(false);
     try {
       const response = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
       if (!response.ok) { const data = await response.json().catch(()=>({})); throw new Error(data.error ?? "Could not create a conversation."); }
       const data = await response.json();
       setActiveId(data.conversation.id);
+      setActiveTitle(data.conversation.title);
       await loadConversations(false);
     } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); }
   }
@@ -200,12 +204,13 @@ ${message.content}`),
       try {
         const created = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
         if (!created.ok) throw new Error("Could not create a conversation.");
-        const data = await created.json(); conversationId = data.conversation.id; setActiveId(conversationId); setShowArchived(false);
+        const data = await created.json(); conversationId = data.conversation.id; setActiveId(conversationId); setActiveTitle(data.conversation.title); setShowArchived(false);
         await loadConversations(false);
       } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); return; }
     }
     const requestId = crypto.randomUUID();
     setDraft("");
+    if (!activeTitle.trim() || activeTitle === "New conversation") setActiveTitle(text.slice(0, 72));
     setMessages(prev => [...prev, { id: requestId, role: "user", content: text }, { id: "assistant-" + requestId, role: "assistant", content: "", status: "streaming" }]);
     setStreaming(true);
     const controller = new AbortController(); abortRef.current = controller;

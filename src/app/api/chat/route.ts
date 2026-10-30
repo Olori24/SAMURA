@@ -36,10 +36,15 @@ export async function POST(request: Request) {
   let ai: ReturnType<typeof createAIClient>;
   try {
     ai = createAIClient(env);
-  } catch {
-    // Keep provider names, endpoint details, and server environment-variable
-    // names out of public responses. Configuration diagnostics belong in
-    // trusted server-side observability, never in a client-visible API error.
+  } catch (error) {
+    // Keep diagnostics server-side and bounded. Strip URLs and common credential
+    // assignments before emitting anything to trusted server logs.
+    const rawMessage = error instanceof Error ? error.message : "";
+    const safeMessage = rawMessage
+      .replace(/https?:\\/\\/[^\\s"'<>]+/gi, "[redacted-url]")
+      .replace(/(api[_-]?key|token|authorization|secret|password)(\\s*[:=]\\s*)[^\\s,;]+/gi, "$1$2[redacted]")
+      .slice(0, 300);
+    console.error("[SAMURA] AI client configuration failed:", safeMessage || "No diagnostic message available.");
     return NextResponse.json(
       { error: "The AI service is not configured correctly. Please try again later or contact support." },
       { status: 503, headers: { "Cache-Control": "no-store" } },
