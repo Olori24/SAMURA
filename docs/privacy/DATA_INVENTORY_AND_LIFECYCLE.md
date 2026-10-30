@@ -50,3 +50,10 @@ Rows below identify data categories evidenced by the repository or requiring con
 ## Completion criteria
 
 This inventory is complete only when each row has an accountable owner, a verified purpose and lawful basis (as determined with counsel), actual vendor/location details, retention rule, deletion mechanism, user-rights path and evidence source.
+
+
+## Telemetry verification — 2026-10-30
+
+The SAMURA repository tree contains no Sentry or PostHog SDK/instrumentation files, and the Vercel environment-variable name inventory contains no Sentry DSN or PostHog project-key/host variables. The connected PostHog project reported `ingested_event=false`; its event schema listed no events seen in the last 30 days. Vercel's runtime-error query returned no errors in the preceding 24 hours, but that does not establish Sentry integration.
+
+**Current conclusion:** application-level Sentry error capture and PostHog product analytics are not evidenced as active. Do not describe them as operational until SDK configuration and event/error ingestion are verified. Any future instrumentation must be reviewed for consent and transparency, collect only necessary events, exclude prompts/message bodies/files/secrets, redact request metadata, and provide appropriate user controls. No analytics instrumentation or new user tracking was enabled during this review.

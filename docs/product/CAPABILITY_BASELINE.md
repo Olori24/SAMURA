@@ -54,3 +54,22 @@
 - “Preview-verified” requires a working non-production deployment and recorded end-to-end test.
 - Provider-dependent functionality must identify required credentials, external costs, supported model capabilities, and graceful failure behavior.
 - Never label the overall product fully complete while a critical capability or deployment blocker remains unresolved.
+
+
+## Current evidence snapshot — 2026-10-30
+
+**Source commit:** `5051750eaa5339ba8a0b4dab0eafca6b5e0d438e` on `feat/chatgpt-capability-parity`.
+
+- GitHub Actions SAMURA CI passed dependency installation, configured dependency security audit, TypeScript typecheck, lint, unit tests, and production build: https://github.com/Olori24/SAMURA/actions/runs/41091538317
+- Vercel produced a READY preview for this exact commit: https://samura-ojr6b0841-bakande11-2779s-projects.vercel.app
+- Vercel's 24-hour runtime-error query returned no errors. This is not a substitute for browser E2E tests or Sentry ingestion.
+- Automated preview browsing remains blocked by deployment access protection, so authenticated signup, chat, voice, image, research, GitHub OAuth/publish, and persistence journeys are not marked E2E-verified.
+- Conversation rename/archive/restore/delete, latest-turn edit, server-side regenerate, Markdown export, and cursor-based older-message loading are present in source. They still require authenticated browser acceptance tests.
+- CSV analysis runs locally in the browser; its parser, numeric summaries, unique header naming, charting and CSV export have automated coverage. It does not upload the selected file.
+- Image generation and web research are implemented as provider-dependent routes, but the Vercel environment inventory did not contain `SAMURA_IMAGE_API_KEY` or `SAMURA_WEB_SEARCH_API_KEY`; neither capability is confirmed operational.
+- Browser dictation is not full voice conversation, speech output, or realtime audio.
+- Projects, durable user memory, broad file extraction/citations, sharing/forking, scheduled tasks and permissioned agent execution remain incomplete.
+- The GitHub publish workflow is implemented in source, but preview OAuth is not configured with a GitHub client secret, and the protected preview prevents end-to-end confirmation.
+- The application repository and Vercel environment inventory do not show Sentry or PostHog SDK configuration. The connected PostHog project reported no ingested events and no events seen in the last 30 days. Do not claim app-level monitoring or analytics are active.
+
+**Release boundary:** this evidence is from a feature-branch preview only. No merge to `main`, production deployment, production database change, or production secret change was performed.

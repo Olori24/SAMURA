@@ -11,7 +11,6 @@ import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 import { createAIClient } from "@/lib/ai/provider";
-import { safeErrorMessage } from "@/lib/safe-error";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -135,12 +134,6 @@ export async function POST(request: Request) {
       max_tokens: env.SAMURA_MAX_OUTPUT_TOKENS,
     }, { signal: abortController.signal });
   } catch (error) {
-    console.error("SAMURA provider request failed", {
-      provider: ai.provider,
-      model: ai.model,
-      status: error instanceof OpenAI.APIError ? error.status : undefined,
-      message: safeErrorMessage(error),
-    });
     const message = error instanceof OpenAI.APIError && error.status === 429
       ? "The AI provider is busy or the configured quota is exhausted. Please try again later."
       : "SAMURA could not reach the selected AI provider. Check that the model server is running and reachable, then try again.";

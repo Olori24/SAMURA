@@ -101,3 +101,17 @@ The following is retained historical evidence only. Its exact source commit and 
 - CI was adjusted so typecheck, lint, unit tests, and production build still execute after the audit step fails, while the overall workflow remains failed until the security audit passes. This prevents a dependency finding from masking unrelated regressions.
 - The chat streaming response no longer returns `X-SAMURA-Provider` and `X-SAMURA-Model` headers. This is a limited metadata-disclosure reduction, not a substitute for broader security testing.
 - Historical CI run: https://github.com/Olori24/SAMURA/actions/runs/40725461514. It failed at dependency audit, so no claim is made that typecheck, lint, tests, or build passed on that run.
+
+
+## Current feature-branch verification — 2026-10-30
+
+This section supersedes no historical findings; it records a separate current verification point.
+
+- Branch: `feat/chatgpt-capability-parity`
+- Source commit: `5051750eaa5339ba8a0b4dab0eafca6b5e0d438e`
+- Lockfile blob at that commit: `eeaea3c05fa4e6853b88a67aeac43b205423239f`
+- GitHub Actions run: https://github.com/Olori24/SAMURA/actions/runs/41091538317
+- The configured dependency audit, TypeScript typecheck, lint, unit tests and production build all passed for that source commit.
+- Matching Vercel preview deployment reached READY: `samura-ojr6b0841-bakande11-2779s-projects.vercel.app`.
+- Vercel's selected 24-hour runtime-error query returned no errors; authenticated browser E2E remains blocked by preview access protection.
+- No production merge, deployment, database mutation, or production secret modification was performed.
