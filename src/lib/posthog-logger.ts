@@ -1,6 +1,6 @@
 import "server-only";
 import { SeverityNumber } from "@opentelemetry/api-logs";
-import { loggerProvider } from "../../instrumentation";
+import { loggerProvider } from "../instrumentation";
 
 const logger = loggerProvider?.getLogger("samura-posthog-logs");
 
