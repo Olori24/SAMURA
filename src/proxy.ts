@@ -12,7 +12,7 @@ function createContentSecurityPolicy(nonce: string): string {
     "font-src 'self' data: https:",
     "style-src 'self' 'unsafe-inline'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-    "connect-src 'self' https://api.github.com",
+    "connect-src 'self' https://api.github.com https://o4511782206963712.ingest.us.sentry.io",
     "upgrade-insecure-requests",
   ].join("; ");
 }
