@@ -161,7 +161,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "The existing SAMURA branch does not match the approved base commit and exact changed-file set. Inspect it in GitHub before retrying.", retryable: false }, { status: 409, headers: noStore });
       }
 
-      let pull = existingPull;
+      let pull = existingPull ?? null;
       if (!pull) {
         const latestBase = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
         if (latestBase.object.sha !== input.expectedBaseCommit) {
