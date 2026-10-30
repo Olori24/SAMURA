@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           model: imageConfig.model,
           input: parsed.data.prompt,
-          response_format: { type: "image", mime_type: "image/png", aspect_ratio: aspectRatio, image_size: "1K" },
+          response_format: { type: "image", aspect_ratio: aspectRatio, image_size: "1K" },
         }),
         cache: "no-store",
         signal: AbortSignal.timeout(55_000),
