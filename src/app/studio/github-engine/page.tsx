@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth-client";
 
 type Repo = {
   id: number; name: string; fullName: string; url: string; description: string | null;
-  defaultBranch: string; isPrivate: boolean; permissions: { read: boolean; write: boolean; admin: boolean };
+  defaultBranch: string; isPrivate: boolean; permissions: { read: boolean; write: boolean; admin: boolean }; requiresReauthorizationForWrite: boolean;
 };
 type GitHubAccount = { login: string; name: string | null; avatarUrl: string; profileUrl: string };
 type Branch = { name: string; sha: string };
@@ -33,7 +33,6 @@ export default function GitHubEngineeringPage() {
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [repoInspectError, setRepoInspectError] = useState("");
   const [githubAccount, setGithubAccount] = useState<GitHubAccount | null>(null);
-  const [requiresReauthorizationForWrite, setRequiresReauthorizationForWrite] = useState(false);
   const [repository, setRepository] = useState("");
   const [baseBranch, setBaseBranch] = useState("");
   const [task, setTask] = useState("");
@@ -57,7 +56,6 @@ export default function GitHubEngineeringPage() {
         if (!active) return;
         const list: Repo[] = data.repositories ?? [];
         setGithubAccount(data.account ?? null);
-        setRequiresReauthorizationForWrite(Boolean(data.capabilities?.requiresReauthorizationForWrite));
         setRepos(list);
         const first = list.find(repo => repo.permissions?.write) ?? list.find(repo => repo.permissions?.read);
         if (first) { setLoadingBranches(true); setRepository(first.fullName); setBaseBranch(first.defaultBranch); }
@@ -151,7 +149,7 @@ export default function GitHubEngineeringPage() {
       </header>
 
       {error && <p role="alert" className="mb-4 rounded-xl border border-amber-200/20 bg-amber-200/5 p-4 text-sm text-amber-100">{error}</p>}
-      {requiresReauthorizationForWrite && <div role="status" className="mb-4 rounded-xl border border-amber-200/20 bg-amber-200/5 p-4 text-sm leading-6 text-amber-100">This GitHub connection is missing the repository scope required for publishing. Reconnect GitHub and approve the requested access. <a href="/api/connectors/github/authorize" className="ml-1 font-semibold underline">Reconnect GitHub</a></div>}
+      {selectedRepo?.requiresReauthorizationForWrite && <div role="status" className="mb-4 rounded-xl border border-amber-200/20 bg-amber-200/5 p-4 text-sm leading-6 text-amber-100">This GitHub connection is missing the repository scope required for publishing. Reconnect GitHub and approve the requested access. <a href="/api/connectors/github/authorize" className="ml-1 font-semibold underline">Reconnect GitHub</a></div>}
 
       {githubAccount && <div className="mb-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4"><img src={githubAccount.avatarUrl} alt="" className="h-10 w-10 rounded-full" /><div className="min-w-0 flex-1"><p className="text-sm font-medium">Connected as @{githubAccount.login}</p><p className="text-xs text-slate-400">{githubAccount.name ?? "GitHub account"} · repository permissions checked per request</p></div><a href={githubAccount.profileUrl} target="_blank" rel="noreferrer" className="text-xs text-teal-200 underline">View profile ↗</a></div>}
       <section className="space-y-5 rounded-3xl border border-white/10 bg-white/[0.035] p-5 sm:p-7">
