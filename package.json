@@ -28,7 +28,8 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "@tailwindcss/typography": "^0.5.20",
-    "@sentry/nextjs": "^11.10.0"
+    "@sentry/nextjs": "^11.10.0",
+    "posthog-js": "^1.444.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -40,12 +41,14 @@
     "drizzle-kit": "^0.31.11",
     "@eslint/js": "^9.39.1",
     "typescript-eslint": "^8.56.0",
-    "eslint-plugin-react-hooks": "^7.0.2",
-    "globals": "^16.4.0"
+    "globals": "^16.4.0",
+    "eslint-plugin-react-hooks": "^7.0.2"
   },
   "overrides": {
     "esbuild": "^0.28.2",
-    "postcss-selector-parser": "^7.1.6"
+    "postcss-selector-parser": "^7.1.6",
+    "glob": "^14.0.2",
+    "minimatch": "^11.0.1"
   },
   "engines": {
     "node": "24.x"

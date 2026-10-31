@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { AudioWaveform, ChevronLeft, LoaderCircle, LogOut, Menu, MessageSquarePlus, Mic, MicOff, Send, Square, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { captureProductEvent, resetProductIdentity } from "@/lib/product-analytics";
 
 type Conversation = { id: string; title: string; createdAt: string; updatedAt: string };
 type Message = { id: string; role: "user" | "assistant"; content: string; status?: string; createdAt?: string };
@@ -90,6 +91,7 @@ export default function ChatPage() {
       const data = await response.json();
       setActiveId(data.conversation.id);
       setConversations(prev => [data.conversation, ...prev.filter(c => c.id !== data.conversation.id)]);
+      captureProductEvent("conversation_created", { creation_source: "new_conversation" });
     } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); }
   }
 
@@ -105,6 +107,7 @@ export default function ChatPage() {
         if (!created.ok) throw new Error("Could not create a conversation.");
         const data = await created.json(); conversationId = data.conversation.id; setActiveId(conversationId);
         setConversations(prev => [data.conversation, ...prev]);
+        captureProductEvent("conversation_created", { creation_source: "first_message" });
       } catch(e) { setError(e instanceof Error ? e.message : "Could not create a conversation."); return; }
     }
     const requestId = crypto.randomUUID();
@@ -119,6 +122,7 @@ export default function ChatPage() {
         throw new Error(data.error ?? "The response could not be generated.");
       }
       if (!response.body) throw new Error("Streaming is unavailable in this browser.");
+      captureProductEvent("chat_message_sent", { mode });
       const reader = response.body.getReader(); const decoder = new TextDecoder();
       let received = ""; let buffer = ""; let streamFailed = false;
       const consumeEvent = (raw: string) => {
@@ -244,7 +248,7 @@ export default function ChatPage() {
     if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); }
   }
 
-  async function signOut() { abortRef.current?.abort(); await authClient.signOut(); router.replace("/login"); router.refresh(); }
+  async function signOut() { resetProductIdentity(); abortRef.current?.abort(); await authClient.signOut(); router.replace("/login"); router.refresh(); }
 
   if (isPending || loadingHistory) return <main className="grid min-h-screen place-items-center text-slate-400"><span className="flex items-center gap-3"><LoaderCircle className="animate-spin" size={20}/>Opening your SAMURA workspace…</span></main>;
 

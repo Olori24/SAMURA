@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDownToLine, ArrowLeft, FilePlus2, FileText, LockKeyhole, Save, Sparkles, Trash2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { countWords, MAX_DOCUMENT_CHARACTERS, safeDocumentFilename, type DocumentFormat } from "@/lib/document-utils";
+import { captureProductEvent } from "@/lib/product-analytics";
 
 type DocumentSummary = { id: string; title: string; format: DocumentFormat; createdAt: string; updatedAt: string };
 type SavedDocument = DocumentSummary & { content: string };
@@ -100,6 +101,7 @@ export default function DocumentsPage() {
 
   async function saveDocument() {
     if (!title.trim()) { setError("Give your document a title before saving."); return; }
+    const saveAction = documentId ? "updated" : "created";
     setSaving(true);
     setError("");
     setNotice("");
@@ -118,6 +120,7 @@ export default function DocumentsPage() {
       setContent(saved.content);
       setDirty(false);
       setNotice("Saved securely to your SAMURA account.");
+      captureProductEvent("document_saved", { document_format: format, save_action: saveAction });
       await loadDocuments();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save this document.");

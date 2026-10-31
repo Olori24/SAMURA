@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, LoaderCircle, ShieldCheck, Sparkles } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { captureProductEvent } from "@/lib/product-analytics";
 
 type Repo = {
   id: number; name: string; fullName: string; url: string; description: string | null;
@@ -99,6 +100,7 @@ export default function GitHubEngineeringPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not generate a patch.");
       setPatch(data as Patch);
+      captureProductEvent("github_patch_generated", { changed_file_count: data.changes?.length ?? 0 });
       setPublishKey(crypto.randomUUID());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not generate a patch.");
@@ -130,6 +132,7 @@ export default function GitHubEngineeringPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "GitHub publishing failed.");
       setResult(data as PublishResult);
+      captureProductEvent("github_patch_published", { changed_file_count: data.changedFiles?.length ?? 0 });
       setApproved(false);
     } catch (e) { setError(e instanceof Error ? e.message : "GitHub publishing failed."); }
     finally { setPublishing(false); }
