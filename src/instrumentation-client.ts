@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import posthog from "posthog-js";
+import { initializeProductAnalytics, isSensitiveAnalyticsRoute } from "@/lib/product-analytics";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -9,20 +9,10 @@ Sentry.init({
   replaysOnErrorSampleRate: 0,
 });
 
-const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
-const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
-
-if (posthogToken && posthogHost) {
-  posthog.init(posthogToken, {
-    api_host: posthogHost,
-    defaults: "2026-08-30",
-    autocapture: false,
-    capture_pageview: false,
-    capture_pageleave: false,
-    capture_exceptions: false,
-    disable_session_recording: true,
-    person_profiles: "identified_only",
-  });
+// Never initialize analytics while a bearer token is present in the URL.
+// The app can initialize after navigation to a clean route.
+if (typeof window !== "undefined" && !isSensitiveAnalyticsRoute(window.location.pathname, window.location.search)) {
+  initializeProductAnalytics();
 }
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
