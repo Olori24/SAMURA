@@ -15,7 +15,9 @@ const SUPPORTED_AUDIO_MIME_TYPES = new Set([
 ]);
 
 export function normalizeAudioMimeType(value: string): string | null {
-  const mimeType = value.split(";")[0]?.trim().toLowerCase();
+  const normalized = value.split(";")[0]?.trim().toLowerCase();
+  // Gemini accepts M4A audio, but not the audio/mp4 label MediaRecorder may report in Safari.
+  const mimeType = normalized === "audio/mp4" ? "audio/m4a" : normalized;
   return mimeType && SUPPORTED_AUDIO_MIME_TYPES.has(mimeType) ? mimeType : null;
 }
 
