@@ -3,7 +3,12 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { identifyProductUser, resetProductIdentity } from "@/lib/product-analytics";
+import {
+  identifyProductUser,
+  initializeProductAnalytics,
+  isSensitiveAnalyticsRoute,
+  resetProductIdentity,
+} from "@/lib/product-analytics";
 import posthog from "posthog-js";
 
 export default function PostHogIdentity() {
@@ -12,7 +17,9 @@ export default function PostHogIdentity() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (isPending || !process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN || !posthog.__loaded) return;
+    if (isPending || !pathname || isSensitiveAnalyticsRoute(pathname, window.location.search)) return;
+    initializeProductAnalytics();
+    if (!process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN || !posthog.__loaded) return;
 
     const userId = session?.user?.id;
     if (userId) {
@@ -25,10 +32,13 @@ export default function PostHogIdentity() {
     const persistedUserId = posthog.get_property("$user_id");
     if (previousUserId.current || persistedUserId) resetProductIdentity();
     previousUserId.current = null;
-  }, [isPending, session?.user?.id]);
+  }, [isPending, pathname, session?.user?.id]);
 
   useEffect(() => {
-    if (isPending || !pathname || !process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN || !posthog.__loaded) return;
+    if (isPending || !pathname || isSensitiveAnalyticsRoute(pathname, window.location.search)) return;
+    initializeProductAnalytics();
+    if (!process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN || !posthog.__loaded) return;
+
     // Track route paths only; deliberately omit query strings, which can contain OAuth codes or other sensitive values.
     posthog.capture("$pageview", { $current_url: window.location.origin + pathname });
   }, [isPending, pathname]);
