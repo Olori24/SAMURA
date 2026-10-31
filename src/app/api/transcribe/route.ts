@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
   const body = await parseBoundedJson(request, MAX_JSON_BYTES);
   if (!body.ok) {
-    return NextResponse.json({ error: body.tooLarge ? "That recording is too large. Keep voice messages under one minute." : "The voice recording could not be read." }, {
+    return NextResponse.json({ error: body.tooLarge ? "That recording is too large. Try a shorter recording." : "The voice recording could not be read." }, {
       status: body.tooLarge ? 413 : 400,
       headers: { "Cache-Control": "no-store" },
     });
