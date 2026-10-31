@@ -97,14 +97,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "This path is outside the supported safe patch paths. Security-sensitive, binary, manifest, and deployment files require a separate review." }, { status: 400, headers: noStore });
   }
 
-  const [account] = await getDb().select({ accessToken: accounts.accessToken, scope: accounts.scope })
+  const [account] = await getDb().select({ accessToken: accounts.accessToken })
     .from(accounts).where(and(eq(accounts.userId, session.user.id), eq(accounts.providerId, githubProviderId()))).limit(1);
   if (!account?.accessToken) return NextResponse.json({ error: "Connect GitHub before publishing." }, { status: 409, headers: noStore });
-  // The saved OAuth scope string can be incomplete for older linked accounts.
-  // GitHub's authenticated repository response below is authoritative: publishing
-  // proceeds only when it confirms push permission for this exact repository.
-  const scopes = (account.scope ?? "").split(/[ ,]+/).filter(Boolean);
-
   try {
     const token = decryptConnectorToken(account.accessToken);
     const repository = input.repository.split("/").map(encodeURIComponent).join("/");
@@ -112,11 +107,6 @@ export async function POST(request: Request) {
     if (repoInfo.full_name.toLowerCase() !== input.repository.toLowerCase() || repoInfo.permissions?.push !== true || repoInfo.archived || repoInfo.disabled) {
       return NextResponse.json({ error: "This GitHub account does not have effective write access to the selected repository." }, { status: 403, headers: noStore });
     }
-    if (scopes.includes("public_repo") && !scopes.includes("repo")) {
-      const visibility = await github<{ private: boolean }>(token, "/repos/" + repository);
-      if (visibility.private) return NextResponse.json({ error: "This connection only has public-repository scope. Reconnect with the required repository access." }, { status: 403, headers: noStore });
-    }
-
     const branchSlug = "samura/approval-" + input.idempotencyKey;
     const branchRef = "refs/heads/" + branchSlug;
     const branchName = branchSlug;
