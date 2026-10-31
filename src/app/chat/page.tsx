@@ -227,11 +227,11 @@ export default function ChatPage() {
         stream.getTracks().forEach(track => track.stop());
         return;
       }
+      mediaStreamRef.current = stream;
 
       const preferredTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
       const mimeType = preferredTypes.find(type => MediaRecorder.isTypeSupported(type));
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      mediaStreamRef.current = stream;
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
       recorder.ondataavailable = event => {
@@ -284,6 +284,7 @@ export default function ChatPage() {
       mediaRecorderRef.current = null;
       mediaStreamRef.current?.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
+      audioChunksRef.current = [];
       setError(cause instanceof DOMException && cause.name === "NotAllowedError"
         ? "Microphone permission was denied. Allow microphone access for SAMURA in your browser settings."
         : "Could not access the microphone. Check browser permissions and try again.");
@@ -346,7 +347,7 @@ export default function ChatPage() {
         setVoiceStarting(false);
         setVoiceListening(false);
         speechRef.current = null;
-        if (!transcript && ["network", "service-not-allowed", "language-not-supported"].includes(event.error)) {
+        if (!transcript && ["network", "service-not-allowed", "language-not-supported", "audio-capture"].includes(event.error)) {
           void startGeminiVoiceCapture();
           return;
         }
