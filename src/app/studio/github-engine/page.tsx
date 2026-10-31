@@ -33,6 +33,7 @@ export default function GitHubEngineeringPage() {
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [repoInspectError, setRepoInspectError] = useState("");
   const [githubAccount, setGithubAccount] = useState<GitHubAccount | null>(null);
+  const [requiresReauthorizationForWrite, setRequiresReauthorizationForWrite] = useState(false);
   const [repository, setRepository] = useState("");
   const [baseBranch, setBaseBranch] = useState("");
   const [task, setTask] = useState("");
@@ -56,6 +57,7 @@ export default function GitHubEngineeringPage() {
         if (!active) return;
         const list: Repo[] = data.repositories ?? [];
         setGithubAccount(data.account ?? null);
+        setRequiresReauthorizationForWrite(Boolean(data.capabilities?.requiresReauthorizationForWrite));
         setRepos(list);
         const first = list.find(repo => repo.permissions?.write) ?? list.find(repo => repo.permissions?.read);
         if (first) { setLoadingBranches(true); setRepository(first.fullName); setBaseBranch(first.defaultBranch); }
