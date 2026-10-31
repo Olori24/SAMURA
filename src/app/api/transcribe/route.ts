@@ -129,10 +129,11 @@ export async function POST(request: Request) {
 
   const providerPayload = await providerResponse.json().catch(() => null);
   if (!providerResponse.ok) {
+    console.error("[samura:transcribe] Gemini provider request failed with status", providerResponse.status);
     const status = providerResponse.status === 429 ? 429 : providerResponse.status >= 500 ? 503 : 502;
     return NextResponse.json({ error: status === 429
       ? "The voice transcription service is busy or its quota is exhausted. Try again shortly."
-      : "Voice transcription failed. Check the Gemini service configuration and try again." }, {
+      : "Voice transcription failed. Please try again later." }, {
       status,
       headers: { "Cache-Control": "no-store" },
     });
