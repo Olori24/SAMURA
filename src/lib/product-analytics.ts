@@ -16,6 +16,31 @@ export type ProductEvent =
 
 type EventProperties = Record<string, string | number | boolean>;
 
+const POSTHOG_DEFAULTS = {
+  defaults: "2026-08-30" as const,
+  autocapture: false,
+  capture_pageview: false,
+  capture_pageleave: false,
+  capture_exceptions: false,
+  disable_session_recording: true,
+  person_profiles: "identified_only" as const,
+};
+
+export function isSensitiveAnalyticsRoute(pathname: string, search = "") {
+  const normalizedPath = pathname.toLowerCase();
+  const params = new URLSearchParams(search);
+  return normalizedPath === "/reset-password"
+    || normalizedPath.startsWith("/reset-password/")
+    || params.has("token");
+}
+
+export function initializeProductAnalytics() {
+  const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+  if (!token || !host || posthog.__loaded) return;
+  posthog.init(token, { api_host: host, ...POSTHOG_DEFAULTS });
+}
+
 function isReady() {
   return Boolean(process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && posthog.__loaded);
 }
