@@ -96,7 +96,7 @@ export async function GET() {
       capabilities: {
         read: true,
         write: repositories.some(repo => repo.permissions?.push === true),
-        requiresReauthorizationForWrite: !scopes.includes("repo"),
+        requiresReauthorizationForWrite: !scopes.includes("repo") && !scopes.includes("public_repo"),
         scope: scopes,
       },
       truncated: repositories.length >= 300,
