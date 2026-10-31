@@ -1,7 +1,28 @@
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
+function configuredPostHogOrigin(): string | null {
+  const configuredHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+  if (!configuredHost) return null;
+
+  try {
+    const url = new URL(configuredHost);
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 function createContentSecurityPolicy(nonce: string): string {
+  const connectSources = new Set([
+    "'self'",
+    "https://api.github.com",
+    "https://o4511782206963712.ingest.us.sentry.io",
+  ]);
+  const posthogOrigin = configuredPostHogOrigin();
+  if (posthogOrigin) connectSources.add(posthogOrigin);
+
   return [
     "default-src 'self'",
     "base-uri 'self'",
@@ -12,7 +33,7 @@ function createContentSecurityPolicy(nonce: string): string {
     "font-src 'self' data: https:",
     "style-src 'self' 'unsafe-inline'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-    "connect-src 'self' https://api.github.com https://o4511782206963712.ingest.us.sentry.io",
+    `connect-src ${Array.from(connectSources).join(" ")}`,
     "upgrade-insecure-requests",
   ].join("; ");
 }
