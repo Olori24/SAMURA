@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Code2, FileJson, FileText, Github, LockKeyhole, Plug, Search, ShieldCheck, Slack, Sparkles, type LucideIcon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { captureProductEvent } from "@/lib/product-analytics";
 
 type GitHubProfile = { login: string; name: string | null; avatarUrl: string; profileUrl: string };
 type GitHubRepo = { id: number; fullName: string; url: string; description: string | null; language: string | null; stars: number; updatedAt: string };
@@ -104,6 +105,7 @@ export default function ConnectPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Repository inspection failed.");
       setInspection(data);
+      captureProductEvent("github_repository_inspected", { file_count: data.files?.length ?? 0, listing_truncated: Boolean(data.truncated) });
     } catch (e) {
       setInspectionError(e instanceof Error ? e.message : "Repository inspection failed.");
     } finally {
@@ -139,6 +141,7 @@ export default function ConnectPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Plugin action failed.");
       setResult(JSON.stringify(data.result, null, 2));
+      captureProductEvent("connector_action_completed", { connector_id: selected.id, connector_action: action });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Plugin action failed.");
     } finally {
