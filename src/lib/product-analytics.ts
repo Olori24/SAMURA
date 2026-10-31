@@ -29,9 +29,11 @@ const POSTHOG_DEFAULTS = {
 export function isSensitiveAnalyticsRoute(pathname: string, search = "") {
   const normalizedPath = pathname.toLowerCase();
   const params = new URLSearchParams(search);
+  const sensitiveQueryKeys = new Set(["token", "access_token", "refresh_token", "reset_token", "code", "state", "secret", "key"]);
+  const hasSensitiveQuery = Array.from(params.keys()).some(key => sensitiveQueryKeys.has(key.toLowerCase()));
   return normalizedPath === "/reset-password"
     || normalizedPath.startsWith("/reset-password/")
-    || params.has("token");
+    || hasSensitiveQuery;
 }
 
 export function initializeProductAnalytics() {
