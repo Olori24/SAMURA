@@ -348,7 +348,10 @@ export default function ChatPage() {
         setVoiceListening(false);
         speechRef.current = null;
         if (!transcript && ["network", "service-not-allowed", "language-not-supported", "audio-capture"].includes(event.error)) {
-          void startGeminiVoiceCapture();
+          try { recognition.stop(); } catch { /* The browser may already have stopped recognition. */ }
+          window.setTimeout(() => {
+            if (voiceSessionRef.current === sessionId) void startGeminiVoiceCapture();
+          }, 350);
           return;
         }
         const messages: Record<string, string> = {
@@ -381,7 +384,9 @@ export default function ChatPage() {
         voiceStartingRef.current = false;
         setVoiceStarting(false);
         try { recognition.stop(); } catch { /* Recognition may not have started yet. */ }
-        void startGeminiVoiceCapture();
+        window.setTimeout(() => {
+          if (voiceSessionRef.current === sessionId) void startGeminiVoiceCapture();
+        }, 350);
       }, 8_000);
     } catch (cause) {
       if (voiceStartTimeoutRef.current !== null) window.clearTimeout(voiceStartTimeoutRef.current);
