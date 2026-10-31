@@ -378,16 +378,40 @@ export default function ChatPage() {
       };
       speechRef.current = recognition;
       recognition.start();
-      voiceStartTimeoutRef.current = window.setTimeout(() => {
+      const speechStartedAt = Date.now();
+      const recoverFromSpeechStartup = async () => {
         if (voiceSessionRef.current !== sessionId || speechRef.current !== recognition || !voiceStartingRef.current) return;
+        let permissionState: PermissionState | "unknown" = "unknown";
+        try {
+          const permission = await navigator.permissions.query({ name: "microphone" as PermissionName });
+          permissionState = permission.state;
+        } catch {
+          // Some browsers do not expose microphone permission queries.
+        }
+        if (voiceSessionRef.current !== sessionId || speechRef.current !== recognition || !voiceStartingRef.current) return;
+        if (permissionState === "prompt" && Date.now() - speechStartedAt < 30_000) {
+          voiceStartTimeoutRef.current = window.setTimeout(() => void recoverFromSpeechStartup(), 2_000);
+          return;
+        }
+        if (voiceStartTimeoutRef.current !== null) window.clearTimeout(voiceStartTimeoutRef.current);
+        voiceStartTimeoutRef.current = null;
         speechRef.current = null;
         voiceStartingRef.current = false;
         setVoiceStarting(false);
         try { recognition.stop(); } catch { /* Recognition may not have started yet. */ }
-        window.setTimeout(() => {
-          if (voiceSessionRef.current === sessionId) void startGeminiVoiceCapture();
-        }, 350);
-      }, 8_000);
+        if (permissionState === "granted") {
+          window.setTimeout(() => {
+            if (voiceSessionRef.current === sessionId) void startGeminiVoiceCapture();
+          }, 350);
+        } else {
+          setError(permissionState === "denied"
+            ? "Microphone permission was denied. Allow microphone access for SAMURA in your browser settings."
+            : permissionState === "prompt"
+              ? "Microphone permission is still pending. Allow access, then tap Voice again."
+              : "Could not confirm microphone permission. Allow access in your browser settings, then tap Voice again.");
+        }
+      };
+      voiceStartTimeoutRef.current = window.setTimeout(() => void recoverFromSpeechStartup(), 8_000);
     } catch (cause) {
       if (voiceStartTimeoutRef.current !== null) window.clearTimeout(voiceStartTimeoutRef.current);
       voiceStartTimeoutRef.current = null;
@@ -396,9 +420,13 @@ export default function ChatPage() {
       setVoiceStarting(false);
       setVoiceListening(false);
       speechRef.current = null;
-      setError(cause instanceof DOMException && cause.name === "NotAllowedError"
-        ? "Microphone permission was denied. Allow microphone access for SAMURA in your browser settings."
-        : "Could not start voice typing. Check microphone access and try again.");
+      if (cause instanceof DOMException && cause.name === "NotAllowedError") {
+        setError("Microphone permission was denied. Allow microphone access for SAMURA in your browser settings.");
+        return;
+      }
+      window.setTimeout(() => {
+        if (voiceSessionRef.current === sessionId) void startGeminiVoiceCapture();
+      }, 350);
     }
   }
 
