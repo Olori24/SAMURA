@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PwaInstall from "@/components/pwa-install";
+import PostHogIdentity from "@/components/posthog-identity";
 
 // A request-specific CSP nonce requires dynamic rendering; static prerendered
 // HTML cannot carry the per-request nonce used by the response policy.
@@ -17,5 +18,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#080b12", width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}<div className="fixed bottom-4 right-4 z-50 rounded-2xl border border-white/10 bg-[#080b12]/95 p-2 shadow-2xl backdrop-blur"><PwaInstall /></div></body></html>;
+  return <html lang="en"><body>{children}<PostHogIdentity /><div className="fixed bottom-4 right-4 z-50 rounded-2xl border border-white/10 bg-[#080b12]/95 p-2 shadow-2xl backdrop-blur"><PwaInstall /></div></body></html>;
 }
