@@ -1,4 +1,5 @@
-export const MAX_TRANSCRIPTION_AUDIO_BYTES = 4 * 1024 * 1024;
+// Keep base64 JSON requests comfortably below Vercel's 4.5 MB function body limit.
+export const MAX_TRANSCRIPTION_AUDIO_BYTES = 3 * 1024 * 1024;
 
 const SUPPORTED_AUDIO_MIME_TYPES = new Set([
   "audio/webm",
