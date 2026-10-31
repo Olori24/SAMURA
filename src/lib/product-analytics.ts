@@ -40,7 +40,36 @@ export function initializeProductAnalytics() {
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
   const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
   if (!token || !host || posthog.__loaded) return;
-  posthog.init(token, { api_host: host, ...POSTHOG_DEFAULTS });
+  posthog.init(token, {
+    api_host: host,
+    ...POSTHOG_DEFAULTS,
+    // Strip query strings and fragments from SDK-generated URL properties.
+    // This prevents reset tokens and OAuth credentials from reaching analytics.
+    before_send: event => {
+      const urlProperties = [
+        "$current_url",
+        "$referrer",
+        "$pathname",
+        "$initial_current_url",
+        "$initial_referrer",
+      ] as const;
+      if (event.properties) {
+        for (const key of urlProperties) {
+          const value = event.properties[key];
+          if (typeof value !== "string") continue;
+          try {
+            const parsed = new URL(value, window.location.origin);
+            parsed.search = "";
+            parsed.hash = "";
+            event.properties[key] = parsed.toString();
+          } catch {
+            event.properties[key] = value.split(/[?#]/, 1)[0];
+          }
+        }
+      }
+      return event;
+    },
+  });
 }
 
 function isReady() {
