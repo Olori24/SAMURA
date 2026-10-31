@@ -28,10 +28,10 @@ export default function PostHogIdentity() {
   }, [isPending, session?.user?.id]);
 
   useEffect(() => {
-    if (!pathname || !process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN || !posthog.__loaded) return;
+    if (isPending || !pathname || !process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN || !posthog.__loaded) return;
     // Track route paths only; deliberately omit query strings, which can contain OAuth codes or other sensitive values.
     posthog.capture("$pageview", { $current_url: window.location.origin + pathname });
-  }, [pathname]);
+  }, [isPending, pathname]);
 
   return null;
 }
