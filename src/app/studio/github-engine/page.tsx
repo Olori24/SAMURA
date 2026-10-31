@@ -151,6 +151,7 @@ export default function GitHubEngineeringPage() {
       </header>
 
       {error && <p role="alert" className="mb-4 rounded-xl border border-amber-200/20 bg-amber-200/5 p-4 text-sm text-amber-100">{error}</p>}
+      {requiresReauthorizationForWrite && <div role="status" className="mb-4 rounded-xl border border-amber-200/20 bg-amber-200/5 p-4 text-sm leading-6 text-amber-100">This GitHub connection is missing the repository scope required for publishing. Reconnect GitHub and approve the requested access. <a href="/api/connectors/github/authorize" className="ml-1 font-semibold underline">Reconnect GitHub</a></div>}
 
       {githubAccount && <div className="mb-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4"><img src={githubAccount.avatarUrl} alt="" className="h-10 w-10 rounded-full" /><div className="min-w-0 flex-1"><p className="text-sm font-medium">Connected as @{githubAccount.login}</p><p className="text-xs text-slate-400">{githubAccount.name ?? "GitHub account"} · repository permissions checked per request</p></div><a href={githubAccount.profileUrl} target="_blank" rel="noreferrer" className="text-xs text-teal-200 underline">View profile ↗</a></div>}
       <section className="space-y-5 rounded-3xl border border-white/10 bg-white/[0.035] p-5 sm:p-7">
