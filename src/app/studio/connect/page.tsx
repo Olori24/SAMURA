@@ -158,8 +158,8 @@ export default function ConnectPage() {
         <div className="mb-3 grid h-11 w-11 place-items-center rounded-2xl border border-teal-300/20 bg-teal-300/10 text-teal-200"><Plug size={21}/></div>
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-teal-200">SAMURA Connect</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-5xl">Your tools, under your control.</h1>
-        <p className="mt-4 text-sm leading-7 text-slate-400">Explore plugins, inspect permissions, and run available actions. GitHub can be connected with read-only identity access once its production OAuth settings are configured.</p>
-        <Link href="/studio/github-publish" className="mt-4 inline-flex items-center gap-2 rounded-xl border border-teal-200/25 bg-teal-200/[0.06] px-4 py-2.5 text-sm font-semibold text-teal-100 transition hover:bg-teal-200/10"><Github size={16}/> Open GitHub publishing workspace</Link>
+        <p className="mt-4 text-sm leading-7 text-slate-400">Explore plugins, inspect permissions, and run available actions. GitHub supports repository inspection and AI-generated, human-approved pull requests. Drive and Slack remain setup-gated.</p>
+        <div className="mt-4 flex flex-wrap gap-2"><Link href="/studio/github-engine" className="inline-flex items-center gap-2 rounded-xl border border-teal-200/25 bg-teal-200/[0.06] px-4 py-2.5 text-sm font-semibold text-teal-100 transition hover:bg-teal-200/10"><Github size={16}/> Open AI engineering workspace</Link><Link href="/studio/github-publish" className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/[0.04]">Manual single-file publisher</Link></div>
       </header>
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -191,7 +191,7 @@ export default function ConnectPage() {
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-teal-200"><Github size={21}/></div>
             <div>
               <div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">GitHub account</h2><span className={"rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider " + (githubConnected ? "bg-teal-200/10 text-teal-200" : "bg-white/5 text-slate-400")}>{githubConnected ? "Connected" : "Not connected"}</span></div>
-              <p className="mt-1 text-sm leading-6 text-slate-400">Connect using GitHub OAuth with read-only identity scopes. SAMURA encrypts the token at rest and currently displays public repositories only.</p>
+              <p className="mt-1 text-sm leading-6 text-slate-400">Connect using GitHub OAuth with repository access. SAMURA encrypts the token at rest, displays repositories the account can access, and checks effective write permission before publishing. AI-generated changes require your approval and are published to a new branch and draft pull request.</p>
               {githubProfile && <a href={githubProfile.profileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm text-teal-200 hover:text-white">{githubProfile.name || githubProfile.login} · @{githubProfile.login}</a>}
             </div>
           </div>
