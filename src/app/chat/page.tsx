@@ -34,6 +34,7 @@ export default function ChatPage() {
   const [streaming, setStreaming] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
   const [voiceStarting, setVoiceStarting] = useState(false);
+  const [voiceTranscribing, setVoiceTranscribing] = useState(false);
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -41,6 +42,10 @@ export default function ChatPage() {
   const speechTextRef = useRef("");
   const voiceStartingRef = useRef(false);
   const voiceSessionRef = useRef(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const voiceRecordingTimerRef = useRef<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadConversations = useCallback(async () => {
@@ -81,6 +86,17 @@ export default function ChatPage() {
     voiceStartingRef.current = false;
     speechRef.current?.stop();
     speechRef.current = null;
+    if (voiceRecordingTimerRef.current !== null) window.clearTimeout(voiceRecordingTimerRef.current);
+    const recorder = mediaRecorderRef.current;
+    if (recorder) {
+      recorder.onstop = null;
+      recorder.onerror = null;
+      if (recorder.state !== "inactive") recorder.stop();
+    }
+    mediaRecorderRef.current = null;
+    mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+    mediaStreamRef.current = null;
+    audioChunksRef.current = [];
   }, []);
 
   async function newConversation() {
@@ -98,7 +114,7 @@ export default function ChatPage() {
   async function sendMessage(event?: FormEvent) {
     event?.preventDefault();
     const text = draft.trim();
-    if (!text || streaming || voiceListening || voiceStarting) return;
+    if (!text || streaming || voiceListening || voiceStarting || voiceTranscribing) return;
     setError("");
     let conversationId = activeId;
     if (!conversationId) {
@@ -159,12 +175,125 @@ export default function ChatPage() {
     } finally { setStreaming(false); abortRef.current = null; }
   }
 
-  function toggleVoiceInput() {
-    if (voiceListening) {
-      speechRef.current?.stop();
+  async function transcribeAudio(blob: Blob) {
+    setVoiceListening(false);
+    setVoiceTranscribing(true);
+    setError("");
+    try {
+      if (!blob.size) throw new Error("The recording was empty. Try speaking again.");
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      let binary = "";
+      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+      }
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audio: window.btoa(binary),
+          mimeType: blob.type.split(";")[0] || "audio/webm",
+        }),
+      });
+      const data = await response.json().catch(() => ({})) as { transcript?: string; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Voice transcription failed. Try again.");
+      const transcript = typeof data.transcript === "string" ? data.transcript.trim() : "";
+      if (!transcript) throw new Error("No clear speech was detected. Try speaking closer to your microphone.");
+      setDraft(current => [current.trim(), transcript].filter(Boolean).join(" ").slice(0, 12000));
+      captureProductEvent("voice_transcription_completed", { provider: "gemini" });
+    } catch (cause) {
+      captureProductEvent("voice_transcription_failed");
+      setError(cause instanceof Error ? cause.message : "Voice transcription failed. Check your connection and try again.");
+    } finally {
+      setVoiceTranscribing(false);
+    }
+  }
+
+  async function startGeminiVoiceCapture() {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setError("Voice typing is not supported in this browser. Open SAMURA in the latest Chrome browser or use your keyboard's microphone.");
       return;
     }
-    if (voiceStartingRef.current || speechRef.current || streaming) return;
+
+    setError("");
+    voiceStartingRef.current = true;
+    setVoiceStarting(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      if (!voiceStartingRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+
+      const preferredTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+      const mimeType = preferredTypes.find(type => MediaRecorder.isTypeSupported(type));
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaStreamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+      recorder.ondataavailable = event => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        if (voiceRecordingTimerRef.current !== null) window.clearTimeout(voiceRecordingTimerRef.current);
+        voiceRecordingTimerRef.current = null;
+        mediaRecorderRef.current = null;
+        mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current = null;
+        audioChunksRef.current = [];
+        voiceStartingRef.current = false;
+        setVoiceStarting(false);
+        setVoiceListening(false);
+        setError("The microphone recording failed. Check microphone permission and try again.");
+      };
+      recorder.onstop = () => {
+        if (voiceRecordingTimerRef.current !== null) window.clearTimeout(voiceRecordingTimerRef.current);
+        voiceRecordingTimerRef.current = null;
+        const audio = new Blob(audioChunksRef.current, { type: recorder.mimeType || mimeType || "audio/webm" });
+        audioChunksRef.current = [];
+        mediaRecorderRef.current = null;
+        mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current = null;
+        voiceStartingRef.current = false;
+        setVoiceStarting(false);
+        setVoiceListening(false);
+        if (audio.size < 1000) {
+          setError("No clear audio was captured. Tap the microphone and speak after recording starts.");
+          return;
+        }
+        void transcribeAudio(audio);
+      };
+      recorder.start(250);
+      voiceStartingRef.current = false;
+      setVoiceStarting(false);
+      setVoiceListening(true);
+      voiceRecordingTimerRef.current = window.setTimeout(() => {
+        if (recorder.state === "recording") {
+          setError("The 60-second recording limit was reached. Transcribing the audio captured so far.");
+          recorder.stop();
+        }
+      }, 60_000);
+    } catch (cause) {
+      voiceStartingRef.current = false;
+      setVoiceStarting(false);
+      setVoiceListening(false);
+      mediaRecorderRef.current = null;
+      mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+      setError(cause instanceof DOMException && cause.name === "NotAllowedError"
+        ? "Microphone permission was denied. Allow microphone access for SAMURA in your browser settings."
+        : "Could not access the microphone. Check browser permissions and try again.");
+    }
+  }
+
+  function toggleVoiceInput() {
+    if (voiceListening) {
+      if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+      else speechRef.current?.stop();
+      return;
+    }
+    if (voiceStartingRef.current || speechRef.current || streaming || voiceTranscribing) return;
     if (!window.isSecureContext) {
       setError("Voice typing requires a secure HTTPS connection.");
       return;
@@ -175,7 +304,7 @@ export default function ChatPage() {
     };
     const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
     if (!Recognition) {
-      setError("Voice typing is not supported by this browser. Try the latest Chrome browser.");
+      void startGeminiVoiceCapture();
       return;
     }
     setError("");
@@ -200,7 +329,7 @@ export default function ChatPage() {
         for (let index = event.resultIndex; index < event.results.length; index += 1) {
           if (event.results[index].isFinal) parts.push(event.results[index][0].transcript.trim());
         }
-        speechTextRef.current = parts.filter(Boolean).join(" ");
+        if (parts.length) speechTextRef.current = [speechTextRef.current, ...parts].filter(Boolean).join(" ");
       };
       recognition.onerror = event => {
         if (voiceSessionRef.current !== sessionId || speechRef.current !== recognition) return;
@@ -210,6 +339,10 @@ export default function ChatPage() {
         setVoiceStarting(false);
         setVoiceListening(false);
         speechRef.current = null;
+        if (!transcript && ["network", "service-not-allowed", "language-not-supported"].includes(event.error)) {
+          void startGeminiVoiceCapture();
+          return;
+        }
         const messages: Record<string, string> = {
           "not-allowed": "Microphone or speech-recognition access was denied. Allow microphone access for this site.",
           "service-not-allowed": "Your browser or device is blocking its speech-recognition service. Try Chrome with an active internet connection.",
@@ -267,7 +400,7 @@ export default function ChatPage() {
         {messages.length === 0 ? <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-center px-5 py-12"><div className="mb-5 grid h-12 w-12 place-items-center rounded-2xl border border-[var(--accent)]/20 bg-[var(--accent)]/[0.07] text-[var(--accent)]"><Sparkles size={23}/></div><p className="text-xs font-bold uppercase tracking-[0.23em] text-[var(--accent)]">Your thinking space</p><h1 className="mt-3 font-[family-name:var(--font-space)] text-4xl tracking-tight sm:text-5xl">What are we working<br className="hidden sm:block"/> on today?</h1><p className="mt-5 max-w-lg text-sm leading-7 text-[var(--muted)]">Ask a question, explore an idea, or work through a challenge. Your conversations are saved to your account.</p><div className="mt-8 grid gap-3 sm:grid-cols-2">{["Help me turn an idea into a practical plan","Explain a complex topic in simple language","Review this code and help me debug it","Help me research a new business opportunity"].map(s=><button key={s} onClick={()=>setDraft(s)} className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-left text-sm text-slate-300 transition hover:border-[var(--accent)]/30 hover:bg-white/[0.045]">{s}<span className="mt-2 block text-xs text-slate-600">Use this prompt ↗</span></button>)}</div></div> :
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">{messages.map(m=><article key={m.id} className="mb-8 flex gap-3 sm:gap-4"><div className={"mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-xl " + (m.role==="assistant" ? "bg-[var(--accent)]/10 text-[var(--accent)]" : "bg-white/10 text-slate-300")}>{m.role==="assistant" ? <AudioWaveform size={17}/> : <span className="text-xs font-bold">YOU</span>}</div><div className="min-w-0 flex-1 pt-1"><p className="mb-2 text-xs font-semibold text-slate-400">{m.role==="assistant" ? "SAMURA" : "You"}</p>{m.content ? <div className="prose prose-invert prose-sm max-w-none break-words leading-7 prose-pre:overflow-x-auto prose-pre:rounded-xl prose-pre:border prose-pre:border-white/10 prose-pre:bg-black/30 prose-code:text-[var(--accent)] prose-a:text-[var(--accent)]"><ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown></div> : <span className="inline-flex items-center gap-2 text-sm text-slate-500"><LoaderCircle size={15} className="animate-spin"/>Thinking…</span>}{m.status==="failed" && <div className="mt-2 flex items-center gap-3 text-xs text-amber-300"><span>This response did not finish.</span><button onClick={() => { const previousUser = messages.slice(0, messages.indexOf(m)).reverse().find(item => item.role === "user"); if (previousUser) setDraft(previousUser.content); }} className="underline underline-offset-2 hover:text-white">Retry in composer</button></div>}{m.status==="stopped" && <p className="mt-2 text-xs text-slate-500">Generation stopped.</p>}</div></article>)}<div ref={bottomRef}/></div>}
       </div>
-      <div className="shrink-0 px-3 pb-3 pt-2 sm:px-6 sm:pb-5"><div className="mx-auto max-w-3xl">{error && <div role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] px-4 py-3 text-sm text-amber-100"><span>{error}</span><button aria-label="Dismiss error" onClick={()=>setError("")}><X size={16}/></button></div>}<form onSubmit={sendMessage} className="rounded-2xl border border-white/15 bg-[#111722] p-2 shadow-xl focus-within:border-[var(--accent)]/40"><div className="flex items-center gap-2 px-2 pb-2"><button type="button" onClick={()=>setMode("chat")} aria-pressed={mode === "chat"} className={"rounded-lg px-3 py-1.5 text-xs transition " + (mode === "chat" ? "bg-[var(--accent)]/15 text-[var(--accent)]" : "text-slate-400 hover:bg-white/[0.05]")}>Chat</button><button type="button" onClick={()=>setMode("code")} aria-pressed={mode === "code"} className={"rounded-lg px-3 py-1.5 text-xs transition " + (mode === "code" ? "bg-[var(--accent)]/15 text-[var(--accent)]" : "text-slate-400 hover:bg-white/[0.05]")}>Code</button><span className="ml-auto text-[10px] text-slate-600">{mode === "code" ? "Code-focused responses" : "General assistant"}</span></div><textarea value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={handleComposerKey} disabled={streaming} rows={2} maxLength={12000} placeholder={mode === "code" ? "Describe what you want to build or debug…" : "Message SAMURA…"} className="max-h-40 min-h-[54px] w-full resize-y bg-transparent px-3 py-2 text-sm leading-6 text-white outline-none placeholder:text-slate-600 disabled:opacity-60" /><div className="flex items-center justify-between px-2 pb-1"><span className="text-[10px] text-slate-600">Enter to send · Shift + Enter for a new line</span>{voiceListening ? <button type="button" aria-label="Stop voice typing" onClick={()=>speechRef.current?.stop()} className="flex items-center gap-2 rounded-xl border border-rose-300/20 bg-rose-300/10 px-3 py-2 text-xs text-rose-200"><MicOff size={14}/> Listening</button> : <button type="button" disabled={streaming || voiceStarting} aria-label="Start voice typing" onClick={()=>toggleVoiceInput()} className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/[0.06] disabled:opacity-30"><Mic size={14}/> {voiceStarting ? "Starting…" : "Voice"}</button>}{streaming ? <button type="button" onClick={()=>abortRef.current?.abort()} className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs text-white hover:bg-white/15"><Square size={13}/> Stop</button> : <button disabled={!draft.trim() || voiceListening || voiceStarting} className="flex items-center gap-2 rounded-xl bg-[var(--accent)] px-3 py-2 text-xs font-bold text-[#07120e] transition hover:bg-white disabled:opacity-30"><Send size={14}/> Send</button>}</div></form><p className="mt-2 text-center text-[10px] leading-4 text-slate-600">AI can make mistakes. Verify important information. Provider usage may incur costs.</p></div></div>
+      <div className="shrink-0 px-3 pb-3 pt-2 sm:px-6 sm:pb-5"><div className="mx-auto max-w-3xl">{error && <div role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] px-4 py-3 text-sm text-amber-100"><span>{error}</span><button aria-label="Dismiss error" onClick={()=>setError("")}><X size={16}/></button></div>}<form onSubmit={sendMessage} className="rounded-2xl border border-white/15 bg-[#111722] p-2 shadow-xl focus-within:border-[var(--accent)]/40"><div className="flex items-center gap-2 px-2 pb-2"><button type="button" onClick={()=>setMode("chat")} aria-pressed={mode === "chat"} className={"rounded-lg px-3 py-1.5 text-xs transition " + (mode === "chat" ? "bg-[var(--accent)]/15 text-[var(--accent)]" : "text-slate-400 hover:bg-white/[0.05]")}>Chat</button><button type="button" onClick={()=>setMode("code")} aria-pressed={mode === "code"} className={"rounded-lg px-3 py-1.5 text-xs transition " + (mode === "code" ? "bg-[var(--accent)]/15 text-[var(--accent)]" : "text-slate-400 hover:bg-white/[0.05]")}>Code</button><span className="ml-auto text-[10px] text-slate-600">{mode === "code" ? "Code-focused responses" : "General assistant"}</span></div><textarea value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={handleComposerKey} disabled={streaming} rows={2} maxLength={12000} placeholder={mode === "code" ? "Describe what you want to build or debug…" : "Message SAMURA…"} className="max-h-40 min-h-[54px] w-full resize-y bg-transparent px-3 py-2 text-sm leading-6 text-white outline-none placeholder:text-slate-600 disabled:opacity-60" /><div className="flex items-center justify-between px-2 pb-1"><span className="text-[10px] text-slate-600">Enter to send · Shift + Enter for a new line</span>{voiceTranscribing ? <button type="button" disabled aria-label="Transcribing voice" className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-400"><LoaderCircle size={14} className="animate-spin"/> Transcribing</button> : voiceListening ? <button type="button" aria-label="Stop voice typing" onClick={()=>{if(mediaRecorderRef.current?.state==="recording") mediaRecorderRef.current.stop(); else speechRef.current?.stop();}} className="flex items-center gap-2 rounded-xl border border-rose-300/20 bg-rose-300/10 px-3 py-2 text-xs text-rose-200"><MicOff size={14}/> Listening</button> : <button type="button" disabled={streaming || voiceStarting} aria-label="Start voice typing" onClick={()=>toggleVoiceInput()} className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/[0.06] disabled:opacity-30"><Mic size={14}/> {voiceStarting ? "Starting…" : "Voice"}</button>}{streaming ? <button type="button" onClick={()=>abortRef.current?.abort()} className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs text-white hover:bg-white/15"><Square size={13}/> Stop</button> : <button disabled={!draft.trim() || voiceListening || voiceStarting || voiceTranscribing} className="flex items-center gap-2 rounded-xl bg-[var(--accent)] px-3 py-2 text-xs font-bold text-[#07120e] transition hover:bg-white disabled:opacity-30"><Send size={14}/> Send</button>}</div></form><p className="mt-2 text-center text-[10px] leading-4 text-slate-600">When browser voice recognition is unavailable, recordings are sent to Gemini for transcription. AI can make mistakes. Verify important information. Provider usage may incur costs.</p></div></div>
     </section>
   </main>;
 }
