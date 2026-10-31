@@ -7,8 +7,10 @@ describe("isSensitiveAnalyticsRoute", () => {
     expect(isSensitiveAnalyticsRoute("/reset-password/confirm")).toBe(true);
   });
 
-  it("blocks any URL carrying a token query parameter", () => {
+  it("blocks URLs carrying credentials or OAuth callback parameters", () => {
     expect(isSensitiveAnalyticsRoute("/login", "?token=secret-value")).toBe(true);
+    expect(isSensitiveAnalyticsRoute("/callback", "?access_token=secret-value")).toBe(true);
+    expect(isSensitiveAnalyticsRoute("/callback", "?Code=temporary-value&state=opaque-value")).toBe(true);
   });
 
   it("allows ordinary application routes and non-secret query parameters", () => {
