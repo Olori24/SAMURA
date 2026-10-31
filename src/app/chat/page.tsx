@@ -46,6 +46,7 @@ export default function ChatPage() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const voiceRecordingTimerRef = useRef<number | null>(null);
+  const voiceStartTimeoutRef = useRef<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadConversations = useCallback(async () => {
@@ -87,6 +88,7 @@ export default function ChatPage() {
     speechRef.current?.stop();
     speechRef.current = null;
     if (voiceRecordingTimerRef.current !== null) window.clearTimeout(voiceRecordingTimerRef.current);
+    if (voiceStartTimeoutRef.current !== null) window.clearTimeout(voiceStartTimeoutRef.current);
     const recorder = mediaRecorderRef.current;
     if (recorder) {
       recorder.onstop = null;
@@ -236,6 +238,7 @@ export default function ChatPage() {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
       recorder.onerror = () => {
+        recorder.onstop = null;
         if (voiceRecordingTimerRef.current !== null) window.clearTimeout(voiceRecordingTimerRef.current);
         voiceRecordingTimerRef.current = null;
         mediaRecorderRef.current = null;
@@ -319,6 +322,8 @@ export default function ChatPage() {
       speechTextRef.current = "";
       recognition.onstart = () => {
         if (voiceSessionRef.current !== sessionId || speechRef.current !== recognition) return;
+        if (voiceStartTimeoutRef.current !== null) window.clearTimeout(voiceStartTimeoutRef.current);
+        voiceStartTimeoutRef.current = null;
         voiceStartingRef.current = false;
         setVoiceStarting(false);
         setVoiceListening(true);
@@ -333,6 +338,8 @@ export default function ChatPage() {
       };
       recognition.onerror = event => {
         if (voiceSessionRef.current !== sessionId || speechRef.current !== recognition) return;
+        if (voiceStartTimeoutRef.current !== null) window.clearTimeout(voiceStartTimeoutRef.current);
+        voiceStartTimeoutRef.current = null;
         const transcript = speechTextRef.current.trim();
         if (transcript) setDraft(current => [current.trim(), transcript].filter(Boolean).join(" ").slice(0, 12000));
         voiceStartingRef.current = false;
@@ -356,6 +363,8 @@ export default function ChatPage() {
       };
       recognition.onend = () => {
         if (voiceSessionRef.current !== sessionId || speechRef.current !== recognition) return;
+        if (voiceStartTimeoutRef.current !== null) window.clearTimeout(voiceStartTimeoutRef.current);
+        voiceStartTimeoutRef.current = null;
         const transcript = speechTextRef.current.trim();
         if (transcript) setDraft(current => [current.trim(), transcript].filter(Boolean).join(" ").slice(0, 12000));
         setVoiceListening(false);
@@ -365,7 +374,17 @@ export default function ChatPage() {
       };
       speechRef.current = recognition;
       recognition.start();
+      voiceStartTimeoutRef.current = window.setTimeout(() => {
+        if (voiceSessionRef.current !== sessionId || speechRef.current !== recognition || !voiceStartingRef.current) return;
+        speechRef.current = null;
+        voiceStartingRef.current = false;
+        setVoiceStarting(false);
+        try { recognition.stop(); } catch { /* Recognition may not have started yet. */ }
+        void startGeminiVoiceCapture();
+      }, 8_000);
     } catch (cause) {
+      if (voiceStartTimeoutRef.current !== null) window.clearTimeout(voiceStartTimeoutRef.current);
+      voiceStartTimeoutRef.current = null;
       if (voiceSessionRef.current !== sessionId) return;
       voiceStartingRef.current = false;
       setVoiceStarting(false);
