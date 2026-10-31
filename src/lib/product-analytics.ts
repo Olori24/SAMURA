@@ -57,14 +57,7 @@ export function initializeProductAnalytics() {
         for (const key of urlProperties) {
           const value = event.properties[key];
           if (typeof value !== "string") continue;
-          try {
-            const parsed = new URL(value, window.location.origin);
-            parsed.search = "";
-            parsed.hash = "";
-            event.properties[key] = parsed.toString();
-          } catch {
-            event.properties[key] = value.split(/[?#]/, 1)[0];
-          }
+          event.properties[key] = value.split(/[?#]/, 1)[0];
         }
       }
       return event;
