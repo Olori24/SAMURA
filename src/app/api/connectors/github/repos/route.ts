@@ -92,6 +92,13 @@ export async function GET() {
           write: repo.permissions?.push === true,
           admin: repo.permissions?.admin === true,
         },
+        // Reauthorization is evaluated for this repository, not the account
+        // as a whole. GitHub's effective push permission always wins.
+        requiresReauthorizationForWrite: repo.permissions?.push !== true && (
+          repo.private
+            ? !scopes.includes("repo")
+            : !scopes.includes("repo") && !scopes.includes("public_repo")
+        ),
       })),
       capabilities: {
         read: true,

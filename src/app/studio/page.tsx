@@ -4,9 +4,9 @@ import { ArrowRight, Braces, Cable, FileText, GitPullRequest, ImagePlus, Sparkle
 const items = [
   { title: "Code", eyebrow: "AVAILABLE NOW", description: "Switch to Code mode to generate, explain, review, and debug code with implementation-focused responses.", href: "/chat", icon: Braces, action: "Open Code workspace", ready: true },
   { title: "GitHub engineering", eyebrow: "AI PATCH · HUMAN APPROVAL", description: "Inspect an authorized repository, generate a bounded AI patch, review and edit each file, then publish a new branch and draft pull request.", href: "/studio/github-engine", icon: GitPullRequest, action: "Open engineering workspace", ready: true },
-  { title: "Documents & files", eyebrow: "LOCAL DRAFT · EXPORT", description: "Draft and edit documents, track word counts, and export Markdown or plain text files. This first version does not save drafts to your account.", href: "/studio/documents", icon: FileText, action: "Open document workspace", ready: true },
+  { title: "Documents & files", eyebrow: "ACCOUNT-SAVED · EXPORT", description: "Draft, edit, save documents securely to your SAMURA account, track word counts, and export Markdown or plain text files.", href: "/studio/documents", icon: FileText, action: "Open document workspace", ready: true },
   { title: "Image creation", eyebrow: "PROVIDER SETUP REQUIRED", description: "Create original images from text prompts, choose canvas orientation, and download generated results. Requires an administrator-configured image provider key.", href: "/studio/create", icon: ImagePlus, action: "Open image studio", ready: true },
-  { title: "Connectors & plugins", eyebrow: "PLUGIN WORKSPACE AVAILABLE", description: "Explore the connector catalog, review permissions, and run built-in text utilities. GitHub, Drive, and Slack are listed with setup requirements until OAuth is configured.", href: "/studio/connect", icon: Cable, action: "Open Connect marketplace", ready: true },
+  { title: "Connectors & plugins", eyebrow: "GITHUB AVAILABLE · MORE CONNECTORS", description: "Connect GitHub, inspect authorized repositories, and publish AI-generated changes through reviewed draft pull requests. Drive and Slack still require OAuth setup.", href: "/studio/connect", icon: Cable, action: "Open Connect marketplace", ready: true },
 ];
 
 export default function StudioPage() {

@@ -9,7 +9,7 @@ import { captureProductEvent } from "@/lib/product-analytics";
 
 type Repo = {
   id: number; name: string; fullName: string; url: string; description: string | null;
-  defaultBranch: string; isPrivate: boolean; permissions: { read: boolean; write: boolean; admin: boolean };
+  defaultBranch: string; isPrivate: boolean; permissions: { read: boolean; write: boolean; admin: boolean }; requiresReauthorizationForWrite: boolean;
 };
 type GitHubAccount = { login: string; name: string | null; avatarUrl: string; profileUrl: string };
 type Branch = { name: string; sha: string };
@@ -152,6 +152,7 @@ export default function GitHubEngineeringPage() {
       </header>
 
       {error && <p role="alert" className="mb-4 rounded-xl border border-amber-200/20 bg-amber-200/5 p-4 text-sm text-amber-100">{error}</p>}
+      {selectedRepo?.requiresReauthorizationForWrite && <div role="status" className="mb-4 rounded-xl border border-amber-200/20 bg-amber-200/5 p-4 text-sm leading-6 text-amber-100">This GitHub connection is missing the repository scope required for publishing. Reconnect GitHub and approve the requested access. <a href="/api/connectors/github/authorize" className="ml-1 font-semibold underline">Reconnect GitHub</a></div>}
 
       {githubAccount && <div className="mb-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4"><img src={githubAccount.avatarUrl} alt="" className="h-10 w-10 rounded-full" /><div className="min-w-0 flex-1"><p className="text-sm font-medium">Connected as @{githubAccount.login}</p><p className="text-xs text-slate-400">{githubAccount.name ?? "GitHub account"} · repository permissions checked per request</p></div><a href={githubAccount.profileUrl} target="_blank" rel="noreferrer" className="text-xs text-teal-200 underline">View profile ↗</a></div>}
       <section className="space-y-5 rounded-3xl border border-white/10 bg-white/[0.035] p-5 sm:p-7">
@@ -182,7 +183,7 @@ export default function GitHubEngineeringPage() {
           <a href={selectedRepo.url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-slate-300 underline">Open repository ↗</a>
         </div>}
         {selectableRepos.length === 0 && <p className="text-sm text-slate-400">No readable repositories were returned by GitHub. Use “Load authorized repositories” in Connect, or reconnect GitHub if access was revoked.</p>}
-        {selectableRepos.length > 0 && writableRepos.length === 0 && <p className="text-sm text-amber-100">Your readable repositories are available for inspection and patch generation, but GitHub has not confirmed write access to any repository. Publishing stays disabled until you choose a repository where your GitHub account has write permission.</p>}
+        {selectableRepos.length > 0 && writableRepos.length === 0 && <p className="text-sm text-amber-100">Your readable repositories are available for inspection and patch generation, but GitHub has not confirmed write access to any repository. Publishing stays disabled until your GitHub account has effective write permission on a selected repository.</p>}
         {recentCommits.length > 0 && <details className="rounded-xl border border-white/10 bg-black/20 p-4"><summary className="cursor-pointer text-sm font-medium">Recent commits from GitHub ({recentCommits.length})</summary><ul className="mt-3 space-y-3">{recentCommits.map(commit => <li key={commit.sha} className="border-t border-white/5 pt-3"><a href={commit.url} target="_blank" rel="noreferrer" className="font-mono text-xs text-teal-200 underline">{commit.shortSha}</a><p className="mt-1 text-xs text-slate-200">{commit.message}</p><p className="mt-1 text-[11px] text-slate-500">{commit.author}{commit.date ? " · " + new Date(commit.date).toLocaleString() : ""}</p></li>)}</ul></details>}
         <label className="block text-sm text-slate-300">Engineering task
           <textarea value={task} onChange={e => { setTask(e.target.value); setPatch(null); setApproved(false); setResult(null); }} maxLength={6000} rows={5} placeholder="Example: Add a small /api/version endpoint that returns the app version, follow the existing route conventions, and add focused tests." className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 p-4 text-sm leading-6 text-white"/>
