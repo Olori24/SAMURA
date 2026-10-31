@@ -122,11 +122,12 @@ export default function GitHubPublishPage() {
   return <main className="min-h-screen bg-[#080b12] px-4 py-8 text-white sm:px-8">
     <div className="mx-auto max-w-4xl">
       <Link href="/studio/connect" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"><ArrowLeft size={16}/> Back to Connect</Link>
+      <Link href="/studio/github-engine" className="ml-5 inline-flex items-center gap-2 text-sm text-teal-200 hover:text-white">Open AI engineering workspace <GitPullRequest size={15}/></Link>
       <header className="mb-8 mt-7">
         <div className="mb-3 grid h-11 w-11 place-items-center rounded-2xl border border-teal-300/20 bg-teal-300/10 text-teal-200"><GitPullRequest size={21}/></div>
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-teal-200">GitHub engineering workspace</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Review a patch. Publish a branch.</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">This first publishing screen sends a manually prepared file change to a new branch and opens a draft pull request. AI-generated diffs, repository-aware patch generation, and automated test execution are not connected yet.</p>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">This is the manual single-file publishing tool. For repository-aware AI patch generation, multi-file review, and human-approved pull requests, use the AI engineering workspace.</p>
       </header>
 
       {error && <p role="alert" className="mb-4 rounded-xl border border-amber-200/20 bg-amber-200/5 p-3 text-sm text-amber-100">{error}</p>}
