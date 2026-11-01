@@ -13,10 +13,10 @@ const envSchema = z.object({
   SAMURA_OLLAMA_MODEL: z.string().min(1).default("qwen3:8b"),
   OPENAI_API_KEY: optionalSecret,
   SAMURA_IMAGE_API_KEY: optionalSecret,
-  SAMURA_IMAGE_BASE_URL: z.string().url().refine((value) => {
+  SAMURA_IMAGE_BASE_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().refine((value) => {
     const endpoint = new URL(value);
     return endpoint.protocol === "https:" || (endpoint.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(endpoint.hostname));
-  }, "Image provider endpoints must use HTTPS unless they target loopback.").optional(),
+  }, "Image provider endpoints must use HTTPS unless they target loopback.").optional()),
   SAMURA_IMAGE_MODEL: z.string().min(1).default("gpt-image-1"),
   SAMURA_GEMINI_IMAGE_MODEL: z.string().min(1).default("gemini-nano-banana-2.1"),
   SAMURA_OPENAI_MODEL: z.string().min(1).default("gpt-4.1-mini"),
