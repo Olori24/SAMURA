@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSecureOllamaBaseUrl } from "@/lib/ai/provider-config";
 
 const optionalSecret = z.string().min(1).optional();
 const envSchema = z.object({
@@ -7,9 +8,11 @@ const envSchema = z.object({
   DATABASE_URL: optionalSecret,
   BETTER_AUTH_SECRET: optionalSecret,
   BETTER_AUTH_URL: z.string().url().optional(),
-  // Hosted OpenRouter is an OpenAI-compatible alternative to Gemini.
   SAMURA_AI_PROVIDER: z.enum(["ollama", "openai", "gemini", "openrouter"]).default("ollama"),
-  SAMURA_OLLAMA_BASE_URL: z.string().url().default("http://127.0.0.1:11434/v1"),
+  SAMURA_OLLAMA_BASE_URL: z.string().url().default("http://127.0.0.1:11434/v1").refine(
+    isSecureOllamaBaseUrl,
+    "Remote Ollama endpoints must use HTTPS; HTTP is allowed only for loopback endpoints.",
+  ),
   SAMURA_OLLAMA_MODEL: z.string().min(1).default("qwen3:8b"),
   OPENAI_API_KEY: optionalSecret,
   SAMURA_IMAGE_API_KEY: optionalSecret,
@@ -45,7 +48,6 @@ export function getServerEnv() {
     SAMURA_IMAGE_MODEL: process.env.SAMURA_IMAGE_MODEL,
     SAMURA_GEMINI_IMAGE_MODEL: process.env.SAMURA_GEMINI_IMAGE_MODEL,
     SAMURA_OPENAI_MODEL: process.env.SAMURA_OPENAI_MODEL,
-    // Support the existing Vercel secret name while standardizing on OPENROUTER_API_KEY.
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ?? process.env.Openrouter,
     SAMURA_OPENROUTER_MODEL: process.env.SAMURA_OPENROUTER_MODEL,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
