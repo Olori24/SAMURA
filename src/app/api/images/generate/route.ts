@@ -7,7 +7,7 @@ import { getServerEnv } from "@/lib/env";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 import { getImageProviderConfig } from "@/lib/ai/image-provider-config";
-import { getSafeProviderImageUrl } from "@/lib/ai/image-provider-image";
+import { getGeminiImageOutput, getSafeProviderImageUrl } from "@/lib/ai/image-provider-image";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -65,13 +65,12 @@ export async function POST(request: Request) {
       if (!response.ok) {
         return NextResponse.json({ error: "Gemini could not generate this image. Check API access, model availability and billing." }, { status: 502, headers: noStore });
       }
-      const interaction = await response.json() as { output_image?: { data?: string; mime_type?: string } };
-      const imageData = interaction.output_image?.data;
-      const mimeType = interaction.output_image?.mime_type ?? "image/png";
-      if (!imageData || !/^image\/(png|jpeg|webp)$/.test(mimeType)) {
+      const interaction = await response.json();
+      const imageOutput = getGeminiImageOutput(interaction);
+      if (!imageOutput) {
         return NextResponse.json({ error: "Gemini returned no supported image output. Please try again." }, { status: 502, headers: noStore });
       }
-      return NextResponse.json({ image: "data:" + mimeType + ";base64," + imageData, revisedPrompt: null }, { headers: noStore });
+      return NextResponse.json({ image: "data:" + imageOutput.mimeType + ";base64," + imageOutput.data, revisedPrompt: null }, { headers: noStore });
     }
 
     const client = new OpenAI({
