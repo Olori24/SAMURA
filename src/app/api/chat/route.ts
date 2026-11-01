@@ -20,6 +20,7 @@ const requestSchema = z.object({
   message: z.string().trim().min(1).max(12000),
   requestId: z.string().uuid(),
   mode: z.enum(["chat", "code"]).default("chat"),
+  provider: z.enum(["ollama", "openai", "gemini", "openrouter"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -33,20 +34,6 @@ export async function POST(request: Request) {
   if (rate.unavailable) return NextResponse.json({ error: "Rate limiting is temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   if (!rate.allowed) return NextResponse.json({ error: "You've reached the request limit. Please wait a minute and try again." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds), "Cache-Control": "no-store" } });
 
-  let ai: ReturnType<typeof createAIClient>;
-  try {
-    ai = createAIClient(env);
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : "";
-    const message = detail.includes("OPENAI_API_KEY")
-      ? "OpenAI is selected but its server API key is not configured. Select Ollama or configure OPENAI_API_KEY."
-      : detail.includes("GEMINI_API_KEY")
-        ? "Gemini is selected but GEMINI_API_KEY is not configured. Add a server-side Gemini API key or select another provider."
-        : detail.includes("localhost in production")
-          ? "Ollama is configured for localhost, which Vercel cannot reach. Configure a reachable, secured Ollama endpoint."
-          : "AI provider configuration is invalid.";
-    return NextResponse.json({ error: message }, { status: 503 });
-  }
   const body = await parseBoundedJson(request, 20_000);
   if (!body.ok) return NextResponse.json(
     { error: body.tooLarge ? "Request is too large." : "Invalid JSON request body." },
@@ -55,6 +42,23 @@ export async function POST(request: Request) {
   const parsed = requestSchema.safeParse(body.value);
   if (!parsed.success) return NextResponse.json({ error: "Invalid message. Check the conversation and message fields." }, { status: 400 });
   if (parsed.data.message.length > env.SAMURA_MAX_INPUT_CHARS) return NextResponse.json({ error: "That message is too long. Please shorten it and try again." }, { status: 413 });
+
+  let ai: ReturnType<typeof createAIClient>;
+  try {
+    ai = createAIClient(env, parsed.data.provider);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "";
+    const message = detail.includes("OPENAI_API_KEY")
+      ? "OpenAI is not configured for this workspace. Select another configured provider or ask an administrator to add its server-side key."
+      : detail.includes("GEMINI_API_KEY")
+        ? "Gemini is not configured for this workspace. Select another configured provider or ask an administrator to add its server-side key."
+        : detail.includes("OPENROUTER_API_KEY")
+          ? "OpenRouter is not configured for this workspace. Select another configured provider or ask an administrator to add its server-side key."
+          : detail.includes("localhost in production")
+            ? "Ollama is configured for localhost, which the hosted service cannot reach. Select a hosted provider or configure a secured remote Ollama endpoint."
+            : "The selected AI provider is not configured correctly. Select another provider or contact support.";
+    return NextResponse.json({ error: message }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
 
   type ChatSetup =
     | { status: "not_found" }
