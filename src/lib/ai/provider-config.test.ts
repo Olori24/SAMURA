@@ -94,4 +94,27 @@ describe("SAMURA AI provider configuration", () => {
       baseURL: undefined,
     });
   });
+
+  it("allows the request to select Gemini even when OpenRouter is the workspace default", () => {
+    expect(getAIProviderConfig({
+      ...base,
+      SAMURA_AI_PROVIDER: "openrouter",
+      OPENROUTER_API_KEY: "openrouter-secret",
+      GEMINI_API_KEY: "gemini-secret",
+    }, "gemini")).toEqual({
+      provider: "gemini",
+      model: "gemini-3.8-flash",
+      apiKey: "gemini-secret",
+      baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+    });
+  });
+
+  it("rejects a request to select a provider that has no configured credential", () => {
+    expect(() => getAIProviderConfig({
+      ...base,
+      SAMURA_AI_PROVIDER: "openrouter",
+      OPENROUTER_API_KEY: "openrouter-secret",
+    }, "gemini")).toThrow("GEMINI_API_KEY");
+  });
+
 });
