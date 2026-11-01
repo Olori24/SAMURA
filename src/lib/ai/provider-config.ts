@@ -11,8 +11,8 @@ export interface AIProviderEnv {
   NODE_ENV?: string;
 }
 
-export function getAIProviderConfig(env: AIProviderEnv) {
-  if (env.SAMURA_AI_PROVIDER === "openai") {
+export function getAIProviderConfig(env: AIProviderEnv, selectedProvider: AIProviderEnv["SAMURA_AI_PROVIDER"] = env.SAMURA_AI_PROVIDER) {
+  if (selectedProvider === "openai") {
     if (!env.OPENAI_API_KEY) {
       throw new Error("OpenAI provider selected but OPENAI_API_KEY is not configured.");
     }
@@ -24,7 +24,7 @@ export function getAIProviderConfig(env: AIProviderEnv) {
     };
   }
 
-  if (env.SAMURA_AI_PROVIDER === "openrouter") {
+  if (selectedProvider === "openrouter") {
     if (!env.OPENROUTER_API_KEY) {
       throw new Error("OpenRouter provider selected but OPENROUTER_API_KEY is not configured.");
     }
@@ -36,7 +36,7 @@ export function getAIProviderConfig(env: AIProviderEnv) {
     };
   }
 
-  if (env.SAMURA_AI_PROVIDER === "gemini") {
+  if (selectedProvider === "gemini") {
     if (!env.GEMINI_API_KEY) {
       throw new Error("Gemini provider selected but GEMINI_API_KEY is not configured.");
     }
