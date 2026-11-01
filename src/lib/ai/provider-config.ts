@@ -11,43 +11,36 @@ export interface AIProviderEnv {
   NODE_ENV?: string;
 }
 
+export function isSecureOllamaBaseUrl(value: string): boolean {
+  try {
+    const endpoint = new URL(value);
+    const host = endpoint.hostname.toLowerCase();
+    const loopback = host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
+    return endpoint.protocol === "https:" || (endpoint.protocol === "http:" && loopback);
+  } catch {
+    return false;
+  }
+}
+
 export function getAIProviderConfig(env: AIProviderEnv, selectedProvider: AIProviderEnv["SAMURA_AI_PROVIDER"] = env.SAMURA_AI_PROVIDER) {
   if (selectedProvider === "openai") {
-    if (!env.OPENAI_API_KEY) {
-      throw new Error("OpenAI provider selected but OPENAI_API_KEY is not configured.");
-    }
-    return {
-      provider: "openai" as const,
-      model: env.SAMURA_OPENAI_MODEL,
-      apiKey: env.OPENAI_API_KEY,
-      baseURL: undefined,
-    };
+    if (!env.OPENAI_API_KEY) throw new Error("OpenAI provider selected but OPENAI_API_KEY is not configured.");
+    return { provider: "openai" as const, model: env.SAMURA_OPENAI_MODEL, apiKey: env.OPENAI_API_KEY, baseURL: undefined };
   }
 
   if (selectedProvider === "openrouter") {
-    if (!env.OPENROUTER_API_KEY) {
-      throw new Error("OpenRouter provider selected but OPENROUTER_API_KEY is not configured.");
-    }
-    return {
-      provider: "openrouter" as const,
-      model: env.SAMURA_OPENROUTER_MODEL,
-      apiKey: env.OPENROUTER_API_KEY,
-      baseURL: "https://openrouter.ai/api/v1",
-    };
+    if (!env.OPENROUTER_API_KEY) throw new Error("OpenRouter provider selected but OPENROUTER_API_KEY is not configured.");
+    return { provider: "openrouter" as const, model: env.SAMURA_OPENROUTER_MODEL, apiKey: env.OPENROUTER_API_KEY, baseURL: "https://openrouter.ai/api/v1" };
   }
 
   if (selectedProvider === "gemini") {
-    if (!env.GEMINI_API_KEY) {
-      throw new Error("Gemini provider selected but GEMINI_API_KEY is not configured.");
-    }
-    return {
-      provider: "gemini" as const,
-      model: env.SAMURA_GEMINI_MODEL,
-      apiKey: env.GEMINI_API_KEY,
-      baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-    };
+    if (!env.GEMINI_API_KEY) throw new Error("Gemini provider selected but GEMINI_API_KEY is not configured.");
+    return { provider: "gemini" as const, model: env.SAMURA_GEMINI_MODEL, apiKey: env.GEMINI_API_KEY, baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" };
   }
 
+  if (!isSecureOllamaBaseUrl(env.SAMURA_OLLAMA_BASE_URL)) {
+    throw new Error("Remote Ollama endpoints must use HTTPS; HTTP is allowed only for loopback endpoints.");
+  }
   if (env.NODE_ENV === "production") {
     const host = new URL(env.SAMURA_OLLAMA_BASE_URL).hostname.toLowerCase();
     if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]") {
@@ -58,7 +51,6 @@ export function getAIProviderConfig(env: AIProviderEnv, selectedProvider: AIProv
   return {
     provider: "ollama" as const,
     model: env.SAMURA_OLLAMA_MODEL,
-    // Ollama's local OpenAI-compatible endpoint ignores the key. This is not a secret.
     apiKey: "ollama",
     baseURL: env.SAMURA_OLLAMA_BASE_URL,
   };
