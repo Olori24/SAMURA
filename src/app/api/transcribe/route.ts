@@ -89,6 +89,7 @@ export async function POST(request: Request) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 35_000);
   let providerResponse: Response;
+  let providerPayload: unknown;
   try {
     providerResponse = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(env.SAMURA_GEMINI_MODEL) + ":generateContent",
@@ -118,6 +119,10 @@ export async function POST(request: Request) {
         signal: controller.signal,
       },
     );
+    providerPayload = await providerResponse.json().catch(error => {
+      if (controller.signal.aborted) throw error;
+      return null;
+    });
   } catch {
     return NextResponse.json({ error: controller.signal.aborted ? "Voice transcription took too long. Try a shorter recording." : "Could not reach the voice transcription service. Check your connection and try again." }, {
       status: controller.signal.aborted ? 504 : 502,
@@ -126,8 +131,6 @@ export async function POST(request: Request) {
   } finally {
     clearTimeout(timeout);
   }
-
-  const providerPayload = await providerResponse.json().catch(() => null);
   if (!providerResponse.ok) {
     console.error("[samura:transcribe] Gemini provider request failed with status", providerResponse.status);
     const status = providerResponse.status === 429 ? 429 : providerResponse.status >= 500 ? 503 : 502;
