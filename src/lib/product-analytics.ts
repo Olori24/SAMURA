@@ -12,7 +12,9 @@ export type ProductEvent =
   | "github_repository_inspected"
   | "github_patch_generated"
   | "github_patch_published"
-  | "connector_action_completed";
+  | "connector_action_completed"
+  | "voice_transcription_completed"
+  | "voice_transcription_failed";
 
 type EventProperties = Record<string, string | number | boolean>;
 
