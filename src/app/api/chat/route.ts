@@ -175,7 +175,7 @@ export async function POST(request: Request) {
     await withUserTransaction(user.id, async (tx) => {
       await tx.insert(usageRecords).values({
         userId: user.id, conversationId: conversation.id, provider: ai.provider,
-        model: ai.model, status: "failed",
+        model: ai.model, status: abortController.signal.aborted ? "cancelled" : "failed",
       });
       await tx.update(messages).set({ status: "failed" })
         .where(and(eq(messages.id, userMessage.id), eq(messages.userId, user.id)));
