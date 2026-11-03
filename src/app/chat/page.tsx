@@ -256,6 +256,7 @@ export default function ChatPage() {
       setConversations(previous => previous.filter(item => item.id !== conversation.id));
       setSearchResults(previous => previous.filter(item => item.id !== conversation.id));
       if (activeId === conversation.id) {
+        stopVoiceInput(); stopReadAloud();
         conversationLoadRef.current += 1; olderRequestRef.current += 1; preserveScrollRef.current = null; setLoadingOlderMessages(false);
         activeIdRef.current = ""; setActiveId(""); setActiveTitle(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null);
       }
