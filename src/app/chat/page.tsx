@@ -399,8 +399,19 @@ ${message.content}`),
       });
     } catch(e) {
       const stopped = e instanceof DOMException && e.name === "AbortError";
-      setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, status: stopped ? "stopped" : "failed", content: m.content } : m));
-      if (!stopped) setError(e instanceof Error ? e.message : "Network error. Please try again.");
+      const reconciled = activeIdRef.current === conversationId
+        ? await openConversation(conversationId, true).catch(() => undefined)
+        : undefined;
+      const promptWasPersisted = persistedByResponse || reconciled?.some(item => item.role === "user" && item.requestId === requestId) === true;
+      if (promptWasPersisted) {
+        setEditingMessageId("");
+      } else {
+        setDraft(current => current || text);
+      }
+      if (!reconciled) {
+        setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, status: stopped ? "stopped" : "failed", content: m.content } : m));
+      }
+      if (!stopped) setError(e instanceof Error ? e.message : "Network error. Your conversation was refreshed; check whether the message was saved before retrying.");
     } finally { setStreaming(false); abortRef.current = null; }
   }
 
