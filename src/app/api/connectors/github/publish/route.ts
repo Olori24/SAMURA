@@ -245,19 +245,44 @@ export async function POST(request: Request) {
     // Create the branch only after the commit exists; never overwrite an existing ref.
     // The commit parent is the base SHA inspected above, so unrelated files remain untouched.
     await github(token, "/repos/" + repository + "/git/refs", "POST", { ref: branchRef, sha: commit.sha });
-    const pull = await github<{ html_url: string; number: number; state: string; head: { ref: string }; base: { ref: string } }>(
+    const branchBeforePr = await github<{ object: { sha: string } }>(
+      token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(branchName),
+    );
+    if (branchBeforePr.object.sha !== commit.sha) {
+      return NextResponse.json({ error: "The approval branch changed before pull-request creation. Inspect it before retrying.", retryable: false }, { status: 409, headers: noStore });
+    }
+    const pull = await github<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>(
       token, "/repos/" + repository + "/pulls", "POST", {
         title: input.title,
-        body: input.body + "\n\n---\nCreated by SAMURA after explicit user approval. Idempotency: " + input.idempotencyKey,
+        body: input.body + "\\n\\n---\\nCreated by SAMURA after explicit user approval. Idempotency: " + input.idempotencyKey,
         head: branchName, base: input.baseBranch, draft: true,
       },
     );
+    const branchAfterPr = await github<{ object: { sha: string } }>(
+      token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(branchName),
+    );
+    if (pull.head.sha !== commit.sha || branchAfterPr.object.sha !== commit.sha) {
+      await github(token, "/repos/" + repository + "/pulls/" + pull.number, "PATCH", { state: "closed" }).catch(() => undefined);
+      return NextResponse.json({ error: "The approval branch or pull-request head changed during verification. The draft was closed; inspect the branch before retrying.", retryable: false }, { status: 409, headers: noStore });
+    }
     const expectedPaths = input.changes.map(c => c.path).sort();
     const verification = await github<{ sha: string; files?: Array<{ filename: string; status: string }> }>(
       token, "/repos/" + repository + "/commits/" + commit.sha,
     );
+    const commitMetadata = await github<{ tree: { sha: string }; parents?: Array<{ sha: string }> }>(
+      token, "/repos/" + repository + "/git/commits/" + commit.sha,
+    );
+    const gitTree = await github<{ tree?: Array<{ path: string; mode: string; type: string; sha: string }> }>(
+      token, "/repos/" + repository + "/git/trees/" + commitMetadata.tree.sha + "?recursive=1",
+    );
     const actualPaths = (verification.files ?? []).map(f => f.filename).sort();
-    const verified = verification.sha === commit.sha && expectedPaths.every(p => actualPaths.includes(p));
+    const contentMatches = matchesExpectedGitHubPatchTree(input.changes, gitTree.tree ?? []);
+    const verified = verification.sha === commit.sha
+      && commitMetadata.parents?.length === 1
+      && commitMetadata.parents[0].sha === base.object.sha
+      && expectedPaths.length === actualPaths.length
+      && expectedPaths.every((p, index) => p === actualPaths[index])
+      && contentMatches;
     return NextResponse.json({
       ok: verified,
       verified,
