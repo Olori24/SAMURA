@@ -141,6 +141,19 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("POST /api/connectors/github/publish", () => {
+  it("rejects a concurrent publish lock without creating a GitHub branch", async () => {
+    const calls = installGitHubMock();
+    mocks.getDb.mockReturnValue({
+      select: () => ({ from: () => ({ where: () => ({ limit: async () => [{ accessToken: "encrypted-token" }] }) }) }),
+      transaction: async (callback: (tx: { execute: () => Promise<{ rows: Array<{ locked: boolean }> }> }) => Promise<unknown>) =>
+        callback({ execute: async () => ({ rows: [{ locked: false }] }) }),
+    });
+    const responseValue = await POST(new Request("https://samura.test/api/connectors/github/publish", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody()),
+    }));
+    expect(responseValue.status).toBe(409);
+    expect(calls.some(call => call.method === "POST" && call.path.endsWith("/git/refs"))).toBe(false);
+  });
   it("creates and verifies a draft pull request for the exact approved patch", async () => {
     const calls = installGitHubMock();
     const responseValue = await POST(new Request("https://samura.test/api/connectors/github/publish", {
