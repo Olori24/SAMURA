@@ -399,19 +399,18 @@ ${message.content}`),
       });
     } catch(e) {
       const stopped = e instanceof DOMException && e.name === "AbortError";
-      const reconciled = activeIdRef.current === conversationId
-        ? await openConversation(conversationId, true).catch(() => undefined)
-        : undefined;
+      const stillActive = activeIdRef.current === conversationId;
+      const reconciled = stillActive ? await openConversation(conversationId, true).catch(() => undefined) : undefined;
       const promptWasPersisted = persistedByResponse || reconciled?.some(item => item.role === "user" && item.requestId === requestId) === true;
-      if (promptWasPersisted) {
+      if (stillActive && promptWasPersisted) {
         setEditingMessageId("");
-      } else {
+      } else if (stillActive) {
         setDraft(current => current || text);
       }
-      if (!reconciled) {
+      if (stillActive && !reconciled) {
         setMessages(prev => prev.map(m => m.id === "assistant-" + requestId ? { ...m, status: stopped ? "stopped" : "failed", content: m.content } : m));
       }
-      if (!stopped) setError(e instanceof Error ? e.message : "Network error. Your conversation was refreshed; check whether the message was saved before retrying.");
+      if (stillActive && !stopped) setError(e instanceof Error ? e.message : "Network error. Your conversation was refreshed; check whether the message was saved before retrying.");
     } finally { setStreaming(false); abortRef.current = null; }
   }
 
