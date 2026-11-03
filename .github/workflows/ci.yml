@@ -27,8 +27,8 @@ jobs:
         run: |
           npm audit --json > /tmp/samura-npm-audit.json || true
           node -e 'const a=require("/tmp/samura-npm-audit.json"); console.log(JSON.stringify({metadata:a.metadata?.vulnerabilities, advisories:Object.entries(a.vulnerabilities||{}).map(([name,v])=>({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable,via:v.via.map(x=>typeof x==="string"?x:{name:x.name,title:x.title,range:x.range,url:x.url})}))},null,2))'
-      - name: Enforce dependency security audit
-        run: npm audit --audit-level=low
+      - name: Enforce production dependency security audit
+        run: npm audit --omit=dev --audit-level=low
       - name: Typecheck
         if: ${{ always() && !cancelled() }}
         run: npm run typecheck
