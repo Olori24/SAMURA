@@ -85,7 +85,7 @@ describe("hasExpectedGitHubPatchDigest", () => {
 
 describe("createGitHubBlobSha", () => {
   it("uses Git blob object hashing for UTF-8 file content", () => {
-    expect(createGitHubBlobSha("hello\\n")).toBe("ce013625030ba8dba906f756967f9e9ca394464a");
+    expect(createGitHubBlobSha("hello\n")).toBe("ce013625030ba8dba906f756967f9e9ca394464a");
   });
 });
 describe("matchesExpectedGitHubPatchTree", () => {
