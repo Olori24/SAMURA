@@ -14,19 +14,24 @@ export function isSupportedTextFilename(filename: string) {
   return dot > 0 && supportedExtensions.has(filename.slice(dot).toLowerCase());
 }
 
+function normalizeFileLineEndings(content: string) {
+  const carriageReturn = String.fromCharCode(13);
+  const lineFeed = String.fromCharCode(10);
+  return content.split(carriageReturn + lineFeed).join(lineFeed).split(carriageReturn).join(lineFeed);
+}
 export function validateFileAnalysisText(filename: string, content: string): string | null {
   if (!isSupportedTextFilename(filename)) return "Choose a supported text file such as TXT, Markdown, CSV, JSON, or source code.";
   if (!content.trim()) return "The selected file is empty.";
   if (content.includes(String.fromCharCode(0))) return "This file contains binary data and cannot be analyzed as text.";
   if (content.length > MAX_FILE_ANALYSIS_CHARACTERS) return "Text files must be no larger than 60,000 characters.";
   if (Buffer.byteLength(content, "utf8") > MAX_FILE_ANALYSIS_BYTES) return "The extracted text is too large to send safely.";
-  const lineCount = content.replaceAll(String.fromCharCode(13), "").split(String.fromCharCode(10)).length;
+  const lineCount = normalizeFileLineEndings(content).split(String.fromCharCode(10)).length;
   if (lineCount > MAX_FILE_ANALYSIS_LINES) return "Files must contain no more than 2,000 lines.";
   return null;
 }
 
 export function numberFileAnalysisLines(content: string) {
-  const lines = content.replaceAll(String.fromCharCode(13), "").split(String.fromCharCode(10));
+  const lines = normalizeFileLineEndings(content).split(String.fromCharCode(10));
   return {
     lineCount: lines.length,
     numberedContent: lines.map((line, index) => "[L" + (index + 1) + "] " + line).join(String.fromCharCode(10)),
