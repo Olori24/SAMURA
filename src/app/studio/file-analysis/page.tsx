@@ -105,7 +105,7 @@ export default function FileAnalysisPage() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = (filename.replace(/\\.[^.]+$/, "") || "samura-file-analysis") + "-analysis.md";
+    anchor.download = (filename.slice(0, filename.lastIndexOf(".")) || "samura-file-analysis") + "-analysis.md";
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -143,7 +143,7 @@ export default function FileAnalysisPage() {
 
           {filename && <details className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
             <summary className="cursor-pointer text-xs font-medium text-slate-300">Preview extracted text</summary>
-            <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-slate-500">{content.slice(0, 6_000)}{content.length > 6_000 ? "\\n… preview truncated …" : ""}</pre>
+            <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-slate-500">{content.slice(0, 6_000)}{content.length > 6_000 ? String.fromCharCode(10) + "… preview truncated …" : ""}</pre>
           </details>}
 
           <div className="mt-5">
