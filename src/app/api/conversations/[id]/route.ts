@@ -48,7 +48,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         ? and(eq(messages.conversationId, id), eq(messages.userId, user.id), cursorFilter)
         : and(eq(messages.conversationId, id), eq(messages.userId, user.id));
       const rows = await tx.select({
-        id: messages.id, role: messages.role, content: messages.content, status: messages.status, createdAt: messages.createdAt,
+        id: messages.id, role: messages.role, content: messages.content, status: messages.status, requestId: messages.requestId, createdAt: messages.createdAt,
       }).from(messages).where(historyFilter)
         .orderBy(desc(cursorTimestamp), desc(messages.id))
         .limit(501);
