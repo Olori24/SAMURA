@@ -51,6 +51,16 @@ describe("parseCsv", () => {
     expect(() => parseCsv(input)).toThrow("no more than 100,000 data rows");
   });
 
+  it("rejects CSV files that exceed the total-cell budget", () => {
+    const input = "a,b,c,d,e,f,g,h,i,j\n" + ("1,2,3,4,5,6,7,8,9,10\n").repeat(100_000);
+    expect(() => parseCsv(input)).toThrow("no more than 1,000,000 cells");
+  });
+
+  it("rejects CSV files that exceed the column limit", () => {
+    const input = Array.from({ length: 2_001 }, () => "").join(",") + "\n" + Array.from({ length: 2_001 }, () => "x").join(",");
+    expect(() => parseCsv(input)).toThrow("no more than 2,000 columns");
+  });
+
   it("rejects unterminated quoted cells", () => {
     expect(() => parseCsv('name,note\nAda,"unfinished')).toThrow("quoted cell was not closed");
   });
@@ -80,6 +90,13 @@ describe("summarizeNumericColumns", () => {
       min: 10,
       max: 30,
     }]);
+  });
+
+  it("keeps means and medians finite for very large finite values", () => {
+    const table = parseCsv("value\n1e308\n1e308\n");
+    const summary = summarizeNumericColumns(table)[0];
+    expect(summary.mean).toBe(1e308);
+    expect(summary.median).toBe(1e308);
   });
 
   it("does not classify mixed text-and-number columns as numeric", () => {
