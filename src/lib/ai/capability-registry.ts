@@ -60,15 +60,13 @@ export function buildCapabilityRegistry(input: CapabilityInputs): Capability[] {
     {
       id: "web_search",
       name: "Web search and research",
-      status: input.runtimeConfigured && input.chatConfigured && input.webSearchConfigured ? "available" : "needs_configuration",
+      status: input.runtimeConfigured && input.webSearchConfigured ? "available" : "needs_configuration",
       description: "Search public web sources and produce a source-grounded report with links.",
       ...(!input.runtimeConfigured
         ? { requirement: "Application database and authentication configuration" }
-        : !input.chatConfigured
-          ? { requirement: "A working server-side AI model connection" }
-          : !input.webSearchConfigured
-            ? { requirement: "An administrator-configured web search service key" }
-            : {}),
+        : !input.webSearchConfigured
+          ? { requirement: "A configured Gemini Search path, or Tavily plus a working AI model connection" }
+          : {}),
     },
     {
       id: "file_analysis",
