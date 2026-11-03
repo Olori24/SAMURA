@@ -176,7 +176,7 @@ describe("POST /api/connectors/github/publish", () => {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody()),
     }));
     const payload = await responseValue.json();
-    expect(responseValue.status).toBe(200);
+    expect(responseValue.status, JSON.stringify(payload)).toBe(200);
     expect(payload).toMatchObject({ ok: true, verified: true, recovered: true, pullRequestNumber: 123 });
     expect(calls.some(call => call.method === "POST" && call.path.endsWith("/pulls"))).toBe(false);
   });
