@@ -27,6 +27,18 @@ describe("normalizeGeminiResearchInteraction", () => {
     expect(result.answer.match(/\[1\]\(<https:\/\/example\.com\/a>\)/g)).toHaveLength(2);
   });
 
+  it("converts UTF-8 byte offsets for multibyte citation text", () => {
+    const result = normalizeGeminiResearchInteraction({
+      steps: [{ type: "model_output", content: [{
+        type: "text", text: "Café", annotations: [{
+          type: "url_citation", url: "https://example.com/cafe", title: "Cafe", start_index: 0, end_index: 5,
+        }],
+      }] }],
+    });
+    expect(result.answer).toContain("Café [1](<https://example.com/cafe>)");
+    expect(result.sources).toHaveLength(1);
+  });
+
   it("rejects non-HTTPS citations and malformed annotation ranges", () => {
     const result = normalizeGeminiResearchInteraction({
       steps: [{ type: "model_output", content: [{
