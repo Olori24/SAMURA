@@ -331,7 +331,7 @@ ${message.content}`),
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         // Preserve the user's prompt if validation, rate limiting, or setup rejected it.
-        if (response.status !== 502) setDraft((current) => current || text);
+        if (data.persisted !== true) setDraft((current) => current || text);
         else setEditingMessageId("");
         // Keep the current view visible while reconciling any turn already persisted.
         if (activeIdRef.current === conversationId) await openConversation(conversationId, true).catch(() => undefined);
