@@ -70,12 +70,12 @@ export default function ChatPage() {
     return data.conversations as Conversation[];
   }, [router]);
 
-  const openConversation = useCallback(async (id: string) => {
+  const openConversation = useCallback(async (id: string, preserveExisting = false) => {
     const loadId = ++conversationLoadRef.current;
     olderRequestRef.current += 1;
     preserveScrollRef.current = null;
     setLoadingOlderMessages(false);
-    setError(""); activeIdRef.current = id; setActiveId(id); setSidebarOpen(false); setMessages([]);
+    setError(""); activeIdRef.current = id; setActiveId(id); setSidebarOpen(false); if (!preserveExisting) setMessages([]);
     setHasOlderMessages(false); setHistoryCursor(null);
     const response = await fetch("/api/conversations/" + id, { cache: "no-store" });
     if (loadId !== conversationLoadRef.current) return;
@@ -325,9 +325,9 @@ ${message.content}`),
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         // Preserve the user's prompt if validation, rate limiting, or setup rejected it.
-        setDraft((current) => current || text);
-        // Reload without clearing the current view first; the server may have persisted the turn.
-        if (activeIdRef.current === conversationId) await openConversation(conversationId).catch(() => undefined);
+        if (response.status !== 502) setDraft((current) => current || text);
+        // Keep the current view visible while reconciling any turn already persisted.
+        if (activeIdRef.current === conversationId) await openConversation(conversationId, true).catch(() => undefined);
         throw new Error(data.error ?? "The response could not be generated.");
       }
       if (!response.body) throw new Error("Streaming is unavailable in this browser.");
