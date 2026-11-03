@@ -166,6 +166,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "The existing SAMURA branch does not match the approved base commit and exact changed-file set. Inspect it in GitHub before retrying.", retryable: false }, { status: 409, headers: noStore });
       }
 
+      const branchBeforeRecovery = await github<{ object: { sha: string } }>(
+        token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(branchName),
+      );
+      if (branchBeforeRecovery.object.sha !== existingCommit.sha) {
+        return NextResponse.json({ error: "The approval branch changed during recovery. Inspect it in GitHub before retrying.", retryable: false }, { status: 409, headers: noStore });
+      }
       let pull = existingPull ?? null;
       if (!pull) {
         const latestBase = await github<{ object: { sha: string } }>(token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch));
@@ -190,6 +196,13 @@ export async function POST(request: Request) {
           pull = racedPulls.find(item => item.head.sha === existingCommit.sha) ?? null;
           if (!pull) throw error;
         }
+      }
+      const branchAfterRecovery = await github<{ object: { sha: string } }>(
+        token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(branchName),
+      );
+      if (pull.head.sha !== existingCommit.sha || branchAfterRecovery.object.sha !== existingCommit.sha) {
+        await github(token, "/repos/" + repository + "/pulls/" + pull.number, "PATCH", { state: "closed" }).catch(() => undefined);
+        return NextResponse.json({ error: "The recovered pull request head changed during verification. The draft was closed; inspect the branch before retrying.", retryable: false }, { status: 409, headers: noStore });
       }
       return NextResponse.json({
         ok: true, verified: true, branch: pull.head.ref, baseBranch: pull.base.ref,
