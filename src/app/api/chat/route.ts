@@ -168,7 +168,7 @@ export async function POST(request: Request) {
       await tx.update(messages).set({ status: "failed" })
         .where(and(eq(messages.id, userMessage.id), eq(messages.userId, user.id)));
     }).catch(() => undefined);
-    return NextResponse.json({ error: message }, { status: error instanceof OpenAI.APIError && error.status === 429 ? 429 : 502 });
+    return NextResponse.json({ error: message, persisted: true }, { status: error instanceof OpenAI.APIError && error.status === 429 ? 429 : 502 });
   }
 
   const encoder = new TextEncoder();
