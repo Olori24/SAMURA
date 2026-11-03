@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Download, ImagePlus, LoaderCircle, Sparkles } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { captureProductEvent } from "@/lib/product-analytics";
 import { useRouter } from "next/navigation";
 
 export default function CreatePage() {
@@ -30,6 +31,7 @@ export default function CreatePage() {
       if (response.status === 401) { router.replace("/login"); return; }
       if (!response.ok) throw new Error(data.error ?? "Could not generate the image.");
       setImage(data.image);
+      captureProductEvent("image_generated", { image_size: size });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not generate the image.");
     } finally {
