@@ -113,7 +113,7 @@ function installGitHubMock(options: { movedBase?: boolean; invalidParent?: boole
     }
     if (path.endsWith("/pulls") && method === "PATCH") return response({ state: "closed" });
     if (path.endsWith("/commits/" + commitSha) && method === "GET") return response({
-      sha: commitSha, files: [{ filename: filePath, status: "added" }],
+      sha: commitSha, parents: [{ sha: baseSha }], files: [{ filename: filePath, status: "added" }],
     });
     if (path.endsWith("/git/trees/" + treeSha) && method === "GET") return response({
       truncated: false, tree: [{ path: filePath, mode: "100644", type: "blob", sha: blobSha }],
