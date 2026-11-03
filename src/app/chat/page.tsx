@@ -324,9 +324,10 @@ ${message.content}`),
       const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId, message: text, requestId, mode }), signal: controller.signal });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        // The server may have persisted the user turn before the provider failed.
-        // Reload so the UI uses its durable message ID rather than the optimistic ID.
-        if (activeIdRef.current === conversationId) await openConversation(conversationId);
+        // Preserve the user's prompt if validation, rate limiting, or setup rejected it.
+        setDraft((current) => current || text);
+        // Reload without clearing the current view first; the server may have persisted the turn.
+        if (activeIdRef.current === conversationId) await openConversation(conversationId).catch(() => undefined);
         throw new Error(data.error ?? "The response could not be generated.");
       }
       if (!response.body) throw new Error("Streaming is unavailable in this browser.");
@@ -417,6 +418,8 @@ ${message.content}`),
     }
 
     const requestConversationId = activeId;
+    const controller = new AbortController();
+    abortRef.current = controller;
     setError("");
     setStreaming(true);
     try {
@@ -426,6 +429,7 @@ ${message.content}`),
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mode }),
+          signal: controller.signal,
         },
       );
       const data = await response.json().catch(() => ({}));
@@ -448,9 +452,12 @@ ${message.content}`),
     } catch (e) {
       // The server commits the replacement only after generation succeeds;
       // leave the existing user and assistant messages untouched on failure.
-      setError(e instanceof Error ? e.message : "Could not regenerate this response.");
+      if (!(e instanceof DOMException && e.name === "AbortError")) {
+        setError(e instanceof Error ? e.message : "Could not regenerate this response.");
+      }
     } finally {
       setStreaming(false);
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }
 
