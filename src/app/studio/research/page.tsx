@@ -7,7 +7,7 @@ import remarkGfm from "remark-gfm";
 import { ArrowLeft, BookOpen, ExternalLink, LoaderCircle, Search, Sparkles } from "lucide-react";
 
 type Source = { title: string; url: string; content: string };
-type ResearchResult = { answer: string; sources: Source[] };
+type ResearchResult = { answer: string; sources: Source[]; searchSuggestions?: string[] };
 
 export default function ResearchPage() {
   const [query, setQuery] = useState("");
@@ -66,6 +66,19 @@ export default function ResearchPage() {
             <h2 className="mb-5 text-lg font-semibold">Research report</h2>
             <div className="prose prose-invert prose-sm max-w-none break-words leading-7 prose-pre:overflow-x-auto prose-pre:rounded-xl prose-pre:border prose-pre:border-white/10 prose-pre:bg-black/30 prose-a:text-teal-200 prose-code:text-teal-200"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ img: ({ alt }) => <span className="text-slate-500">[Image omitted{alt ? ": " + alt : ""}]</span> }}>{result.answer}</ReactMarkdown></div>
           </article>
+          {result.searchSuggestions?.length ? <section className="mt-5 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <h2 className="mb-2 text-sm font-semibold text-slate-200">Google Search suggestions</h2>
+            <div className="grid gap-2">
+              {result.searchSuggestions.map((markup, index) => <iframe
+                key={index}
+                title="Google Search suggestion"
+                srcDoc={markup}
+                sandbox="allow-top-navigation-by-user-activation"
+                className="h-20 w-full rounded-lg border-0 bg-white"
+                referrerPolicy="no-referrer"
+              />)}
+            </div>
+          </section> : null}
           <section className="mt-5">
             <h2 className="mb-3 text-sm font-semibold text-slate-200">Sources ({result.sources.length})</h2>
             <div className="grid gap-3 sm:grid-cols-2">
