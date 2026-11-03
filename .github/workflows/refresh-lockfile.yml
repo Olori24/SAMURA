@@ -26,7 +26,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
+      - name: Install declared npm version
+        run: npm install --global npm@10.9.9
       - name: Generate deterministic lockfile
         run: npm install --package-lock-only --ignore-scripts
       - name: Commit lockfile and dispatch validation
