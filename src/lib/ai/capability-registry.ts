@@ -70,9 +70,14 @@ export function buildCapabilityRegistry(input: CapabilityInputs): Capability[] {
     },
     {
       id: "file_analysis",
-      name: "File analysis and citations",
-      status: "planned",
-      description: "Upload supported files, analyze their contents, and cite source passages.",
+      name: "Text file analysis and citations",
+      status: input.runtimeConfigured && input.chatConfigured ? "available" : "needs_configuration",
+      description: "Analyze TXT, Markdown, CSV, JSON, logs, and source-code text with source line citations. PDF and Office extraction are not yet supported.",
+      ...(!input.runtimeConfigured
+        ? { requirement: "Application database and authentication configuration" }
+        : !input.chatConfigured
+          ? { requirement: "A working server-side AI model connection" }
+          : {}),
     },
     {
       id: "data_analysis",
