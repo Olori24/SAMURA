@@ -87,9 +87,14 @@ export function buildCapabilityRegistry(input: CapabilityInputs): Capability[] {
     },
     {
       id: "voice",
-      name: "Voice conversations",
-      status: "planned",
-      description: "Speech input and spoken responses with explicit recording controls.",
+      name: "Voice typing and read-aloud",
+      status: input.runtimeConfigured && input.chatConfigured ? "available" : "needs_configuration",
+      description: "Browser speech-to-text dictation and text-to-speech playback. Real-time duplex voice conversations are not yet supported.",
+      ...(!input.runtimeConfigured
+        ? { requirement: "Application database and authentication configuration" }
+        : !input.chatConfigured
+          ? { requirement: "A working server-side AI model connection" }
+          : {}),
     },
     {
       id: "memory_projects",
