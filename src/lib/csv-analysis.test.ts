@@ -110,7 +110,7 @@ describe("csvEscape", () => {
   it.each(["=1+1", "+SUM(A1:A2)", "-1+2", "@SUM(A1)", "\n=cmd", "\r=cmd", "\t=cmd", "  \n=cmd"])(
     "neutralizes formula-like values with leading controls: %j", value => {
       const neutralized = "'" + value;
-      expect(csvEscape(value)).toBe(/[\\r\\n]/.test(value) ? '"' + neutralized + '"' : neutralized);
+      expect(csvEscape(value)).toBe(/[\r\n]/.test(value) ? '"' + neutralized + '"' : neutralized);
     },
   );
 
