@@ -1,4 +1,6 @@
 const MAX_CSV_RECORDS = 100_001;
+const MAX_CSV_COLUMNS = 2_000;
+const MAX_CSV_CELLS = 1_000_000;
 
 export type CsvTable = { headers: string[]; rows: string[][] };
 export type NumericSummary = {
@@ -21,6 +23,13 @@ export function parseCsv(input: string): CsvTable {
   let closedQuote = false;
   let cellWasQuoted = false;
   let recordHasStructure = false;
+  let totalCells = 0;
+  const pushCell = (value: string) => {
+    totalCells += 1;
+    if (totalCells > MAX_CSV_CELLS) throw new Error("CSV files must contain no more than 1,000,000 cells.");
+    if (row.length >= MAX_CSV_COLUMNS) throw new Error("CSV files must contain no more than 2,000 columns.");
+    row.push(value);
+  };
   const pushRecord = () => {
     if (records.length >= MAX_CSV_RECORDS) {
       throw new Error("CSV files must contain no more than 100,000 data rows.");
@@ -58,7 +67,7 @@ export function parseCsv(input: string): CsvTable {
       throw new Error("Invalid CSV: a quote appeared inside an unquoted cell.");
     }
     if (char === ",") {
-      row.push(cellWasQuoted ? cell : cell.trim());
+      pushCell(cellWasQuoted ? cell : cell.trim());
       cell = "";
       closedQuote = false;
       cellWasQuoted = false;
@@ -131,14 +140,14 @@ export function summarizeNumericColumns(table: CsvTable): NumericSummary[] {
     }
     if (!values.length || invalid > 0) return [];
     const sorted = [...values].sort((a, b) => a - b);
-    const sum = values.reduce((total, value) => total + value, 0);
+    const mean = values.reduce((average, value) => average + value / values.length, 0);
     const middle = Math.floor(sorted.length / 2);
-    const median = sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+    const median = sorted.length % 2 ? sorted[middle] : sorted[middle - 1] / 2 + sorted[middle] / 2;
     return [{
       column,
       count: values.length,
       missing,
-      mean: sum / values.length,
+      mean,
       median,
       min: sorted[0],
       max: sorted[sorted.length - 1],
