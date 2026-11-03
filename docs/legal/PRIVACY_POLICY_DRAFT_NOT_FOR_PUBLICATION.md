@@ -21,6 +21,7 @@ Depending on the features you use and the final verified implementation, SAMURA 
 - Account information such as name, email address, profile image and account status.
 - Authentication and security data such as session identifiers, session expiry, IP address, browser/user-agent information and password-reset verification data.
 - Prompts, conversation history, messages, uploaded files, documents and AI-generated outputs that you choose to submit or create.
+- If you use browser voice dictation, your browser may request microphone permission and process audio through its configured speech-recognition service. SAMURA’s chat interface receives the resulting transcript as text; this implementation does not upload a microphone audio recording to SAMURA’s server. The browser vendor and speech-recognition service may process audio under their own terms. Their identity, retention and training practices must be verified for supported browsers before publication.
 - Connected-service information, including GitHub account identifiers, granted permissions and tokens required to provide an integration.
 - Service usage metadata such as model/provider identifiers, token counts, request status and estimated usage costs.
 - Technical logs, error reports and abuse-prevention records.
@@ -48,6 +49,8 @@ The final policy must state the applicable lawful basis for each purpose under t
 SAMURA may send the information required to fulfil a user's request to the AI provider or providers configured for that feature. The exact providers, data fields, regions, retention rules, subprocessors and training settings must be confirmed from the production configuration and current contracts before publication.
 
 Do not assume that a provider does not retain prompts or use them for training merely because an API is used. Do not promise zero retention, no training, exclusive processing or a specific geographic location without evidence.
+
+When enabled by the deployment operator, web research may also send the search query to Tavily or to Google’s Gemini Search grounding service. In the Tavily workflow, returned source extracts may then be sent to the configured AI model to prepare the response. These search services are separate recipients from the model provider. Before publication, verify the exact endpoint, fields transmitted, account-level retention and training settings, subprocessors, processing regions and contractual terms for each enabled provider. Do not imply that either service is active in every deployment.
 
 The final version should link to or identify the relevant provider disclosures where appropriate and explain which user inputs may be transmitted.
 
