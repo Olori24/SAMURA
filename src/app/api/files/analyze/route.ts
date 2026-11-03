@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   const user = session?.user;
   if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401, headers: { "Cache-Control": "no-store" } });
 
-  const rate = await checkDistributedRateLimit("file-analysis:" + user.id, 10, 60_000);
+  const rate = await checkDistributedRateLimit("file-analysis:" + user.id, 5, 60_000);
   if (rate.unavailable) return NextResponse.json({ error: "File analysis is temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   if (!rate.allowed) return NextResponse.json({ error: "Too many file analyses. Try again in a minute." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds), "Cache-Control": "no-store" } });
 
@@ -38,9 +38,15 @@ export async function POST(request: Request) {
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400, headers: { "Cache-Control": "no-store" } });
   const { lineCount, numberedContent } = numberFileAnalysisLines(parsed.data.content);
 
+  const env = getServerEnv();
+  let ai: ReturnType<typeof createAIClient>;
   try {
-    const env = getServerEnv();
-    const ai = createAIClient(env);
+    ai = createAIClient(env);
+  } catch {
+    return NextResponse.json({ error: "File analysis needs a working server-side AI model connection." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
+
+  try {
     const completion = await ai.client.chat.completions.create({
       model: ai.model,
       max_tokens: env.SAMURA_MAX_OUTPUT_TOKENS,
