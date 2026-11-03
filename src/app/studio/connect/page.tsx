@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Code2, FileJson, FileText, Github, LockKeyhole, Plug, Search, ShieldCheck, Slack, Sparkles, type LucideIcon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { captureProductEvent } from "@/lib/product-analytics";
 
 type GitHubProfile = { login: string; name: string | null; avatarUrl: string; profileUrl: string };
 type GitHubRepo = { id: number; fullName: string; url: string; description: string | null; language: string | null; stars: number; updatedAt: string };
@@ -73,7 +74,7 @@ export default function ConnectPage() {
         if (!response.ok) throw new Error(data.error ?? "Could not check GitHub connection.");
         if (!active) return;
         if (result === "connected") setGithubNotice("GitHub connected successfully.");
-        else if (result === "setup_required") setGithubNotice("GitHub OAuth is not fully configured in this deployment. Verify its required environment settings.");
+        else if (result === "setup_required") setGithubNotice("GitHub OAuth is not configured in the production environment yet.");
         else if (result && result !== "connected") setGithubNotice("GitHub connection: " + result.replaceAll("_", " ") + ".");
         setGithubConnected(Boolean(data.connected));
         setGithubProfile(data.account ?? null);
@@ -104,6 +105,7 @@ export default function ConnectPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Repository inspection failed.");
       setInspection(data);
+      captureProductEvent("github_repository_inspected", { file_count: data.files?.length ?? 0, listing_truncated: Boolean(data.truncated) });
     } catch (e) {
       setInspectionError(e instanceof Error ? e.message : "Repository inspection failed.");
     } finally {
@@ -139,6 +141,7 @@ export default function ConnectPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Plugin action failed.");
       setResult(JSON.stringify(data.result, null, 2));
+      captureProductEvent("connector_action_completed", { connector_id: selected.id, connector_action: action });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Plugin action failed.");
     } finally {
@@ -158,8 +161,8 @@ export default function ConnectPage() {
         <div className="mb-3 grid h-11 w-11 place-items-center rounded-2xl border border-teal-300/20 bg-teal-300/10 text-teal-200"><Plug size={21}/></div>
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-teal-200">SAMURA Connect</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-5xl">Your tools, under your control.</h1>
-        <p className="mt-4 text-sm leading-7 text-slate-400">Explore plugins, inspect permissions, and run available actions. GitHub supports repository inspection and AI-generated code changes, with a separate explicit approval before SAMURA creates a branch and draft pull request.</p>
-        <Link href="/studio/github-engine" className="mt-4 inline-flex items-center gap-2 rounded-xl border border-teal-200/25 bg-teal-200/[0.06] px-4 py-2.5 text-sm font-semibold text-teal-100 transition hover:bg-teal-200/10"><Github size={16}/> Open GitHub engineering workspace</Link>
+        <p className="mt-4 text-sm leading-7 text-slate-400">Explore plugins, inspect permissions, and run available actions. GitHub supports repository inspection and AI-generated, human-approved pull requests. Drive and Slack remain setup-gated.</p>
+        <div className="mt-4 flex flex-wrap gap-2"><Link href="/studio/github-engine" className="inline-flex items-center gap-2 rounded-xl border border-teal-200/25 bg-teal-200/[0.06] px-4 py-2.5 text-sm font-semibold text-teal-100 transition hover:bg-teal-200/10"><Github size={16}/> Open AI engineering workspace</Link><Link href="/studio/github-publish" className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/[0.04]">Manual single-file publisher</Link></div>
       </header>
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -191,7 +194,7 @@ export default function ConnectPage() {
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-teal-200"><Github size={21}/></div>
             <div>
               <div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">GitHub account</h2><span className={"rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider " + (githubConnected ? "bg-teal-200/10 text-teal-200" : "bg-white/5 text-slate-400")}>{githubConnected ? "Connected" : "Not connected"}</span></div>
-              <p className="mt-1 text-sm leading-6 text-slate-400">Connect using GitHub OAuth with repository access. SAMURA encrypts the token at rest, checks effective permissions per repository, and requires explicit review before creating a branch and draft pull request.</p>
+              <p className="mt-1 text-sm leading-6 text-slate-400">Connect using GitHub OAuth with repository access. SAMURA encrypts the token at rest, displays repositories the account can access, and checks effective write permission before publishing. AI-generated changes require your approval and are published to a new branch and draft pull request.</p>
               {githubProfile && <a href={githubProfile.profileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm text-teal-200 hover:text-white">{githubProfile.name || githubProfile.login} · @{githubProfile.login}</a>}
             </div>
           </div>
@@ -231,13 +234,13 @@ export default function ConnectPage() {
             <label className="block text-sm text-slate-300">Action<select value={action} onChange={e=>setAction(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#111722] px-3 py-3 text-sm text-white">{selected.actions.map(a=><option key={a} value={a}>{a.replaceAll("_"," ")}</option>)}</select></label>
             <label className="block text-sm text-slate-300">Input<textarea value={input} onChange={e=>setInput(e.target.value)} required maxLength={20000} rows={6} placeholder={action==="format_json" ? '{"name":"SAMURA","plugins":["text tools"]}' : "Paste text to analyze…"} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm leading-6 text-white outline-none focus:border-teal-200/40"/></label>
             <button disabled={running || !input.trim()} className="inline-flex items-center gap-2 rounded-xl bg-teal-200 px-4 py-3 text-sm font-bold text-[#07120e] disabled:opacity-40">{running ? "Running…" : <><Code2 size={15}/> Run plugin action</>}</button>
-          </form> : selected.id === "github" ? <div className="mt-5 rounded-2xl border border-amber-200/15 bg-amber-200/[0.04] p-4"><p className="flex items-center gap-2 text-sm font-semibold text-amber-100"><LockKeyhole size={16}/> GitHub OAuth configuration not detected</p><p className="mt-2 text-sm leading-6 text-slate-400">The GitHub connection flow is implemented, including OAuth authorization, state validation, encrypted token storage, authorized repository listing, per-repository write-permission checks, and branch/draft pull-request publishing after explicit approval. This deployment is not reporting all required OAuth settings as configured. Verify GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, and SAMURA_CONNECTOR_ENCRYPTION_KEY in the matching Vercel environment, then redeploy. Production and preview environments may have different credentials. Do not paste secrets into this page.</p><p className="mt-3 text-xs text-slate-500">Requested access: {selected.scopes.join(", ")}</p></div> : <div className="mt-5 rounded-2xl border border-amber-200/15 bg-amber-200/[0.04] p-4"><p className="flex items-center gap-2 text-sm font-semibold text-amber-100"><LockKeyhole size={16}/> External OAuth setup required</p><p className="mt-2 text-sm leading-6 text-slate-400">This integration is listed for planning only. It is not connected, and no external action can run yet. Before enabling it, SAMURA needs registered OAuth credentials, redirect URI configuration, encrypted token storage, scope consent, and revocation handling.</p><p className="mt-3 text-xs text-slate-500">Requested access: {selected.scopes.join(", ")}</p></div>}
+          </form> : selected.id === "github" ? <div className="mt-5 rounded-2xl border border-amber-200/15 bg-amber-200/[0.04] p-4"><p className="flex items-center gap-2 text-sm font-semibold text-amber-100"><LockKeyhole size={16}/> GitHub OAuth configuration not detected</p><p className="mt-2 text-sm leading-6 text-slate-400">The GitHub connection flow is implemented, including OAuth authorization, state validation, encrypted token storage, public repository listing, and disconnect handling. This environment is not reporting all required OAuth settings as configured. Verify GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, and SAMURA_CONNECTOR_ENCRYPTION_KEY in Vercel Production, then redeploy. Do not paste secrets into this page.</p><p className="mt-3 text-xs text-slate-500">Requested access: {selected.scopes.join(", ")}</p></div> : <div className="mt-5 rounded-2xl border border-amber-200/15 bg-amber-200/[0.04] p-4"><p className="flex items-center gap-2 text-sm font-semibold text-amber-100"><LockKeyhole size={16}/> External OAuth setup required</p><p className="mt-2 text-sm leading-6 text-slate-400">This integration is listed for planning only. It is not connected, and no external action can run yet. Before enabling it, SAMURA needs registered OAuth credentials, redirect URI configuration, encrypted token storage, scope consent, and revocation handling.</p><p className="mt-3 text-xs text-slate-500">Requested access: {selected.scopes.join(", ")}</p></div>}
           {error && <p role="alert" className="mt-4 rounded-xl border border-amber-200/20 bg-amber-200/5 p-3 text-sm text-amber-100">{error}</p>}
           {result && <div className="mt-4 rounded-2xl border border-teal-200/15 bg-teal-200/[0.04] p-4"><p className="mb-2 flex items-center gap-2 text-sm font-semibold text-teal-100"><CheckCircle2 size={16}/> Action completed</p><pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs leading-5 text-slate-300">{result}</pre></div>}
         </section>
       </div>}
 
-      <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.025] p-5 sm:p-7"><div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal-200/10 text-teal-200"><ShieldCheck size={19}/></div><div><h2 className="font-semibold">Permission-first by design</h2><p className="mt-2 text-sm leading-6 text-slate-400">Plugin actions are allowlisted on the server, input is schema-validated, and requests require an authenticated SAMURA session. GitHub OAuth is implemented with encrypted token storage and user-approved draft pull requests. Other external connectors remain unavailable until their own OAuth and token lifecycle are implemented.</p></div></div></section>
+      <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.025] p-5 sm:p-7"><div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal-200/10 text-teal-200"><ShieldCheck size={19}/></div><div><h2 className="font-semibold">Permission-first by design</h2><p className="mt-2 text-sm leading-6 text-slate-400">Plugin actions are allowlisted on the server, input is schema-validated, and requests require an authenticated SAMURA session. External connectors remain unavailable until their OAuth and token lifecycle are implemented.</p></div></div></section>
     </div>
   </main>;
 }
