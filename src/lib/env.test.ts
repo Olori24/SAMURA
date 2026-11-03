@@ -29,6 +29,7 @@ describe("Gemini Search grounding opt-in", () => {
   });
 
   it("is disabled by default to avoid unexpected per-query charges", () => {
+    vi.stubEnv("SAMURA_GEMINI_GROUNDING_ENABLED", undefined);
     expect(getServerEnv().SAMURA_GEMINI_GROUNDING_ENABLED).toBe(false);
   });
 
