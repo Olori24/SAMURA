@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isSupportedTextFilename,
   numberFileAnalysisLines,
+  validateFileAnalysisCitations,
   validateFileAnalysisText,
 } from "./file-analysis";
 
@@ -26,5 +27,12 @@ describe("file analysis text validation", () => {
       lineCount: 2,
       numberedContent: "[L1] First line" + String.fromCharCode(10) + "[L2] Second line",
     });
+  });
+});
+
+describe("file analysis citation validation", () => {
+  it("keeps valid source line references and flags out-of-range references", () => {
+    expect(validateFileAnalysisCitations("Claim [L2] and detail [L3-L5].", 5)).toBe("Claim [L2] and detail [L3-L5].");
+    expect(validateFileAnalysisCitations("Unsupported [L6] or [L4-L2].", 5)).toBe("Unsupported [unverified line reference] or [unverified line reference].");
   });
 });
