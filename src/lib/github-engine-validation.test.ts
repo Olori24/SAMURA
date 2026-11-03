@@ -83,6 +83,11 @@ describe("hasExpectedGitHubPatchDigest", () => {
 });
 
 
+describe("createGitHubBlobSha", () => {
+  it("uses Git blob object hashing for UTF-8 file content", () => {
+    expect(createGitHubBlobSha("hello\\n")).toBe("ce013625030ba8dba906f756967f9e9ca394464a");
+  });
+});
 describe("matchesExpectedGitHubPatchTree", () => {
   const changes = [{ path: "src/example.ts", content: "export const answer = 42;\\n" }];
   const entry = { path: "src/example.ts", mode: "100644", type: "blob", sha: createGitHubBlobSha(changes[0].content) };
