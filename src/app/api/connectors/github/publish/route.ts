@@ -254,7 +254,7 @@ export async function POST(request: Request) {
     const pull = await github<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>(
       token, "/repos/" + repository + "/pulls", "POST", {
         title: input.title,
-        body: input.body + "\\n\\n---\\nCreated by SAMURA after explicit user approval. Idempotency: " + input.idempotencyKey,
+        body: input.body + "\n\n---\nCreated by SAMURA after explicit user approval. Idempotency: " + input.idempotencyKey,
         head: branchName, base: input.baseBranch, draft: true,
       },
     );
