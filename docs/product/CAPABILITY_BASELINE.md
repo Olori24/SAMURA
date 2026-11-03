@@ -56,7 +56,9 @@
 - Never label the overall product fully complete while a critical capability or deployment blocker remains unresolved.
 
 
-## Current evidence snapshot — 2026-10-30
+## Historical evidence snapshot — 2026-10-30
+
+**Historical only:** the preview URL, smoke checks and runtime observations below apply only to commit `c993e8484082317b1d95bb13ac16b6dccfaf4f1a`. They do not establish the state of later commits or the current feature-branch head.
 
 **Source commit:** `c993e8484082317b1d95bb13ac16b6dccfaf4f1a` on `feat/chatgpt-capability-parity`.
 
@@ -66,7 +68,7 @@
 - Vercel's selected 24-hour runtime-error query returned no errors. This is not a substitute for authenticated browser E2E tests or Sentry ingestion.
 - Conversation rename/archive/restore/delete, latest-turn edit, server-side regenerate with usage accounting, Markdown export, and cursor-based older-message loading are present in source. They still require authenticated browser acceptance tests.
 - CSV analysis runs locally in the browser; parser behavior, numeric summaries, unique header naming, quoted whitespace preservation, and explicit empty-record preservation have unit tests in source. Chart rendering and summary export do not yet have dedicated browser/component tests. It does not upload the selected file.
-- Image generation now supports the existing Gemini API key through Google's Interactions API and the `gemini-nano-banana-2.1` image model, with OpenAI-compatible image providers retained as an override. No separate `SAMURA_IMAGE_API_KEY` is required when `GEMINI_API_KEY` is present. The integration still requires a live authenticated generation test and may incur image-model charges. Official API reference: https://ai.google.dev/gemini-api/docs/image-generation
+- Image generation now supports the existing Gemini API key through Google's Interactions API and the `gemini-nano-banana-2.1` image model, with OpenAI-compatible image providers retained as an override. No separate `SAMURA_IMAGE_API_KEY` is required when `GEMINI_API_KEY` is present only if `SAMURA_IMAGE_BASE_URL` is not configured. A custom compatible endpoint requires its own explicit `SAMURA_IMAGE_API_KEY`. The integration still requires a live authenticated generation test and may incur image-model charges. Official API reference: https://ai.google.dev/gemini-api/docs/image-generation
 - Web research retains Tavily support and now includes Google Search grounding through Gemini 3.8 Flash. Because Google charges for executed search queries after its free allowance, this path is disabled by default and requires the explicit environment opt-in `SAMURA_GEMINI_GROUNDING_ENABLED=true`; the current Vercel environment does not contain a Tavily key or this opt-in. It is implemented but not active. Official pricing/behavior: https://ai.google.dev/gemini-api/docs/google-search/
 - Browser dictation is not full voice conversation, speech output, or realtime audio.
 - Projects, durable user memory, broad file extraction/citations, sharing/forking, scheduled tasks and permissioned agent execution remain incomplete.
@@ -74,3 +76,11 @@
 - The application repository and Vercel environment inventory do not show Sentry or PostHog SDK configuration. The connected PostHog project currently reports zero outdated SDK issues and one `authorized_urls` health warning; this does not establish SAMURA event ingestion. Do not claim app-level monitoring or analytics are active.
 
 **Release boundary:** this evidence is from a feature-branch preview only. No merge to `main`, production deployment, production database change, or production secret change was performed.
+
+
+## Current source and CI evidence — 2026-11-03
+
+**Feature branch:** `feat/chatgpt-capability-parity`  
+**Source commit:** `a30e05b86ca0023b1a2051e69624a356a1fd2d29`  
+**GitHub Actions:** SAMURA CI, security dependency validation and secret scanning all completed successfully for this exact commit. SAMURA CI passed the mergeability check against `main`, dependency audit, TypeScript typecheck, lint, unit tests and production build. This is automated source/CI evidence, not a deployed preview or authenticated browser acceptance test.  
+**Release status:** pull request remains open; no merge to `main` or production deployment is evidenced by this snapshot. The preview deployment and live provider workflows remain unverified.
