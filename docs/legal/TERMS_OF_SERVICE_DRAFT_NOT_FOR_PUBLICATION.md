@@ -32,6 +32,8 @@ Users may use SAMURA only for lawful purposes and in accordance with these terms
 
 The final policy should include a fair reporting and appeal process proportionate to the product.
 
+**Separate Acceptable Use Policy status: not incorporated pending legal review.** The separate Acceptable Use and AI Disclosure draft is not incorporated into these Terms by reference and must not be represented as a binding contractual document unless qualified counsel approves its specific version, incorporation method, user-notice and acceptance process, and precedence in the event of conflict. Until that review is complete, the final approved Terms must contain the restrictions intended to be contractually enforceable. This relationship is a publication blocker.
+
 ## 4. User content and permissions
 
 Users retain whatever rights they hold in their submitted content. Users are responsible for ensuring they have the rights, permissions and lawful basis needed to submit content and direct its processing.
