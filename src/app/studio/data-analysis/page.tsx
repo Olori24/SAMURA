@@ -9,12 +9,6 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat(undefined, { maximumSignificantDigits: 8 }).format(value);
 }
 
-function csvEscape(value: string | number) {
-  let text = String(value);
-  if (typeof value === "string" && /^[\t\r\n ]*[=+\-@]/.test(text)) text = "'" + text;
-  return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
-}
-
 export default function DataAnalysisPage() {
   const [table, setTable] = useState<CsvTable | null>(null);
   const [fileName, setFileName] = useState("");
