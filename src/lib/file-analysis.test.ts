@@ -21,6 +21,13 @@ describe("file analysis text validation", () => {
     expect(validateFileAnalysisText("notes.txt", ("x" + String.fromCharCode(10)).repeat(2_001))).toContain("2,000");
   });
 
+  it("normalizes legacy carriage-return-only line endings", () => {
+    const content = "First line" + String.fromCharCode(13) + "Second line";
+    expect(numberFileAnalysisLines(content)).toEqual({
+      lineCount: 2,
+      numberedContent: "[L1] First line" + String.fromCharCode(10) + "[L2] Second line",
+    });
+  });
   it("numbers source lines for precise citations", () => {
     const content = "First line" + String.fromCharCode(13) + String.fromCharCode(10) + "Second line";
     expect(numberFileAnalysisLines(content)).toEqual({
