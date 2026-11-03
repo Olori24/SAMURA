@@ -104,7 +104,7 @@ export async function POST(request: Request, context: {
           messages: providerMessages,
           stream: false,
           max_tokens: env.SAMURA_MAX_OUTPUT_TOKENS,
-        }, { timeout: maxDuration * 1_000 - 5_000 });
+        }, { timeout: maxDuration * 1_000 - 5_000, signal: request.signal });
       } catch (error) {
         await withUserTransaction(user.id, async (tx) => {
           await tx.insert(usageRecords).values({ userId: user.id, conversationId: id, provider: ai.provider, model: ai.model, status: "failed" });
@@ -126,7 +126,12 @@ export async function POST(request: Request, context: {
       return NextResponse.json({ error: "The provider returned an empty response. Your previous response was preserved." }, { status: 502 });
     }
 
+    if (request.signal.aborted) {
+      return NextResponse.json({ error: "Regeneration was cancelled. Your previous response was preserved." }, { status: 499, headers: { "Cache-Control": "no-store" } });
+    }
+
     const committed = await withUserTransaction(user.id, async (tx) => {
+      if (request.signal.aborted) return null;
       const [conversation] = await tx.select({ id: conversations.id })
         .from(conversations)
         .where(and(eq(conversations.id, id), eq(conversations.userId, user.id)))
