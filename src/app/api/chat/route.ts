@@ -11,6 +11,7 @@ import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 import { createAIClient } from "@/lib/ai/provider";
+import { linkAbortSignal } from "@/lib/abort-signal";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -156,7 +157,7 @@ export async function POST(request: Request) {
   ];
 
   const abortController = new AbortController();
-  request.signal.addEventListener("abort", () => abortController.abort(), { once: true });
+  const unlinkRequestAbort = linkAbortSignal(request.signal, abortController);
   let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
   try {
     stream = await ai.client.chat.completions.create({
@@ -167,6 +168,7 @@ export async function POST(request: Request) {
       max_tokens: env.SAMURA_MAX_OUTPUT_TOKENS,
     }, { signal: abortController.signal });
   } catch (error) {
+    unlinkRequestAbort();
     const message = error instanceof OpenAI.APIError && error.status === 429
       ? "The AI provider is busy or the configured quota is exhausted. Please try again later."
       : "SAMURA could not reach the selected AI provider. Check that the model server is running and reachable, then try again.";
@@ -230,6 +232,7 @@ export async function POST(request: Request) {
           });
           return saved;
         }).catch(() => false);
+        unlinkRequestAbort();
         const responseUnsaved = Boolean(fullText.trim()) && !responseSaved;
         try {
           if (responseUnsaved) emit({ type: "done", status: "unsaved" });
