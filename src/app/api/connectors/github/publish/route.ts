@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -97,7 +97,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "This path is outside the supported safe patch paths. Security-sensitive, binary, manifest, and deployment files require a separate review." }, { status: 400, headers: noStore });
   }
 
-  const [account] = await getDb().select({ accessToken: accounts.accessToken })
+  const db = getDb();
+  const [account] = await db.select({ accessToken: accounts.accessToken })
     .from(accounts).where(and(eq(accounts.userId, session.user.id), eq(accounts.providerId, githubProviderId()))).limit(1);
   if (!account?.accessToken) return NextResponse.json({ error: "Connect GitHub before publishing." }, { status: 409, headers: noStore });
   try {
@@ -118,6 +119,15 @@ export async function POST(request: Request) {
       body: input.body,
       changes: input.changes,
     });
+    return await db.transaction(async tx => {
+      // Serialize retries using the same idempotency key across the complete GitHub
+      // branch verification and PR creation sequence. The lock is transaction-scoped.
+      const lockKey = repository.toLowerCase() + ":" + branchName;
+      const lockResult = await tx.execute(sql`SELECT pg_try_advisory_xact_lock(hashtextextended(${lockKey}, 0)) AS locked`);
+      const lockAcquired = (lockResult.rows[0] as { locked?: boolean } | undefined)?.locked === true;
+      if (!lockAcquired) {
+        return NextResponse.json({ error: "This approval is already being published. Wait for the current attempt to finish, then retry with the same approval key." }, { status: 409, headers: noStore });
+      }
     // Recover completed publishes after a timeout or lost response. Never create a
     // second commit/PR for the same approval key, and reject key reuse for other content.
     const existingRef = await github<{ object: { sha: string } }>(
@@ -299,6 +309,7 @@ export async function POST(request: Request) {
       patchDigest,
       message: verified ? "Branch and draft pull request created and verified." : "GitHub accepted the change, but verification was incomplete. Review the pull request before proceeding.",
     }, { status: 201, headers: noStore });
+    });
   } catch (error) {
     const status = safeErrorStatus(error);
     const message = error instanceof Error ? error.message : "GitHub publishing failed.";
