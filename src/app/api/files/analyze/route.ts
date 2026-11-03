@@ -7,7 +7,7 @@ import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 import { createAIClient } from "@/lib/ai/provider";
-import { numberFileAnalysisLines, validateFileAnalysisText } from "@/lib/file-analysis";
+import { numberFileAnalysisLines, validateFileAnalysisCitations, validateFileAnalysisText } from "@/lib/file-analysis";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -70,7 +70,8 @@ export async function POST(request: Request) {
 
     const answer = completion.choices[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) return NextResponse.json({ error: "The AI provider returned an empty analysis. Try again." }, { status: 502, headers: { "Cache-Control": "no-store" } });
-    return NextResponse.json({ answer, filename: parsed.data.filename, lineCount, characters: parsed.data.content.length }, { headers: { "Cache-Control": "no-store" } });
+    const validatedAnswer = validateFileAnalysisCitations(answer, lineCount);
+    return NextResponse.json({ answer: validatedAnswer, filename: parsed.data.filename, lineCount, characters: parsed.data.content.length }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "File analysis could not reach the configured AI provider. Check provider access and try again." }, { status: 502, headers: { "Cache-Control": "no-store" } });
   }
