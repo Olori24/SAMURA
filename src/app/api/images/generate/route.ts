@@ -62,9 +62,14 @@ export async function POST(request: Request) {
       });
       if (response.status === 429) return NextResponse.json({ error: "Gemini image generation is busy or its quota is exhausted. Try again later." }, { status: 429 });
       if (!response.ok) return NextResponse.json({ error: "Gemini could not generate this image. Check API access, model availability and billing." }, { status: 502 });
-      const interaction = await response.json() as { output_image?: { data?: string; mime_type?: string } };
-      const imageData = interaction.output_image?.data;
-      const mimeType = interaction.output_image?.mime_type ?? "image/png";
+      const interaction = await response.json() as {
+        steps?: Array<{ type?: string; content?: Array<{ type?: string; data?: string; mime_type?: string }> }>;
+      };
+      const imageBlock = interaction.steps?.flatMap(step =>
+        step.type === "model_output" && Array.isArray(step.content) ? step.content : []
+      ).find(block => block.type === "image" && typeof block.data === "string");
+      const imageData = imageBlock?.data;
+      const mimeType = imageBlock?.mime_type ?? "image/png";
       if (!imageData || !/^image\/(png|jpeg|webp)$/.test(mimeType)) {
         return NextResponse.json({ error: "Gemini returned no supported image output. Please try again." }, { status: 502 });
       }
