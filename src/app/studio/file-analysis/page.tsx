@@ -38,6 +38,9 @@ export default function FileAnalysisPage() {
     if (!file) return;
     setError("");
     setResult(null);
+    setFilename("");
+    setMimeType("");
+    setContent("");
     if (!hasSupportedExtension(file.name)) {
       setError("Choose a text-based file: TXT, Markdown, CSV, JSON, or source code. PDF, Word, and Excel files are not supported yet.");
       return;
