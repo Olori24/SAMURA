@@ -177,9 +177,10 @@ export default function ChatPage() {
   }, [messages, streaming]);
 
   useEffect(() => () => {
+    voiceSessionRef.current += 1;
+    voiceStartingRef.current = false;
     speechRef.current?.stop();
-    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-    mediaStreamRef.current = null;
+    speechRef.current = null;
   }, []);
 
   useEffect(() => { showArchivedRef.current = showArchived; }, [showArchived]);
