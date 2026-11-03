@@ -55,7 +55,9 @@ export default function FileAnalysisPage() {
       if (!extracted.trim()) throw new Error("The selected file is empty.");
       if (extracted.includes(String.fromCharCode(0))) throw new Error("This file appears to contain binary data, not readable text.");
       if (extracted.length > 60_000) throw new Error("The extracted text exceeds the 60,000-character limit.");
-      const lineCount = extracted.replaceAll(String.fromCharCode(13), "").split(String.fromCharCode(10)).length;
+      const lineFeed = String.fromCharCode(10);
+      const carriageReturn = String.fromCharCode(13);
+      const lineCount = extracted.split(carriageReturn + lineFeed).join(lineFeed).split(carriageReturn).join(lineFeed).split(lineFeed).length;
       if (lineCount > 2_000) throw new Error("Files must contain no more than 2,000 lines.");
       setFilename(file.name);
       setMimeType(file.type);
@@ -137,7 +139,7 @@ export default function FileAnalysisPage() {
 
           {reading && <p className="mt-4 flex items-center gap-2 text-xs text-slate-400"><LoaderCircle size={14} className="animate-spin"/> Reading file locally…</p>}
           {filename && <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-teal-200/20 bg-teal-200/[0.05] p-3">
-            <div><p className="text-sm font-medium text-teal-100">{filename}</p><p className="mt-1 text-[11px] text-slate-500">{content.length.toLocaleString()} characters · {content.replaceAll(String.fromCharCode(13), "").split(String.fromCharCode(10)).length.toLocaleString()} lines extracted</p></div>
+            <div><p className="text-sm font-medium text-teal-100">{filename}</p><p className="mt-1 text-[11px] text-slate-500">{content.length.toLocaleString()} characters · {content.split(String.fromCharCode(13) + String.fromCharCode(10)).join(String.fromCharCode(10)).split(String.fromCharCode(13)).join(String.fromCharCode(10)).split(String.fromCharCode(10)).length.toLocaleString()} lines extracted</p></div>
             <button type="button" onClick={clearFile} disabled={analyzing} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/[0.05] disabled:opacity-50"><Trash2 size={13}/> Remove</button>
           </div>}
 
