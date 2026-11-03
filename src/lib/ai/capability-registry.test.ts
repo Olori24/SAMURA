@@ -39,7 +39,8 @@ describe("SAMURA capability registry", () => {
 
     expect(result.find((item) => item.id === "data_analysis")?.status).toBe("available");
     expect(result.find((item) => item.id === "data_analysis")?.description).toContain("CSV");
-    for (const id of ["file_analysis", "voice", "memory_projects", "agent_workflows"]) {
+    expect(result.find((item) => item.id === "file_analysis")?.status).toBe("available");
+    for (const id of ["voice", "memory_projects", "agent_workflows"]) {
       expect(result.find((item) => item.id === id)?.status).toBe("planned");
     }
   });
