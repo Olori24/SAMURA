@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSensitiveAnalyticsRoute } from "./product-analytics";
+import { isSensitiveAnalyticsRoute, POSTHOG_DEFAULTS } from "./product-analytics";
 
 describe("isSensitiveAnalyticsRoute", () => {
   it("blocks the password reset route", () => {
@@ -16,5 +16,19 @@ describe("isSensitiveAnalyticsRoute", () => {
   it("allows ordinary application routes and non-secret query parameters", () => {
     expect(isSensitiveAnalyticsRoute("/chat")).toBe(false);
     expect(isSensitiveAnalyticsRoute("/studio/connect", "?github=connected")).toBe(false);
+  });
+});
+
+
+describe("POSTHOG_DEFAULTS", () => {
+  it("captures pageleave and web vitals without enabling broad autocapture or session replay", () => {
+    expect(POSTHOG_DEFAULTS).toMatchObject({
+      autocapture: false,
+      capture_pageview: false,
+      capture_pageleave: true,
+      capture_performance: { web_vitals: true },
+      disable_session_recording: true,
+      capture_exceptions: false,
+    });
   });
 });
