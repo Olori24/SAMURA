@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gt, or } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -81,24 +81,34 @@ export async function POST(request: Request) {
         .from(messages).where(and(eq(messages.userId, user.id), eq(messages.requestId, parsed.data.requestId))).limit(1);
       if (existing) return { status: "duplicate" as const };
 
-      // Editing validates and replaces the latest user turn in one transaction.
-      // Any failure rolls back the deletion and preserves the original turn.
+      // Query the target directly, then use an unbounded SQL predicate for later rows.
+      // This avoids loading an entire conversation and handles createdAt timestamp ties.
       if (parsed.data.editMessageId) {
-        const history = await tx.select({ id: messages.id, role: messages.role })
+        const [target] = await tx.select({ id: messages.id, role: messages.role, createdAt: messages.createdAt })
           .from(messages)
-          .where(and(eq(messages.conversationId, conversation.id), eq(messages.userId, user.id)))
-          .orderBy(asc(messages.createdAt), asc(messages.id));
-        const targetIndex = history.findIndex(item => item.id === parsed.data.editMessageId);
-        if (targetIndex < 0 || history[targetIndex].role !== "user") return { status: "not_found" as const };
-        if (history.slice(targetIndex + 1).some(item => item.role === "user")) return { status: "not_latest" as const };
-        const removeIds = history.slice(targetIndex).map(item => item.id);
-        if (removeIds.length) {
-          await tx.delete(messages).where(and(
+          .where(and(
+            eq(messages.id, parsed.data.editMessageId),
             eq(messages.conversationId, conversation.id),
             eq(messages.userId, user.id),
-            inArray(messages.id, removeIds),
-          ));
-        }
+          ))
+          .limit(1);
+        if (!target || target.role !== "user") return { status: "not_found" as const };
+        const afterTarget = or(
+          gt(messages.createdAt, target.createdAt),
+          and(eq(messages.createdAt, target.createdAt), gt(messages.id, target.id)),
+        );
+        const [laterUser] = await tx.select({ id: messages.id }).from(messages).where(and(
+          eq(messages.conversationId, conversation.id),
+          eq(messages.userId, user.id),
+          eq(messages.role, "user"),
+          afterTarget,
+        )).limit(1);
+        if (laterUser) return { status: "not_latest" as const };
+        await tx.delete(messages).where(and(
+          eq(messages.conversationId, conversation.id),
+          eq(messages.userId, user.id),
+          or(eq(messages.id, target.id), afterTarget),
+        ));
       }
 
       const [prior] = await tx.select({ id: messages.id }).from(messages)
