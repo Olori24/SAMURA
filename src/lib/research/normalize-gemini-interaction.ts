@@ -2,7 +2,7 @@ import { normalizeResearchSources, type ResearchSource } from "./normalize-sourc
 
 type Citation = { type?: string; url?: string; title?: string; start_index?: number; end_index?: number };
 type TextBlock = { type?: string; text?: string; annotations?: Citation[] };
-type ModelStep = { type?: string; content?: TextBlock[] };
+type ModelStep = { type?: string; content?: TextBlock[]; result?: Array<{ search_suggestions?: unknown }> };
 
 function utf8ByteOffsetToUtf16Index(text: string, byteOffset: number): number | null {
   if (!Number.isInteger(byteOffset) || byteOffset < 0) return null;
@@ -18,10 +18,15 @@ function utf8ByteOffsetToUtf16Index(text: string, byteOffset: number): number | 
   return bytes === byteOffset ? utf16 : null;
 }
 
-export function normalizeGeminiResearchInteraction(input: unknown): { answer: string; sources: ResearchSource[] } {
-  if (!input || typeof input !== "object") return { answer: "", sources: [] };
+export function normalizeGeminiResearchInteraction(input: unknown): { answer: string; sources: ResearchSource[]; searchSuggestions: string[] } {
+  if (!input || typeof input !== "object") return { answer: "", sources: [], searchSuggestions: [] };
   const interaction = input as { output_text?: unknown; steps?: unknown };
   const steps = Array.isArray(interaction.steps) ? interaction.steps as ModelStep[] : [];
+  const searchSuggestions = steps
+    .filter(step => step?.type === "google_search_result" && Array.isArray(step.result))
+    .flatMap(step => step.result ?? [])
+    .map(item => item.search_suggestions)
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
   const blocks: Array<{ text: string; offset: number; annotations: Citation[] }> = [];
   let offset = 0;
   for (const step of steps) {
@@ -35,7 +40,7 @@ export function normalizeGeminiResearchInteraction(input: unknown): { answer: st
   const answerText = blocks.length
     ? blocks.map(block => block.text).join("\n")
     : typeof interaction.output_text === "string" ? interaction.output_text : "";
-  if (!answerText.trim()) return { answer: "", sources: [] };
+  if (!answerText.trim()) return { answer: "", sources: [], searchSuggestions };
 
   const candidates: Array<{ end: number; title: string; url: string }> = [];
   for (const block of blocks) {
@@ -75,5 +80,5 @@ export function normalizeGeminiResearchInteraction(input: unknown): { answer: st
     cursor = position;
   }
   answer += answerText.slice(cursor);
-  return { answer, sources };
+  return { answer, sources, searchSuggestions };
 }
