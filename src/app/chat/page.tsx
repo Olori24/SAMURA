@@ -41,6 +41,7 @@ export default function ChatPage() {
   const [historyCursor, setHistoryCursor] = useState<{ createdAt: string; id: string } | null>(null);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [draft, setDraft] = useState("");
+  const [editingMessageId, setEditingMessageId] = useState("");
   const [mode, setMode] = useState<"chat" | "code">("chat");
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [streaming, setStreaming] = useState(false);
@@ -75,7 +76,7 @@ export default function ChatPage() {
     olderRequestRef.current += 1;
     preserveScrollRef.current = null;
     setLoadingOlderMessages(false);
-    setError(""); activeIdRef.current = id; setActiveId(id); setSidebarOpen(false); if (!preserveExisting) setMessages([]);
+    setError(""); activeIdRef.current = id; setActiveId(id); setSidebarOpen(false); if (!preserveExisting) { setMessages([]); setEditingMessageId(""); }
     setHasOlderMessages(false); setHistoryCursor(null);
     const response = await fetch("/api/conversations/" + id, { cache: "no-store" });
     if (loadId !== conversationLoadRef.current) return;
@@ -288,7 +289,7 @@ ${message.content}`),
 
   async function newConversation() {
     conversationLoadRef.current += 1; olderRequestRef.current += 1; preserveScrollRef.current = null; setLoadingOlderMessages(false);
-    setError(""); setMessages([]); activeIdRef.current = ""; setActiveId(""); setActiveTitle(""); setSidebarOpen(false); setArchiveMode(false); setHasOlderMessages(false); setHistoryCursor(null);
+    setError(""); setMessages([]); setEditingMessageId(""); setDraft(""); activeIdRef.current = ""; setActiveId(""); setActiveTitle(""); setSidebarOpen(false); setArchiveMode(false); setHasOlderMessages(false); setHistoryCursor(null);
     try {
       const response = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
       if (!response.ok) { const data = await response.json().catch(()=>({})); throw new Error(data.error ?? "Could not create a conversation."); }
@@ -304,6 +305,7 @@ ${message.content}`),
     event?.preventDefault();
     const text = (overrideText ?? draft).trim();
     if (!text || streaming) return;
+    const editMessageId = editingMessageId;
     setError("");
     let conversationId = activeId;
     if (!conversationId) {
@@ -317,15 +319,20 @@ ${message.content}`),
     const requestId = crypto.randomUUID();
     setDraft("");
     if (!activeTitle.trim() || activeTitle === "New conversation") setActiveTitle(text.slice(0, 72));
-    setMessages(prev => [...prev, { id: requestId, role: "user", content: text }, { id: "assistant-" + requestId, role: "assistant", content: "", status: "streaming" }]);
+    setMessages(prev => {
+      const targetIndex = editMessageId ? prev.findIndex(item => item.id === editMessageId) : -1;
+      const retained = targetIndex >= 0 ? prev.slice(0, targetIndex) : prev;
+      return [...retained, { id: requestId, role: "user", content: text }, { id: "assistant-" + requestId, role: "assistant", content: "", status: "streaming" }];
+    });
     setStreaming(true);
     const controller = new AbortController(); abortRef.current = controller;
     try {
-      const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId, message: text, requestId, mode }), signal: controller.signal });
+      const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId, message: text, requestId, mode, ...(editMessageId ? { editMessageId } : {}) }), signal: controller.signal });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         // Preserve the user's prompt if validation, rate limiting, or setup rejected it.
         if (response.status !== 502) setDraft((current) => current || text);
+        else setEditingMessageId("");
         // Keep the current view visible while reconciling any turn already persisted.
         if (activeIdRef.current === conversationId) await openConversation(conversationId, true).catch(() => undefined);
         throw new Error(data.error ?? "The response could not be generated.");
@@ -339,6 +346,7 @@ ${message.content}`),
         try {
           const event = JSON.parse(line.slice(6)) as { type: string; id?: string; text?: string; message?: string; status?: string };
           if (event.type === "user_message" && typeof event.id === "string") {
+            setEditingMessageId("");
             setMessages(prev => prev.map(m => m.id === requestId && m.role === "user" ? { ...m, id: event.id as string } : m));
           } else if (event.type === "delta" && typeof event.text === "string") {
             received += event.text;
