@@ -53,6 +53,7 @@ export async function POST(request: Request) {
         headers: { "Content-Type": "application/json", "x-goog-api-key": imageConfig.apiKey },
         body: JSON.stringify({
           model: imageConfig.model,
+          store: false,
           input: parsed.data.prompt,
           response_format: { type: "image", aspect_ratio: aspectRatio, image_size: "1K" },
         }),
