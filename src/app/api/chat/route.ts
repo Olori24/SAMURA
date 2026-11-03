@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -19,6 +19,7 @@ const requestSchema = z.object({
   conversationId: z.string().uuid(),
   message: z.string().trim().min(1).max(12000),
   requestId: z.string().uuid(),
+  editMessageId: z.string().uuid().optional(),
   mode: z.enum(["chat", "code"]).default("chat"),
 });
 
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
 
   type ChatSetup =
     | { status: "not_found" }
+    | { status: "not_latest" }
     | { status: "duplicate" }
     | {
         status: "ok";
@@ -79,8 +81,28 @@ export async function POST(request: Request) {
         .from(messages).where(and(eq(messages.userId, user.id), eq(messages.requestId, parsed.data.requestId))).limit(1);
       if (existing) return { status: "duplicate" as const };
 
+      // Editing validates and replaces the latest user turn in one transaction.
+      // Any failure rolls back the deletion and preserves the original turn.
+      if (parsed.data.editMessageId) {
+        const history = await tx.select({ id: messages.id, role: messages.role })
+          .from(messages)
+          .where(and(eq(messages.conversationId, conversation.id), eq(messages.userId, user.id)))
+          .orderBy(asc(messages.createdAt), asc(messages.id));
+        const targetIndex = history.findIndex(item => item.id === parsed.data.editMessageId);
+        if (targetIndex < 0 || history[targetIndex].role !== "user") return { status: "not_found" as const };
+        if (history.slice(targetIndex + 1).some(item => item.role === "user")) return { status: "not_latest" as const };
+        const removeIds = history.slice(targetIndex).map(item => item.id);
+        if (removeIds.length) {
+          await tx.delete(messages).where(and(
+            eq(messages.conversationId, conversation.id),
+            eq(messages.userId, user.id),
+            inArray(messages.id, removeIds),
+          ));
+        }
+      }
+
       const [prior] = await tx.select({ id: messages.id }).from(messages)
-        .where(and(eq(messages.conversationId, conversation.id), eq(messages.userId, user.id))).orderBy(desc(messages.createdAt)).limit(1);
+        .where(and(eq(messages.conversationId, conversation.id), eq(messages.userId, user.id))).orderBy(desc(messages.createdAt), desc(messages.id)).limit(1);
       const [userMessage] = await tx.insert(messages).values({
         conversationId: conversation.id, userId: user.id, role: "user", content: parsed.data.message,
         status: "complete", requestId: parsed.data.requestId,
@@ -102,7 +124,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Conversation service is temporarily unavailable." }, { status: 503 });
   }
 
-  if (setup.status === "not_found") return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+  if (setup.status === "not_found") return NextResponse.json({ error: "Conversation or message not found." }, { status: 404 });
+  if (setup.status === "not_latest") return NextResponse.json({ error: "Only the latest user message can be edited. Earlier turns are preserved." }, { status: 409 });
   if (setup.status === "duplicate") return NextResponse.json({ error: "This request was already submitted. Refresh the conversation before sending another message." }, { status: 409 });
   const { conversation, userMessage, history } = setup;
   // Keep both message count and total context size bounded to control spend.
