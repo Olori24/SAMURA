@@ -32,3 +32,11 @@ export function numberFileAnalysisLines(content: string) {
     numberedContent: lines.map((line, index) => "[L" + (index + 1) + "] " + line).join(String.fromCharCode(10)),
   };
 }
+
+export function validateFileAnalysisCitations(answer: string, lineCount: number) {
+  return answer.replace(/\\[L(\\d+)(?:-L?(\\d+))?\\]/g, (citation, startText: string, endText?: string) => {
+    const start = Number(startText);
+    const end = endText ? Number(endText) : start;
+    return start >= 1 && end >= start && end <= lineCount ? citation : "[unverified line reference]";
+  });
+}
