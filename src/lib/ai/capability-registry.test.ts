@@ -79,6 +79,17 @@ describe("SAMURA capability registry", () => {
     expect(result.find((item) => item.id === "web_search")?.requirement).toContain("Gemini Search");
   });
 
+  it("requires a working chat provider before enabling file analysis", () => {
+    const result = buildCapabilityRegistry({
+      runtimeConfigured: true,
+      chatConfigured: false,
+      imageConfigured: false,
+      webSearchConfigured: false,
+    });
+
+    expect(result.find((item) => item.id === "file_analysis")?.status).toBe("needs_configuration");
+    expect(result.find((item) => item.id === "file_analysis")?.requirement).toContain("AI model");
+  });
   it("reports image generation as requiring configuration when no image service key is configured", () => {
     const result = buildCapabilityRegistry({
       runtimeConfigured: true,
