@@ -34,9 +34,29 @@ export function numberFileAnalysisLines(content: string) {
 }
 
 export function validateFileAnalysisCitations(answer: string, lineCount: number) {
-  return answer.replace(/\\[L(\\d+)(?:-L?(\\d+))?\\]/g, (citation, startText: string, endText?: string) => {
-    const start = Number(startText);
-    const end = endText ? Number(endText) : start;
-    return start >= 1 && end >= start && end <= lineCount ? citation : "[unverified line reference]";
-  });
+  let output = "";
+  let cursor = 0;
+  while (cursor < answer.length) {
+    const markerStart = answer.indexOf("[L", cursor);
+    if (markerStart < 0) break;
+    const markerEnd = answer.indexOf("]", markerStart + 2);
+    if (markerEnd < 0) break;
+    const marker = answer.slice(markerStart, markerEnd + 1);
+    const parts = answer.slice(markerStart + 2, markerEnd).split("-L");
+    const startText = parts[0] ?? "";
+    const endText = parts.length === 2 ? parts[1] : startText;
+    const startLine = Number(startText);
+    const endLine = Number(endText);
+    const valid = parts.length <= 2
+      && startText.length > 0
+      && endText.length > 0
+      && String(startLine) === startText
+      && String(endLine) === endText
+      && startLine >= 1
+      && endLine >= startLine
+      && endLine <= lineCount;
+    output += answer.slice(cursor, markerStart) + (valid ? marker : "[unverified line reference]");
+    cursor = markerEnd + 1;
+  }
+  return output + answer.slice(cursor);
 }
