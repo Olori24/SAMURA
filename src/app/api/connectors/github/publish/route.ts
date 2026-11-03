@@ -181,7 +181,7 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "The approved base branch has moved since this partial publish. Refresh the repository and review a new patch before recovering the draft pull request.", retryable: true }, { status: 409, headers: noStore });
         }
         try {
-          pull = await github<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>(
+          pull = await github<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string; sha: string } }>(
             token, "/repos/" + repository + "/pulls", "POST", {
               title: input.title,
               body: input.body + "\n\n---\nRecovered by SAMURA after explicit user approval. Idempotency: " + input.idempotencyKey,
@@ -192,7 +192,7 @@ export async function POST(request: Request) {
           );
         } catch (error) {
           if (safeErrorStatus(error) !== 422) throw error;
-          const racedPulls = await github<Array<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>>(
+          const racedPulls = await github<Array<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string; sha: string } }>>(
             token, "/repos/" + repository + "/pulls?state=all&head=" + encodeURIComponent(repoInfo.full_name.split("/")[0] + ":" + branchName) + "&base=" + encodeURIComponent(input.baseBranch),
           );
           pull = racedPulls.find(item => item.head.sha === existingCommit.sha && item.base.ref === input.baseBranch && item.base.sha === input.expectedBaseCommit) ?? null;
@@ -202,7 +202,10 @@ export async function POST(request: Request) {
       const branchAfterRecovery = await github<{ object: { sha: string } }>(
         token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(branchName),
       );
-      if (pull.head.sha !== existingCommit.sha || pull.base.ref !== input.baseBranch || pull.base.sha !== input.expectedBaseCommit || branchAfterRecovery.object.sha !== existingCommit.sha) {
+      const finalRecoveryBase = await github<{ object: { sha: string } }>(
+        token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch),
+      );
+      if (pull.head.sha !== existingCommit.sha || pull.base.ref !== input.baseBranch || pull.base.sha !== input.expectedBaseCommit || branchAfterRecovery.object.sha !== existingCommit.sha || finalRecoveryBase.object.sha !== input.expectedBaseCommit) {
         await github(token, "/repos/" + repository + "/pulls/" + pull.number, "PATCH", { state: "closed" }).catch(() => undefined);
         return NextResponse.json({ error: "The recovered pull request head changed during verification. The draft was closed; inspect the branch before retrying.", retryable: false }, { status: 409, headers: noStore });
       }
@@ -263,7 +266,10 @@ export async function POST(request: Request) {
     const branchAfterPr = await github<{ object: { sha: string } }>(
       token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(branchName),
     );
-    if (pull.head.sha !== commit.sha || pull.base.ref !== input.baseBranch || pull.base.sha !== base.object.sha || branchAfterPr.object.sha !== commit.sha) {
+    const finalBaseRef = await github<{ object: { sha: string } }>(
+      token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(input.baseBranch),
+    );
+    if (pull.head.sha !== commit.sha || pull.base.ref !== input.baseBranch || pull.base.sha !== base.object.sha || branchAfterPr.object.sha !== commit.sha || finalBaseRef.object.sha !== base.object.sha) {
       await github(token, "/repos/" + repository + "/pulls/" + pull.number, "PATCH", { state: "closed" }).catch(() => undefined);
       return NextResponse.json({ error: "The approval branch or pull-request head changed during verification. The draft was closed; inspect the branch before retrying.", retryable: false }, { status: 409, headers: noStore });
     }
