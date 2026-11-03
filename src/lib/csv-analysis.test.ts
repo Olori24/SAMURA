@@ -107,13 +107,13 @@ describe("summarizeNumericColumns", () => {
 
 
 describe("csvEscape", () => {
-  it.each(["=1+1", "+SUM(A1:A2)", "-1+2", "@SUM(A1)", "\\n=cmd", "\\r=cmd", "\\t=cmd", "  \\n=cmd"])(
+  it.each(["=1+1", "+SUM(A1:A2)", "-1+2", "@SUM(A1)", "\n=cmd", "\r=cmd", "\t=cmd", "  \n=cmd"])(
     "neutralizes formula-like values with leading controls: %j", value => {
       expect(csvEscape(value)).toBe("\'" + value);
     },
   );
 
   it("quotes and escapes ordinary CSV values without changing their content", () => {
-    expect(csvEscape('a,"b"\\nc')).toBe('"a,""b""\\nc"');
+    expect(csvEscape('a,"b"\nc')).toBe('"a,""b""\nc"');
   });
 });
