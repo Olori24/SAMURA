@@ -55,7 +55,7 @@ describe("SAMURA capability registry", () => {
     expect(result.find((item) => item.id === "web_search")?.status).toBe("available");
   });
 
-  it("does not mark research available when the AI model is not configured", () => {
+  it("reports Gemini-grounded research as available without the separate chat provider", () => {
     const result = buildCapabilityRegistry({
       runtimeConfigured: true,
       chatConfigured: false,
@@ -63,8 +63,19 @@ describe("SAMURA capability registry", () => {
       webSearchConfigured: true,
     });
 
+    expect(result.find((item) => item.id === "web_search")?.status).toBe("available");
+  });
+
+  it("does not mark research available when neither a complete Gemini nor Tavily path is configured", () => {
+    const result = buildCapabilityRegistry({
+      runtimeConfigured: true,
+      chatConfigured: false,
+      imageConfigured: false,
+      webSearchConfigured: false,
+    });
+
     expect(result.find((item) => item.id === "web_search")?.status).toBe("needs_configuration");
-    expect(result.find((item) => item.id === "web_search")?.requirement).toContain("AI model");
+    expect(result.find((item) => item.id === "web_search")?.requirement).toContain("Gemini Search");
   });
 
   it("reports image generation as requiring configuration when no image service key is configured", () => {
