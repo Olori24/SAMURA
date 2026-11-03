@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, Download, FileSpreadsheet, Table2 } from "lucide-react";
-import { parseCsv, summarizeNumericColumns, type CsvTable } from "@/lib/csv-analysis";
+import { csvEscape, parseCsv, summarizeNumericColumns, type CsvTable } from "@/lib/csv-analysis";
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat(undefined, { maximumSignificantDigits: 8 }).format(value);
