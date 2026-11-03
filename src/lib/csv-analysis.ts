@@ -1,6 +1,6 @@
 const MAX_CSV_RECORDS = 100_001;
 const MAX_CSV_COLUMNS = 2_000;
-const MAX_CSV_CELLS = 1_000_000;
+const MAX_CSV_CELLS = 250_000;
 
 export type CsvTable = { headers: string[]; rows: string[][] };
 export type NumericSummary = {
@@ -26,7 +26,7 @@ export function parseCsv(input: string): CsvTable {
   let totalCells = 0;
   const pushCell = (value: string) => {
     totalCells += 1;
-    if (totalCells > MAX_CSV_CELLS) throw new Error("CSV files must contain no more than 1,000,000 cells.");
+    if (totalCells > MAX_CSV_CELLS) throw new Error("CSV files must contain no more than 250,000 cells.");
     if (row.length >= MAX_CSV_COLUMNS) throw new Error("CSV files must contain no more than 2,000 columns.");
     row.push(value);
   };
