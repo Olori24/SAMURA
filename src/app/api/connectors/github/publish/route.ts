@@ -150,12 +150,12 @@ export async function POST(request: Request) {
       const verification = await github<{ sha: string; parents?: Array<{ sha: string }>; files?: Array<{ filename: string; status: string }> }>(
         token, "/repos/" + repository + "/commits/" + existingCommit.sha,
       );
-      const gitTree = await github<{ tree?: Array<{ path: string; mode: string; type: string; sha: string }> }>(
+      const gitTree = await github<{ truncated?: boolean; tree?: Array<{ path: string; mode: string; type: string; sha: string }> }>(
         token, "/repos/" + repository + "/git/trees/" + existingCommit.tree.sha + "?recursive=1",
       );
       const expectedPaths = input.changes.map(change => change.path).sort();
       const actualPaths = (verification.files ?? []).map(file => file.filename).sort();
-      const contentMatches = matchesExpectedGitHubPatchTree(input.changes, gitTree.tree ?? []);
+      const contentMatches = !gitTree.truncated && matchesExpectedGitHubPatchTree(input.changes, gitTree.tree ?? []);
       const verified = verification.sha === existingCommit.sha
         && verification.parents?.length === 1
         && verification.parents[0].sha === input.expectedBaseCommit
@@ -163,7 +163,8 @@ export async function POST(request: Request) {
         && expectedPaths.every((path, index) => path === actualPaths[index])
         && contentMatches;
       if (!verified) {
-        return NextResponse.json({ error: "The existing SAMURA branch does not match the approved base commit and exact changed-file set. Inspect it in GitHub before retrying.", retryable: false }, { status: 409, headers: noStore });
+        if (existingPull) await github(token, "/repos/" + repository + "/pulls/" + existingPull.number, "PATCH", { state: "closed" }).catch(() => undefined);
+        return NextResponse.json({ error: "The existing SAMURA branch does not match the approved base commit, exact changed-file set, or approved blob contents. Any matching draft was closed; inspect the branch before retrying.", retryable: false }, { status: 409, headers: noStore });
       }
 
       const branchBeforeRecovery = await github<{ object: { sha: string } }>(
@@ -283,9 +284,13 @@ export async function POST(request: Request) {
       && expectedPaths.length === actualPaths.length
       && expectedPaths.every((p, index) => p === actualPaths[index])
       && contentMatches;
+    if (!verified) {
+      await github(token, "/repos/" + repository + "/pulls/" + pull.number, "PATCH", { state: "closed" }).catch(() => undefined);
+      return NextResponse.json({ error: "GitHub accepted the patch, but the resulting commit did not match the exact approved files and content. The draft was closed for safety.", retryable: false }, { status: 502, headers: noStore });
+    }
     return NextResponse.json({
-      ok: verified,
-      verified,
+      ok: true,
+      verified: true,
       branch: pull.head.ref,
       baseBranch: pull.base.ref,
       commitSha: commit.sha,
@@ -296,7 +301,7 @@ export async function POST(request: Request) {
       changedFiles: actualPaths,
       patchDigest,
       message: verified ? "Branch and draft pull request created and verified." : "GitHub accepted the change, but verification was incomplete. Review the pull request before proceeding.",
-    }, { status: verified ? 201 : 502, headers: noStore });
+    }, { status: 201, headers: noStore });
   } catch (error) {
     const status = safeErrorStatus(error);
     const message = error instanceof Error ? error.message : "GitHub publishing failed.";
