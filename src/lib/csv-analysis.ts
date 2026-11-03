@@ -120,6 +120,12 @@ export function parseCsv(input: string): CsvTable {
   return { headers, rows };
 }
 
+export function csvEscape(value: string | number) {
+  let text = String(value);
+  if (typeof value === "string" && /^[\\t\\r\\n ]*[=+\\-@]/.test(text)) text = "'" + text;
+  return /[",\\r\\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+}
+
 export function summarizeNumericColumns(table: CsvTable): NumericSummary[] {
   return table.headers.flatMap((column, columnIndex) => {
     const values: number[] = [];
