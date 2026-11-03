@@ -94,6 +94,8 @@ Scope: repository review and non-destructive validation. No production changes a
 
 ## Historical CI evidence from Phase 2 branch (2026-10-28)
 
+This section is retained for audit history only. It is not the current branch verification. Current feature-branch CI evidence is recorded in `docs/product/CAPABILITY_BASELINE.md` and must be regenerated for each new source revision.
+
 The following is retained historical evidence only. Its exact source commit and lockfile revision were not recorded in the audit notes, so the version findings must not be represented as a current dependency audit.
 
 - The first branch CI run completed dependency installation and failed the dependency audit before typecheck, lint, unit tests, or production build could run.
