@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       const interaction: unknown = await response.json();
       const grounded = normalizeGeminiResearchInteraction(interaction);
       if (!grounded.answer.trim() || !grounded.sources.length) return NextResponse.json({ error: "No verifiable web sources were returned. Try a more specific question." }, { status: 404, headers: { "Cache-Control": "no-store" } });
-      return NextResponse.json({ answer: grounded.answer, sources: grounded.sources }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ answer: grounded.answer, sources: grounded.sources, searchSuggestions: grounded.searchSuggestions }, { headers: { "Cache-Control": "no-store" } });
     }
     const searchBudget = Math.min(15_000, remainingTime());
     if (searchBudget <= 0) {
