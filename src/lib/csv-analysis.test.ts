@@ -52,8 +52,8 @@ describe("parseCsv", () => {
   });
 
   it("rejects CSV files that exceed the total-cell budget", () => {
-    const input = "a,b,c,d,e,f,g,h,i,j\n" + ("1,2,3,4,5,6,7,8,9,10\n").repeat(100_000);
-    expect(() => parseCsv(input)).toThrow("no more than 1,000,000 cells");
+    const input = "a,b,c,d,e,f,g,h,i,j\n" + ("1,2,3,4,5,6,7,8,9,10\n").repeat(25_000);
+    expect(() => parseCsv(input)).toThrow("no more than 250,000 cells");
   });
 
   it("rejects CSV files that exceed the column limit", () => {
