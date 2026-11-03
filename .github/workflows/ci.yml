@@ -1,11 +1,11 @@
 name: SAMURA CI
 
 on:
-  workflow_dispatch:
   push:
-    branches: [main, "feat/**", "docs/**", "chore/**"]
+    branches: [main, "feat/**", "docs/**"]
   pull_request:
-    branches: [main, "feat/**", "chore/**"]
+    branches: [main, "feat/**"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -20,24 +20,20 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
       - name: Install dependencies
         run: npm ci
       - name: Dependency audit summary
         run: |
           npm audit --json > /tmp/samura-npm-audit.json || true
           node -e 'const a=require("/tmp/samura-npm-audit.json"); console.log(JSON.stringify({metadata:a.metadata?.vulnerabilities, advisories:Object.entries(a.vulnerabilities||{}).map(([name,v])=>({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable,via:v.via.map(x=>typeof x==="string"?x:{name:x.name,title:x.title,range:x.range,url:x.url})}))},null,2))'
-      - name: Enforce production dependency security audit
-        run: npm audit --omit=dev --audit-level=low
+      - name: Enforce dependency security audit
+        run: npm audit --audit-level=low
       - name: Typecheck
-        if: ${{ always() && !cancelled() }}
         run: npm run typecheck
       - name: Lint
-        if: ${{ always() && !cancelled() }}
         run: npm run lint
       - name: Unit tests
-        if: ${{ always() && !cancelled() }}
         run: npm test
       - name: Production build
-        if: ${{ always() && !cancelled() }}
         run: npm run build
