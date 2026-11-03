@@ -10,7 +10,7 @@ import { authClient } from "@/lib/auth-client";
 import { captureProductEvent, resetProductIdentity } from "@/lib/product-analytics";
 
 type Conversation = { id: string; title: string; createdAt: string; updatedAt: string };
-type Message = { id: string; role: "user" | "assistant"; content: string; status?: string; createdAt?: string };
+type Message = { id: string; role: "user" | "assistant"; content: string; status?: string; requestId?: string | null; createdAt?: string };
 type SpeechRecognitionResultLike = { isFinal: boolean; [index: number]: { transcript: string } };
 type SpeechRecognitionEventLike = { resultIndex: number; results: ArrayLike<SpeechRecognitionResultLike> };
 type SpeechRecognitionErrorEventLike = { error: string; message?: string };
@@ -84,14 +84,15 @@ export default function ChatPage() {
     setError(""); activeIdRef.current = id; setActiveId(id); setSidebarOpen(false); if (!preserveExisting) { setMessages([]); setEditingMessageId(""); }
     setHasOlderMessages(false); setHistoryCursor(null);
     const response = await fetch("/api/conversations/" + id, { cache: "no-store" });
-    if (loadId !== conversationLoadRef.current) return;
-    if (!response.ok) { setError(response.status === 404 ? "That conversation could not be found." : "Could not restore this conversation."); return; }
+    if (loadId !== conversationLoadRef.current) return undefined;
+    if (!response.ok) { setError(response.status === 404 ? "That conversation could not be found." : "Could not restore this conversation."); return undefined; }
     const data = await response.json();
     if (loadId !== conversationLoadRef.current) return;
     setActiveTitle(data.conversation.title);
     setMessages(data.messages);
     setHasOlderMessages(Boolean(data.hasMoreMessages));
     setHistoryCursor(data.nextCursor ?? null);
+    return data.messages as Message[];
   }, []);
   
   async function loadOlderMessages() {
