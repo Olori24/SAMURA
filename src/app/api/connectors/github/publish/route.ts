@@ -284,6 +284,13 @@ export async function POST(request: Request) {
       && expectedPaths.length === actualPaths.length
       && expectedPaths.every((p, index) => p === actualPaths[index])
       && contentMatches;
+    const finalBranchRef = await github<{ object: { sha: string } }>(
+      token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(branchName),
+    );
+    if (pull.head.sha !== commit.sha || finalBranchRef.object.sha !== commit.sha) {
+      await github(token, "/repos/" + repository + "/pulls/" + pull.number, "PATCH", { state: "closed" }).catch(() => undefined);
+      return NextResponse.json({ error: "The approval branch moved after pull-request creation. The draft was closed; inspect the branch before retrying.", retryable: false }, { status: 409, headers: noStore });
+    }
     if (!verified) {
       await github(token, "/repos/" + repository + "/pulls/" + pull.number, "PATCH", { state: "closed" }).catch(() => undefined);
       return NextResponse.json({ error: "GitHub accepted the patch, but the resulting commit did not match the exact approved files and content. The draft was closed for safety.", retryable: false }, { status: 502, headers: noStore });
