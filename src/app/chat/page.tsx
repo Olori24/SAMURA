@@ -336,15 +336,15 @@ ${message.content}`),
     });
     setStreaming(true);
     const controller = new AbortController(); abortRef.current = controller;
+    let persistedByResponse = false;
     try {
       const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId, message: text, requestId, mode, ...(editMessageId ? { editMessageId } : {}) }), signal: controller.signal });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         // Preserve the user's prompt if validation, rate limiting, or setup rejected it.
-        if (data.persisted !== true) setDraft((current) => current || text);
+        persistedByResponse = data.persisted === true;
+        if (!persistedByResponse) setDraft((current) => current || text);
         else setEditingMessageId("");
-        // Keep the current view visible while reconciling any turn already persisted.
-        if (activeIdRef.current === conversationId) await openConversation(conversationId, true).catch(() => undefined);
         throw new Error(data.error ?? "The response could not be generated.");
       }
       if (!response.body) throw new Error("Streaming is unavailable in this browser.");
@@ -357,6 +357,7 @@ ${message.content}`),
         try {
           const event = JSON.parse(line.slice(6)) as { type: string; id?: string; text?: string; message?: string; status?: string };
           if (event.type === "user_message" && typeof event.id === "string") {
+            persistedByResponse = true;
             setEditingMessageId("");
             setMessages(prev => prev.map(m => m.id === requestId && m.role === "user" ? { ...m, id: event.id as string } : m));
           } else if (event.type === "delta" && typeof event.text === "string") {
