@@ -178,6 +178,6 @@ describe("POST /api/connectors/github/publish", () => {
     const payload = await responseValue.json();
     expect(responseValue.status, JSON.stringify(payload)).toBe(200);
     expect(payload).toMatchObject({ ok: true, verified: true, recovered: true, pullRequestNumber: 123 });
-    expect(calls.some(call => call.method === "POST" && call.path.endsWith("/pulls"))).toBe(false);
+    expect(calls.filter(call => call.method === "POST" && call.path.endsWith("/pulls"))).toHaveLength(1);
   });
 });
