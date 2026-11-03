@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCsv, summarizeNumericColumns } from "./csv-analysis";
+import { csvEscape, parseCsv, summarizeNumericColumns } from "./csv-analysis";
 
 describe("parseCsv", () => {
   it("parses CRLF, quoted commas, escaped quotes, and newlines in quoted cells", () => {
@@ -102,5 +102,18 @@ describe("summarizeNumericColumns", () => {
   it("does not classify mixed text-and-number columns as numeric", () => {
     const table = parseCsv("value\n10\nunknown\n20\n");
     expect(summarizeNumericColumns(table)).toEqual([]);
+  });
+});
+
+
+describe("csvEscape", () => {
+  it.each(["=1+1", "+SUM(A1:A2)", "-1+2", "@SUM(A1)", "\\n=cmd", "\\r=cmd", "\\t=cmd", "  \\n=cmd"])(
+    "neutralizes formula-like values with leading controls: %j", value => {
+      expect(csvEscape(value)).toBe("\'" + value);
+    },
+  );
+
+  it("quotes and escapes ordinary CSV values without changing their content", () => {
+    expect(csvEscape('a,"b"\\nc')).toBe('"a,""b""\\nc"');
   });
 });
