@@ -100,6 +100,13 @@ export async function POST(request: Request) {
   const [account] = await getDb().select({ accessToken: accounts.accessToken })
     .from(accounts).where(and(eq(accounts.userId, session.user.id), eq(accounts.providerId, githubProviderId()))).limit(1);
   if (!account?.accessToken) return NextResponse.json({ error: "Connect GitHub before publishing." }, { status: 409, headers: noStore });
+  try {
+    const token = decryptConnectorToken(account.accessToken);
+    const repository = input.repository.split("/").map(encodeURIComponent).join("/");
+    const repoInfo = await github<{ full_name: string; default_branch: string; permissions?: { push?: boolean }; archived?: boolean; disabled?: boolean }>(token, "/repos/" + repository);
+    if (repoInfo.full_name.toLowerCase() !== input.repository.toLowerCase() || repoInfo.permissions?.push !== true || repoInfo.archived || repoInfo.disabled) {
+      return NextResponse.json({ error: "This GitHub account does not have effective write access to the selected repository." }, { status: 403, headers: noStore });
+    }
     const branchSlug = "samura/approval-" + input.idempotencyKey;
     const branchRef = "refs/heads/" + branchSlug;
     const branchName = branchSlug;
