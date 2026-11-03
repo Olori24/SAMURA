@@ -273,11 +273,11 @@ export async function POST(request: Request) {
     const commitMetadata = await github<{ tree: { sha: string }; parents?: Array<{ sha: string }> }>(
       token, "/repos/" + repository + "/git/commits/" + commit.sha,
     );
-    const gitTree = await github<{ tree?: Array<{ path: string; mode: string; type: string; sha: string }> }>(
+    const gitTree = await github<{ truncated?: boolean; tree?: Array<{ path: string; mode: string; type: string; sha: string }> }>(
       token, "/repos/" + repository + "/git/trees/" + commitMetadata.tree.sha + "?recursive=1",
     );
     const actualPaths = (verification.files ?? []).map(f => f.filename).sort();
-    const contentMatches = matchesExpectedGitHubPatchTree(input.changes, gitTree.tree ?? []);
+    const contentMatches = !gitTree.truncated && matchesExpectedGitHubPatchTree(input.changes, gitTree.tree ?? []);
     const verified = verification.sha === commit.sha
       && commitMetadata.parents?.length === 1
       && commitMetadata.parents[0].sha === base.object.sha
