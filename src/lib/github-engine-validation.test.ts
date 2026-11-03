@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createGitHubPatchDigest, hasExpectedGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "./github-engine-validation";
+import { createGitHubBlobSha, createGitHubPatchDigest, hasExpectedGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit, matchesExpectedGitHubPatchTree } from "./github-engine-validation";
 
 describe("isSafeGitHubPatchPath", () => {
   it.each(["src/app/studio/page.tsx", "src/lib/csv-analysis.ts", "docs/product/roadmap.md", "tests/feature.test.ts"])(
@@ -79,5 +79,19 @@ describe("hasExpectedGitHubPatchDigest", () => {
 
   it("rejects malformed digest values", () => {
     expect(hasExpectedGitHubPatchDigest("SAMURA-PATCH-DIGEST:invalid", "invalid")).toBe(false);
+  });
+});
+
+
+describe("matchesExpectedGitHubPatchTree", () => {
+  const changes = [{ path: "src/example.ts", content: "export const answer = 42;\\n" }];
+  const entry = { path: "src/example.ts", mode: "100644", type: "blob", sha: createGitHubBlobSha(changes[0].content) };
+
+  it("requires the approved blob content and regular-file mode", () => {
+    expect(matchesExpectedGitHubPatchTree(changes, [entry])).toBe(true);
+    expect(matchesExpectedGitHubPatchTree(changes, [{ ...entry, sha: "0".repeat(40) }])).toBe(false);
+    expect(matchesExpectedGitHubPatchTree(changes, [{ ...entry, mode: "100755" }])).toBe(false);
+    expect(matchesExpectedGitHubPatchTree(changes, [{ ...entry, type: "tree" }])).toBe(false);
+    expect(matchesExpectedGitHubPatchTree(changes, [])).toBe(false);
   });
 });
