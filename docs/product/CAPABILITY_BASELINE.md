@@ -73,7 +73,7 @@
 - Browser dictation is not full voice conversation, speech output, or realtime audio.
 - Projects, durable user memory, broad file extraction/citations, sharing/forking, scheduled tasks and permissioned agent execution remain incomplete.
 - The GitHub publish workflow is implemented in source, but preview OAuth is not configured with a GitHub client secret, and authenticated publish E2E remains unverified.
-- The application repository and Vercel environment inventory do not show Sentry or PostHog SDK configuration. The connected PostHog project currently reports zero outdated SDK issues and one `authorized_urls` health warning; this does not establish SAMURA event ingestion. Do not claim app-level monitoring or analytics are active.
+- Sentry and PostHog SDKs, initialization, and event hooks are present in source. Actual telemetry delivery still depends on the relevant deployment environment variables (`SENTRY_DSN` or `NEXT_PUBLIC_SENTRY_DSN`, and the PostHog project token/host). Do not claim production event ingestion or alerting is active until verified from the live services.
 
 **Release boundary:** this evidence is from a feature-branch preview only. No merge to `main`, production deployment, production database change, or production secret change was performed.
 
@@ -81,6 +81,6 @@
 ## Current source and CI evidence — 2026-11-03
 
 **Feature branch:** `feat/chatgpt-capability-parity`  
-**Source commit:** `a30e05b86ca0023b1a2051e69624a356a1fd2d29`  
-**GitHub Actions:** SAMURA CI, security dependency validation and secret scanning all completed successfully for this exact commit. SAMURA CI passed the mergeability check against `main`, dependency audit, TypeScript typecheck, lint, unit tests and production build. This is automated source/CI evidence, not a deployed preview or authenticated browser acceptance test.  
+**Source commit:** `a5effee9a7ba00a984de945226faffdc46ed7443`  
+**GitHub Actions:** the previous source revision `a30e05b86ca0023b1a2051e69624a356a1fd2d29` passed SAMURA CI, security dependency validation and secret scanning. For this exact source commit, CI was queued/in progress when this snapshot was written; do not treat the previous revision’s pass as evidence for this one. The current workflow must complete dependency audit, TypeScript typecheck, lint, unit tests and production build before release. This is automated source/CI evidence, not a deployed preview or authenticated browser acceptance test.  
 **Release status:** pull request remains open; no merge to `main` or production deployment is evidenced by this snapshot. The preview deployment and live provider workflows remain unverified.
