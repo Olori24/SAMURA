@@ -81,9 +81,23 @@
 ## Current source and CI evidence — 2026-11-03
 
 **Feature branch:** `feat/chatgpt-capability-parity`  
-**Source commit:** `086c909d99053345305abc5360f95c363419811b`  
-**GitHub Actions:** the latest code revision `674b4f5de0236f8b43613929d5a04117b1db2fbe` passed the mergeability check, dependency audit, TypeScript typecheck, lint, all 167 unit tests, and the separate secret scan. Its production build was still running when the documentation-only follow-up commit was created. The documentation-only head `086c909d99053345305abc5360f95c363419811b` is undergoing a fresh CI run; do not treat it as fully verified until that run completes. This is automated source/CI evidence, not a deployed preview or authenticated browser acceptance test.  
-**Deployment status:** Vercel rejected the current feature-branch deployment with the account-level `build-rate-limit` status; no deployment record exists for the latest code SHA. An earlier branch preview at commit `f915a488e8cd4e529acdae6807022f72cc0929d7` reached READY and returned HTTP 200 for `/api/health` and `/login`, but it does not contain the latest fixes. The current feature branch has no branch-specific `SAMURA_DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` or `GITHUB_CLIENT_SECRET`; the existing preview credentials are scoped to other branches, so authenticated acceptance testing is not available on this branch.  
-**Access protection:** the Vercel project has SSO protection enabled for all deployments except custom domains. Its configured domains are Vercel-managed aliases only; no custom domain is attached. Public visitors cannot use the current default Vercel host without the SSO gate. Do not disable this protection or change production access without the owner’s approval.  
-**Provider activation:** OpenRouter and Gemini configuration names are present in Vercel. The research provider remains disabled by default: no Tavily key or `SAMURA_GEMINI_GROUNDING_ENABLED=true` opt-in is configured. Enabling Gemini Search grounding may incur provider charges and requires an explicit operator decision.  
-**Release status:** pull request remains open; no merge to `main` or production deployment is evidenced by this snapshot. Authenticated browser journeys, Sentry event ingestion and live provider workflows remain unverified.
+**Source commit:** `a3abbe15eb39f5800fa4e789d1207b7f2d1eafa5`  
+**Pull request:** [#36](https://github.com/Olori24/SAMURA/pull/36), open and unmerged.
+
+**Automated verification:** GitHub Actions completed successfully for this exact source commit:
+- SAMURA CI: mergeability check, dependency audit, TypeScript typecheck, lint, **176 unit tests across 27 test files**, and production build all passed.
+- Security dependency validation: audit, TypeScript, lint, unit tests and production build passed.
+- Secret scanning: passed across reachable refs.
+- The latest source commit includes request-abort propagation tests and a broader GitHub engineering path allowlist that blocks all `src/app/api/` routes from model-generated patches.
+
+**Deployment status:** Vercel rejected the feature-branch preview deployment because the account reached its daily API deployment limit. No preview deployment exists for source commit `a3abbe15eb39f5800fa4e789d1207b7f2d1eafa5`. Vercel indicated that deployment can be retried after the limit resets. An earlier branch preview reached READY, but it does not contain the latest fixes.
+
+**Preview access and configuration:** SSO protection is enabled for Vercel deployments except custom domains; the project has only Vercel-managed domains. The feature branch lacks its own database/auth/GitHub OAuth preview variables, so authenticated end-to-end browser acceptance tests cannot currently be run against this exact head. Do not disable SSO or change production access without the owner's approval.
+
+**Monitoring:** PostHog pageview ingestion has been confirmed in the connected project. Three health warnings remain: missing pageleave, missing web vitals, and no authorized URLs. Source fixes for pageleave and web-vitals capture are present in this branch but require deployment to verify; authorized-URL configuration requires owner confirmation. Sentry event ingestion remains unverified.
+
+**Provider activation:** Tavily is not configured and Gemini Search grounding remains disabled by default. Enabling Gemini grounding may incur provider charges and requires an explicit operator decision. No provider spend was authorized as part of this work.
+
+**Review state:** all 65 previous inline review threads are resolved. A fresh CodeRabbit review has been triggered for the current head; its findings are pending.
+
+**Release boundary:** no merge to `main`, production deployment, production secret change, or destructive database operation has been performed. This is automated source/CI evidence, not a deployed preview or authenticated browser acceptance test.
