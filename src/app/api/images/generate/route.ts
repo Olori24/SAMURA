@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ image: "data:" + mimeType + ";base64," + imageData, revisedPrompt: null }, { headers: { "Cache-Control": "private, no-store" } });
     }
 
-    const client = new OpenAI({ apiKey: imageConfig.apiKey, ...(imageConfig.baseURL ? { baseURL: imageConfig.baseURL } : {}), timeout: 55_000, maxRetries: 0 });
+    const client = new OpenAI({ apiKey: imageConfig.apiKey, baseURL: imageConfig.baseURL ?? "https://api.openai.com/v1", timeout: 55_000, maxRetries: 0 });
     const result = await client.images.generate({
       model: imageConfig.model,
       prompt: parsed.data.prompt,
