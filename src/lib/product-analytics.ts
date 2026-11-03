@@ -16,11 +16,12 @@ export type ProductEvent =
 
 type EventProperties = Record<string, string | number | boolean>;
 
-const POSTHOG_DEFAULTS = {
+export const POSTHOG_DEFAULTS = {
   defaults: "2026-08-30" as const,
   autocapture: false,
   capture_pageview: false,
-  capture_pageleave: false,
+  capture_pageleave: true,
+  capture_performance: { web_vitals: true },
   capture_exceptions: false,
   disable_session_recording: true,
   person_profiles: "identified_only" as const,
