@@ -306,6 +306,7 @@ ${message.content}`),
     event?.preventDefault();
     const text = (overrideText ?? draft).trim();
     if (!text || streaming) return;
+    stopReadAloud();
     const editMessageId = editingMessageId;
     setError("");
     let conversationId = activeId;
@@ -555,6 +556,11 @@ ${message.content}`),
     }
   }
 
+  function stopReadAloud() {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    setSpeakingMessageId("");
+  }
+
   function toggleReadAloud(message: Message) {
     if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
       setError("Read aloud is not supported by this browser. Try an up-to-date Chrome browser.");
@@ -581,7 +587,7 @@ ${message.content}`),
     if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); }
   }
 
-  async function signOut() { abortRef.current?.abort(); await authClient.signOut(); router.replace("/login"); router.refresh(); }
+  async function signOut() { stopReadAloud(); abortRef.current?.abort(); await authClient.signOut(); router.replace("/login"); router.refresh(); }
 
   if (isPending || loadingHistory) return <main className="grid min-h-screen place-items-center text-slate-400"><span className="flex items-center gap-3"><LoaderCircle className="animate-spin" size={20}/>Opening your SAMURA workspace…</span></main>;
 
