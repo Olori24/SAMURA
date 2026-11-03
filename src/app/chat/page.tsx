@@ -575,7 +575,7 @@ ${message.content}`),
     const utterance = new SpeechSynthesisUtterance(message.content);
     utterance.lang = navigator.language || "en-US";
     utterance.onend = () => setSpeakingMessageId("");
-    utterance.onerror = () => { setSpeakingMessageId(""); setError("SAMURA could not play this response aloud."); };
+    utterance.onerror = (event) => { setSpeakingMessageId(""); if (event.error !== "canceled" && event.error !== "interrupted") setError("SAMURA could not play this response aloud."); };
     setSpeakingMessageId(message.id);
     window.speechSynthesis.speak(utterance);
   }
