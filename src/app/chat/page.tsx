@@ -345,6 +345,7 @@ ${message.content}`),
         throw new Error(data.error ?? "The response could not be generated.");
       }
       if (!response.body) throw new Error("Streaming is unavailable in this browser.");
+      captureProductEvent("chat_message_sent", { mode });
       const reader = response.body.getReader(); const decoder = new TextDecoder();
       let received = ""; let buffer = ""; let streamFailed = false; let streamCancelled = false; let streamUnsaved = false;
       const consumeEvent = (raw: string) => {
