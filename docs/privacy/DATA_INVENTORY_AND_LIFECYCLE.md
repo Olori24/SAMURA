@@ -1,7 +1,7 @@
 # SAMURA AI — Data Inventory and Lifecycle Review
 
 Status: Preliminary engineering inventory. This is not a completed DPIA, legal determination, or confirmation of vendor settings.
-Last reviewed: 2026-10-30.
+Last reviewed: 2026-11-03.
 Do not use this document as a public privacy notice until all unknowns are verified and counsel has reviewed it.
 
 ## Inventory method
@@ -52,8 +52,12 @@ Rows below identify data categories evidenced by the repository or requiring con
 This inventory is complete only when each row has an accountable owner, a verified purpose and lawful basis (as determined with counsel), actual vendor/location details, retention rule, deletion mechanism, user-rights path and evidence source. Every persisted credential must additionally identify its at-rest protection, key source/management, rotation/re-encryption procedure, backup implications and deployment evidence.
 
 
-## Telemetry verification — 2026-10-30
+## Telemetry verification — 2026-11-03
 
-The SAMURA repository tree contains no Sentry or PostHog SDK/instrumentation files, and the Vercel environment-variable name inventory contains no Sentry DSN or PostHog project-key/host variables. The connected PostHog project reported `ingested_event=false`; its event schema listed no events seen in the last 30 days. Vercel's runtime-error query returned no errors in the preceding 24 hours, but that does not establish Sentry integration.
+Repository and Vercel configuration now evidence both Sentry and PostHog SDK initialization. The Vercel environment inventory contains `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` and `NEXT_PUBLIC_POSTHOG_HOST` across production, preview and development targets. Presence of these variable names does not prove that the secret values are valid or that Sentry events are being received.
 
-**Current conclusion:** application-level Sentry error capture and PostHog product analytics are not evidenced as active. Do not describe them as operational until SDK configuration and event/error ingestion are verified. Any future instrumentation must be reviewed for consent and transparency, collect only necessary events, exclude prompts/message bodies/files/secrets, redact request metadata, and provide appropriate user controls. No analytics instrumentation or new user tracking was enabled during this review.
+The connected PostHog project has received `$pageview` events and currently reports zero active `ingestion_warning` issues. It has three active non-dismissed warnings: no `$pageleave` events, no `$web_vitals` events, and no authorized URLs. The feature branch now enables PostHog page-leave and web-vitals capture while retaining `autocapture: false`, `capture_exceptions: false` and `disable_session_recording: true`. These source changes have not yet been deployed and the warnings must be rechecked after deployment.
+
+Sentry DSN variables are configured in Vercel, but actual Sentry event ingestion and alert delivery have not been verified. Do not describe Sentry monitoring as operational until a controlled test event is observed in the intended Sentry project.
+
+**Current conclusion:** PostHog SDK initialization and pageview ingestion are evidenced; complete web analytics capture remains pending deployment and authorized-URL confirmation. Sentry source/configuration is present but runtime ingestion remains unverified. Analytics events are limited to product actions and route paths; chat content, prompts, uploaded files, credentials and reset tokens must remain excluded. No session replay or broad autocapture is enabled in the current SDK configuration.
