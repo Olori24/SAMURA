@@ -7,6 +7,10 @@ on:
     branches: [main, "feat/**"]
   workflow_dispatch:
 
+concurrency:
+  group: samura-ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -17,6 +21,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check mergeability with main
+        run: |
+          git fetch origin main:refs/remotes/origin/main
+          git config user.name "SAMURA CI"
+          git config user.email "samura-ci@users.noreply.github.com"
+          if git merge --no-commit --no-ff origin/main; then
+            git merge --abort || true
+            echo "Feature branch merges cleanly with main."
+          else
+            echo "Conflicting files with main:"
+            git diff --name-only --diff-filter=U
+            git merge --abort || true
+            exit 1
+          fi
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:

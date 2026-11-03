@@ -1,12 +1,16 @@
 import Link from "next/link";
-import { ArrowRight, Braces, Cable, FileText, GitPullRequest, ImagePlus, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, Braces, Cable, FileSpreadsheet, FileText, GitPullRequest, ImagePlus, ShieldCheck, Sparkles } from "lucide-react";
 
 const items = [
   { title: "Code", eyebrow: "AVAILABLE NOW", description: "Switch to Code mode to generate, explain, review, and debug code with implementation-focused responses.", href: "/chat", icon: Braces, action: "Open Code workspace", ready: true },
   { title: "GitHub engineering", eyebrow: "AI PATCH · HUMAN APPROVAL", description: "Inspect an authorized repository, generate a bounded AI patch, review and edit each file, then publish a new branch and draft pull request.", href: "/studio/github-engine", icon: GitPullRequest, action: "Open engineering workspace", ready: true },
-  { title: "Documents & files", eyebrow: "ACCOUNT-SAVED · EXPORT", description: "Draft, edit, save documents securely to your SAMURA account, track word counts, and export Markdown or plain text files.", href: "/studio/documents", icon: FileText, action: "Open document workspace", ready: true },
+  { title: "Documents & files", eyebrow: "ACCOUNT STORAGE · EXPORT", description: "Create, edit, save, reopen, and delete account-owned documents. Track word counts and export Markdown or plain text.", href: "/studio/documents", icon: FileText, action: "Open document workspace", ready: true },
+  { title: "File analysis", eyebrow: "TEXT FILES · CITED", description: "Ask questions about text, Markdown, CSV, JSON, logs, and source-code files. SAMURA cites source lines and does not store the uploaded file. PDF and Office extraction are not supported yet.", href: "/studio/file-analysis", icon: FileText, action: "Open file analysis", ready: true },
   { title: "Image creation", eyebrow: "PROVIDER SETUP REQUIRED", description: "Create original images from text prompts, choose canvas orientation, and download generated results. Requires an administrator-configured image provider key.", href: "/studio/create", icon: ImagePlus, action: "Open image studio", ready: true },
-  { title: "Connectors & plugins", eyebrow: "GITHUB AVAILABLE · MORE CONNECTORS", description: "Connect GitHub, inspect authorized repositories, and publish AI-generated changes through reviewed draft pull requests. Drive and Slack still require OAuth setup.", href: "/studio/connect", icon: Cable, action: "Open Connect marketplace", ready: true },
+  { title: "Connectors & plugins", eyebrow: "PLUGIN WORKSPACE AVAILABLE", description: "Explore the connector catalog, review permissions, and use the GitHub engineering workspace. Drive and Slack still require their own OAuth setup.", href: "/studio/connect", icon: Cable, action: "Open Connect marketplace", ready: true },
+  { title: "Capability status", eyebrow: "LIVE CONFIGURATION", description: "See which capabilities are available, need configuration, or are still planned. Status is based on the current server-side registry.", href: "/studio/capabilities", icon: ShieldCheck, action: "View capability status", ready: true },
+  { title: "Data analysis", eyebrow: "LOCAL CSV · PRIVATE", description: "Preview CSV data, calculate numeric summaries, and export results. Your file is processed in your browser and is not uploaded by this tool.", href: "/studio/data-analysis", icon: FileSpreadsheet, action: "Open data analysis workspace", ready: true },
+  { title: "Web research", eyebrow: "SEARCH SERVICE SETUP", description: "Search public sources, generate source-linked reports, and display Gemini Search suggestions. Requires an administrator-configured Gemini Search or Tavily path.", href: "/studio/research", icon: BookOpen, action: "Open research workspace", ready: true },
 ];
 
 export default function StudioPage() {

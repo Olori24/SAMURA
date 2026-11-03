@@ -4,8 +4,8 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Download, ImagePlus, LoaderCircle, Sparkles } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
 import { captureProductEvent } from "@/lib/product-analytics";
+import { useRouter } from "next/navigation";
 
 export default function CreatePage() {
   const router = useRouter();
@@ -39,6 +39,8 @@ export default function CreatePage() {
     }
   }
 
+  const imageExtension = image.match(/^data:image\/(png|jpeg|webp);base64,/i)?.[1].toLowerCase().replace("jpeg", "jpg") ?? "img";
+
   if (isPending) return <main className="grid min-h-screen place-items-center bg-[#080b12] text-slate-400">Loading your workspace…</main>;
   if (!session?.user) { router.replace("/login"); return null; }
 
@@ -58,19 +60,19 @@ export default function CreatePage() {
           <div className="mt-4">
             <label htmlFor="size" className="mb-2 block text-sm font-medium text-slate-200">Canvas</label>
             <select id="size" value={size} onChange={e=>setSize(e.target.value)} className="w-full rounded-xl border border-white/10 bg-[#111722] px-3 py-3 text-sm text-white outline-none focus:border-teal-200/50">
-              <option value="1024x1024">Square · 1024 × 1024</option>
-              <option value="1536x1024">Landscape · 1536 × 1024</option>
-              <option value="1024x1536">Portrait · 1024 × 1536</option>
+              <option value="1024x1024">Square · 1:1</option>
+              <option value="1536x1024">Landscape · 3:2</option>
+              <option value="1024x1536">Portrait · 2:3</option>
             </select>
           </div>
           {error && <p role="alert" className="mt-4 rounded-xl border border-amber-200/15 bg-amber-200/[0.05] p-3 text-sm leading-5 text-amber-100">{error}</p>}
           <button type="submit" disabled={busy || prompt.trim().length < 3} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-teal-200 px-4 py-3 text-sm font-bold text-[#07120e] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">
             {busy ? <><LoaderCircle size={16} className="animate-spin"/> Creating image…</> : <><Sparkles size={16}/> Generate image</>}
           </button>
-          <p className="mt-3 text-center text-[11px] leading-5 text-slate-500">Image generation requires an administrator-configured provider key and may incur usage costs.</p>
+          <p className="mt-3 text-center text-[11px] leading-5 text-slate-500">Image generation uses the configured Gemini key or an administrator-configured image provider and may incur usage costs.</p>
         </form>
         <section aria-label="Generated image" className="flex min-h-[360px] items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-white/[0.025] p-4 sm:min-h-[520px]">
-          {image ? <div className="w-full"><img src={image} alt={prompt} className="mx-auto max-h-[720px] w-full rounded-2xl object-contain"/><a href={image} download="samura-generated-image.png" className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm text-white transition hover:bg-white/5"><Download size={16}/> Download image</a></div> : <div className="max-w-xs text-center"><div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400"><ImagePlus size={24}/></div><h2 className="text-sm font-semibold text-slate-200">Your canvas is ready</h2><p className="mt-2 text-sm leading-6 text-slate-500">The generated image will appear here. Start with a clear subject, then add style, lighting, and framing.</p></div>}
+          {image ? <div className="w-full"><img src={image} alt={prompt} className="mx-auto max-h-[720px] w-full rounded-2xl object-contain"/>{image.startsWith("data:image/") ? <a href={image} download={"samura-generated-image." + imageExtension} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm text-white transition hover:bg-white/5"><Download size={16}/> Download image</a> : <a href={image} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm text-white transition hover:bg-white/5">Open image</a>}</div> : <div className="max-w-xs text-center"><div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400"><ImagePlus size={24}/></div><h2 className="text-sm font-semibold text-slate-200">Your canvas is ready</h2><p className="mt-2 text-sm leading-6 text-slate-500">The generated image will appear here. Start with a clear subject, then add style, lighting, and framing.</p></div>}
         </section>
       </div>
     </div>

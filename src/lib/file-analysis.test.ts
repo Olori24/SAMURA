@@ -1,0 +1,50 @@
+import { describe, expect, it } from "vitest";
+import {
+  isSupportedTextFilename,
+  numberFileAnalysisLines,
+  validateFileAnalysisCitations,
+  validateFileAnalysisText,
+} from "./file-analysis";
+
+describe("file analysis text validation", () => {
+  it("allows supported text-based formats only", () => {
+    expect(isSupportedTextFilename("notes.md")).toBe(true);
+    expect(isSupportedTextFilename("data.CSV")).toBe(true);
+    expect(isSupportedTextFilename("report.pdf")).toBe(false);
+    expect(isSupportedTextFilename("../secret.txt")).toBe(false);
+  });
+
+  it("rejects empty, binary, oversized, and excessive-line content", () => {
+    expect(validateFileAnalysisText("notes.txt", "  ")).toContain("empty");
+    expect(validateFileAnalysisText("notes.txt", "a" + String.fromCharCode(0) + "b")).toContain("binary");
+    expect(validateFileAnalysisText("notes.txt", "x".repeat(60_001))).toContain("60,000");
+    expect(validateFileAnalysisText("notes.txt", ("x" + String.fromCharCode(10)).repeat(2_001))).toContain("2,000");
+  });
+
+  it("normalizes legacy carriage-return-only line endings", () => {
+    const content = "First line" + String.fromCharCode(13) + "Second line";
+    expect(numberFileAnalysisLines(content)).toEqual({
+      lineCount: 2,
+      numberedContent: "[L1] First line" + String.fromCharCode(10) + "[L2] Second line",
+    });
+  });
+  it("numbers source lines for precise citations", () => {
+    const content = "First line" + String.fromCharCode(13) + String.fromCharCode(10) + "Second line";
+    expect(numberFileAnalysisLines(content)).toEqual({
+      lineCount: 2,
+      numberedContent: "[L1] First line" + String.fromCharCode(10) + "[L2] Second line",
+    });
+  });
+});
+
+describe("file analysis citation validation", () => {
+  it("keeps valid source line references and flags out-of-range references", () => {
+    expect(validateFileAnalysisCitations("Claim [L2] and detail [L3-L5].", 5)).toBe("Claim [L2] and detail [L3-L5].");
+    expect(validateFileAnalysisCitations("Unsupported [L6] or [L4-L2].", 5)).toBe("Unsupported [unverified line reference] or [unverified line reference].");
+  });
+
+  it("marks an incomplete trailing line reference as unverified", () => {
+    expect(validateFileAnalysisCitations("This claim cites [L2001", 5)).toBe("This claim cites [unverified line reference]");
+    expect(validateFileAnalysisCitations("Incomplete [L", 5)).toBe("Incomplete [unverified line reference]");
+  });
+});
