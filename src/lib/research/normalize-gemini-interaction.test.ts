@@ -3,7 +3,7 @@ import { normalizeGeminiResearchInteraction } from "./normalize-gemini-interacti
 
 describe("normalizeGeminiResearchInteraction", () => {
   it("preserves Google Search suggestion markup from grounded result steps", () => {
-    const markup = "<div class=\\\"search-suggestion\\\">Search this topic</div>";
+    const markup = "<div class='search-suggestion'>Search this topic</div>";
     const result = normalizeGeminiResearchInteraction({
       steps: [
         { type: "google_search_result", result: [{ search_suggestions: markup }] },
