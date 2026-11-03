@@ -68,6 +68,21 @@ export function matchesExpectedBaseCommit(expected: string, actual: string) {
 }
 
 
+export function createGitHubBlobSha(content: string) {
+  const byteLength = Buffer.byteLength(content, "utf8");
+  return createHash("sha1").update("blob " + byteLength + String.fromCharCode(0)).update(content, "utf8").digest("hex");
+}
+
+export function matchesExpectedGitHubPatchTree(
+  changes: Array<{ path: string; content: string }>,
+  entries: Array<{ path: string; mode: string; type: string; sha: string }>,
+) {
+  const actualByPath = new Map(entries.map(entry => [entry.path, entry]));
+  return changes.every(change => {
+    const actual = actualByPath.get(change.path);
+    return actual?.mode === "100644" && actual.type === "blob" && actual.sha === createGitHubBlobSha(change.content);
+  });
+}
 export function hasExpectedGitHubPatchDigest(message: string, digest: string) {
   if (!/^[0-9a-f]{64}$/i.test(digest)) return false;
   const lines = message.replace(/\r\n/g, "\n").trimEnd().split("\n");
