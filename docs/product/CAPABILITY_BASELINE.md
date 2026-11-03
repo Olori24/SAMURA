@@ -81,23 +81,28 @@
 ## Current source and CI evidence — 2026-11-03
 
 **Feature branch:** `feat/chatgpt-capability-parity`  
-**Source commit:** `a3abbe15eb39f5800fa4e789d1207b7f2d1eafa5`  
+**Verified code commit:** `4cdd111d1523402521698ed202545ee8fd45b53e`  
 **Pull request:** [#36](https://github.com/Olori24/SAMURA/pull/36), open and unmerged.
 
-**Automated verification:** GitHub Actions completed successfully for this exact source commit:
-- SAMURA CI: mergeability check, dependency audit, TypeScript typecheck, lint, **176 unit tests across 27 test files**, and production build all passed.
-- Security dependency validation: audit, TypeScript, lint, unit tests and production build passed.
-- Secret scanning: passed across reachable refs.
-- The latest source commit includes request-abort propagation tests and a broader GitHub engineering path allowlist that blocks all `src/app/api/` routes from model-generated patches.
+**Automated verification — exact code commit above:**
+- SAMURA CI: mergeability check, dependency audit, TypeScript typecheck, lint, **183 unit tests across 28 test files**, and production build all passed.
+- Security dependency validation: audit, TypeScript, lint, unit tests and production build all passed.
+- Secret scanning: passed.
+- Push and pull-request CI runs both passed after concurrency groups were separated, preventing a push run from cancelling a required PR run.
+- Review fixes include recursive scrubbing of nested analytics URLs, safe GitHub draft recovery, bounded regeneration context, shared chat/regeneration prompts, cancellation accounting, research configuration preflight, and CSV/citation correctness tests.
 
-**Deployment status:** Vercel rejected the feature-branch preview deployment because the account reached its daily API deployment limit. No preview deployment exists for source commit `a3abbe15eb39f5800fa4e789d1207b7f2d1eafa5`. Vercel indicated that deployment can be retried after the limit resets. An earlier branch preview reached READY, but it does not contain the latest fixes.
+**Preview deployment:** Vercel created a READY preview for the exact verified code commit:
+- URL: https://samura-deieeq60o-bakande11-2779s-projects.vercel.app
+- Deployment: `dpl_FJvPyGaE95QCBt5GxZGFD1cLFqrU`
+- Commit: `4cdd111d1523402521698ed202545ee8fd45b53e`
+- Smoke checks: `/api/health` returned HTTP 200; `/login` returned HTTP 200; `/studio` returned HTTP 200.
 
-**Preview access and configuration:** SSO protection is enabled for Vercel deployments except custom domains; the project has only Vercel-managed domains. The feature branch lacks its own database/auth/GitHub OAuth preview variables, so authenticated end-to-end browser acceptance tests cannot currently be run against this exact head. Do not disable SSO or change production access without the owner's approval.
+**Critical preview configuration blocker:** `/api/conversations` returned HTTP 503 with `Conversation service is not configured.` The application requires a database URL (`SAMURA_DATABASE_URL` or `DATABASE_URL`), a `BETTER_AUTH_SECRET` of at least 32 characters, and `BETTER_AUTH_URL` in production mode. No preview variables are scoped to `feat/chatgpt-capability-parity`. Existing isolated preview database/auth variables belong to other branches and must not be reused. Consequently, the login page renders, but authenticated chat, conversation persistence, and other database-backed workflows are not yet acceptance-tested on this preview.
 
-**Monitoring:** PostHog pageview ingestion has been confirmed in the connected project. Three health warnings remain: missing pageleave, missing web vitals, and no authorized URLs. Source fixes for pageleave and web-vitals capture are present in this branch but require deployment to verify; authorized-URL configuration requires owner confirmation. Sentry event ingestion remains unverified.
+**Access protection:** the preview is protected by Vercel deployment access controls. A temporary Vercel share-access mechanism was used for read-only smoke checks; no share link is being published here. Do not disable deployment protection.
 
-**Provider activation:** Tavily is not configured and Gemini Search grounding remains disabled by default. Enabling Gemini grounding may incur provider charges and requires an explicit operator decision. No provider spend was authorized as part of this work.
+**Monitoring and provider activation:** PostHog pageview ingestion was previously confirmed. Source fixes for pageleave, web-vitals URL privacy, and nested URL scrubbing are included in the verified code commit, but ingestion must be rechecked after the preview has its own runtime configuration. Sentry event ingestion remains unverified. Tavily is not configured and Gemini Search grounding remains disabled by default; enabling Gemini grounding may incur provider charges and requires an explicit operator decision.
 
-**Review state:** all 65 previous inline review threads are resolved. A fresh CodeRabbit review has been triggered for the current head; its findings are pending.
+**Review state:** the latest review identified actionable findings, now addressed in source and regression tests. The corresponding review threads are being reconciled against the verified code.
 
-**Release boundary:** no merge to `main`, production deployment, production secret change, or destructive database operation has been performed. This is automated source/CI evidence, not a deployed preview or authenticated browser acceptance test.
+**Release boundary:** no merge to `main`, production deployment, production secret change, or destructive database operation has been performed. This is automated source/CI evidence plus limited unauthenticated preview smoke testing, not authenticated end-to-end acceptance testing.
