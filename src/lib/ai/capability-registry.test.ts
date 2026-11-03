@@ -40,7 +40,8 @@ describe("SAMURA capability registry", () => {
     expect(result.find((item) => item.id === "data_analysis")?.status).toBe("available");
     expect(result.find((item) => item.id === "data_analysis")?.description).toContain("CSV");
     expect(result.find((item) => item.id === "file_analysis")?.status).toBe("available");
-    for (const id of ["voice", "memory_projects", "agent_workflows"]) {
+    expect(result.find((item) => item.id === "voice")?.status).toBe("available");
+    for (const id of ["memory_projects", "agent_workflows"]) {
       expect(result.find((item) => item.id === id)?.status).toBe("planned");
     }
   });
@@ -79,6 +80,16 @@ describe("SAMURA capability registry", () => {
     expect(result.find((item) => item.id === "web_search")?.requirement).toContain("Gemini Search");
   });
 
+  it("requires a working chat provider before enabling voice features", () => {
+    const result = buildCapabilityRegistry({
+      runtimeConfigured: true,
+      chatConfigured: false,
+      imageConfigured: false,
+      webSearchConfigured: false,
+    });
+
+    expect(result.find((item) => item.id === "voice")?.status).toBe("needs_configuration");
+  });
   it("requires a working chat provider before enabling file analysis", () => {
     const result = buildCapabilityRegistry({
       runtimeConfigured: true,
