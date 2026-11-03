@@ -30,7 +30,7 @@ export default function DataAnalysisPage() {
       value: rawValue?.trim() ? Number(rawValue) : Number.NaN,
     };
   }).filter((row) => Number.isFinite(row.value)) : [];
-  const chartScale = Math.max(1, ...chartRows.map((row) => Math.abs(row.value)));
+  const chartScale = Math.max(...chartRows.map((row) => Math.abs(row.value)), 0) || 1;
 
   async function loadFile(file?: File) {
     if (!file) return;
@@ -84,7 +84,7 @@ export default function DataAnalysisPage() {
 
         <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 sm:p-7">
           <label htmlFor="csv-file" className="block text-sm font-semibold">Choose a CSV file (maximum 5 MB)</label>
-          <input id="csv-file" type="file" accept=".csv,text/csv" disabled={busy} onChange={(event) => loadFile(event.target.files?.[0])} className="mt-3 block w-full text-sm text-slate-300 file:mr-4 file:rounded-xl file:border-0 file:bg-teal-200 file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-[#07120e] hover:file:bg-white disabled:opacity-50" />
+          <input id="csv-file" type="file" accept=".csv,text/csv" disabled={busy} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void loadFile(file); }} className="mt-3 block w-full text-sm text-slate-300 file:mr-4 file:rounded-xl file:border-0 file:bg-teal-200 file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-[#07120e] hover:file:bg-white disabled:opacity-50" />
           {busy && <p className="mt-3 text-sm text-slate-400">Reading and analysing file…</p>}
           {error && <p role="alert" className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] p-3 text-sm text-amber-100">{error}</p>}
           {fileName && table && <p className="mt-4 text-sm text-slate-300">Loaded <strong>{fileName}</strong> · {table.rows.length} rows · {table.headers.length} columns</p>}
