@@ -8,7 +8,7 @@ import { auth } from "@/lib/auth";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { decryptConnectorToken, githubProviderId } from "@/lib/connectors/github-token";
 import { checkDistributedRateLimit } from "@/lib/distributed-rate-limit";
-import { createGitHubPatchDigest, hasExpectedGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit } from "@/lib/github-engine-validation";
+import { createGitHubPatchDigest, hasExpectedGitHubPatchDigest, isSafeGitHubPatchPath, matchesExpectedBaseCommit, matchesExpectedGitHubPatchTree } from "@/lib/github-engine-validation";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 
 export const runtime = "nodejs";
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
       throw error;
     });
     if (existingRef) {
-      const existingCommit = await github<{ sha: string; message: string }>(
+      const existingCommit = await github<{ sha: string; message: string; tree: { sha: string } }>(
         token, "/repos/" + repository + "/git/commits/" + existingRef.object.sha,
       );
       if (existingCommit.sha !== existingRef.object.sha || !hasExpectedGitHubPatchDigest(existingCommit.message, patchDigest)) {
@@ -150,13 +150,18 @@ export async function POST(request: Request) {
       const verification = await github<{ sha: string; parents?: Array<{ sha: string }>; files?: Array<{ filename: string; status: string }> }>(
         token, "/repos/" + repository + "/commits/" + existingCommit.sha,
       );
+      const gitTree = await github<{ tree?: Array<{ path: string; mode: string; type: string; sha: string }> }>(
+        token, "/repos/" + repository + "/git/trees/" + existingCommit.tree.sha + "?recursive=1",
+      );
       const expectedPaths = input.changes.map(change => change.path).sort();
       const actualPaths = (verification.files ?? []).map(file => file.filename).sort();
+      const contentMatches = matchesExpectedGitHubPatchTree(input.changes, gitTree.tree ?? []);
       const verified = verification.sha === existingCommit.sha
         && verification.parents?.length === 1
         && verification.parents[0].sha === input.expectedBaseCommit
         && expectedPaths.length === actualPaths.length
-        && expectedPaths.every((path, index) => path === actualPaths[index]);
+        && expectedPaths.every((path, index) => path === actualPaths[index])
+        && contentMatches;
       if (!verified) {
         return NextResponse.json({ error: "The existing SAMURA branch does not match the approved base commit and exact changed-file set. Inspect it in GitHub before retrying.", retryable: false }, { status: 409, headers: noStore });
       }
