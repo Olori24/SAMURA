@@ -81,6 +81,6 @@
 ## Current source and CI evidence — 2026-11-03
 
 **Feature branch:** `feat/chatgpt-capability-parity`  
-**Source commit:** `a5effee9a7ba00a984de945226faffdc46ed7443`  
-**GitHub Actions:** the previous source revision `a30e05b86ca0023b1a2051e69624a356a1fd2d29` passed SAMURA CI, security dependency validation and secret scanning. For this exact source commit, CI was queued/in progress when this snapshot was written; do not treat the previous revision’s pass as evidence for this one. The current workflow must complete dependency audit, TypeScript typecheck, lint, unit tests and production build before release. This is automated source/CI evidence, not a deployed preview or authenticated browser acceptance test.  
+**Source commit:** `32993bdfc4f0ef1549487859f7b0f3b21025473f`  
+**GitHub Actions:** the previous source revision `a30e05b86ca0023b1a2051e69624a356a1fd2d29` passed SAMURA CI, security dependency validation and secret scanning. For this exact source commit, the separate security dependency validation completed successfully, including dependency audit, TypeScript typecheck, lint, unit tests and production build. The main SAMURA CI run has passed dependency audit, TypeScript typecheck, lint and unit tests; its production build is still running. Do not treat this as a full CI pass until that build and secret scanning complete. This is automated source/CI evidence, not a deployed preview or authenticated browser acceptance test.  
 **Release status:** pull request remains open; no merge to `main` or production deployment is evidenced by this snapshot. The preview deployment and live provider workflows remain unverified.
