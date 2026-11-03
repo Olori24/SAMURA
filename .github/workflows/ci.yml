@@ -22,6 +22,8 @@ jobs:
       - name: Check mergeability with main
         run: |
           git fetch origin main:refs/remotes/origin/main
+          git config user.name "SAMURA CI"
+          git config user.email "samura-ci@users.noreply.github.com"
           if git merge --no-commit --no-ff origin/main; then
             git merge --abort || true
             echo "Feature branch merges cleanly with main."
