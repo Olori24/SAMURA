@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { normalizeGeminiResearchInteraction } from "./normalize-gemini-interaction";
 
 describe("normalizeGeminiResearchInteraction", () => {
+  it("preserves Google Search suggestion markup from grounded result steps", () => {
+    const markup = "<div class=\\\"search-suggestion\\\">Search this topic</div>";
+    const result = normalizeGeminiResearchInteraction({
+      steps: [
+        { type: "google_search_result", result: [{ search_suggestions: markup }] },
+        { type: "model_output", content: [{ type: "text", text: "Grounded answer." }] },
+      ],
+    });
+    expect(result.searchSuggestions).toEqual([markup]);
+  });
   it("converts grounded URL annotations into inline links and source cards", () => {
     const result = normalizeGeminiResearchInteraction({
       steps: [{ type: "model_output", content: [{
