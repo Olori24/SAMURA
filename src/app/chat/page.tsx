@@ -4,7 +4,7 @@ import { FormEvent, KeyboardEvent, useCallback, useEffect, useLayoutEffect, useR
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Archive, AudioWaveform, Check, ChevronLeft, Clipboard, Download, LoaderCircle, LogOut, Menu, MessageSquarePlus, Mic, MicOff, Pencil, RotateCw, Search, Send, Square, Sparkles, Trash2, X } from "lucide-react";
+import { Archive, AudioWaveform, Check, ChevronLeft, Clipboard, Download, LoaderCircle, LogOut, Menu, MessageSquarePlus, Mic, MicOff, Pencil, RotateCw, Search, Send, Square, Sparkles, Trash2, Volume2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
@@ -46,6 +46,7 @@ export default function ChatPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [streaming, setStreaming] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState("");
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -554,6 +555,28 @@ ${message.content}`),
     }
   }
 
+  function toggleReadAloud(message: Message) {
+    if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+      setError("Read aloud is not supported by this browser. Try an up-to-date Chrome browser.");
+      return;
+    }
+    if (speakingMessageId === message.id) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId("");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(message.content);
+    utterance.lang = navigator.language || "en-US";
+    utterance.onend = () => setSpeakingMessageId("");
+    utterance.onerror = () => { setSpeakingMessageId(""); setError("SAMURA could not play this response aloud."); };
+    setSpeakingMessageId(message.id);
+    window.speechSynthesis.speak(utterance);
+  }
+
+  useEffect(() => () => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  }, []);
   function handleComposerKey(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); }
   }
