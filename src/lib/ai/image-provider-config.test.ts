@@ -27,6 +27,12 @@ describe("image provider configuration", () => {
     })).toBeNull();
   });
 
+  it("does not route the default image key through OPENAI_BASE_URL", () => {
+    const config = getImageProviderConfig({ OPENAI_API_KEY: "legacy-secret", SAMURA_IMAGE_MODEL: "gpt-image-1" });
+    expect(config?.provider).toBe("openai_compatible");
+    expect(config && "baseURL" in config ? config.baseURL : undefined).toBeUndefined();
+  });
+
   it("uses Gemini for image generation when no OpenAI-compatible image key is configured", () => {
     expect(getImageProviderConfig({ GEMINI_API_KEY: "gemini-secret", SAMURA_IMAGE_MODEL: "unused" })).toEqual({
       provider: "gemini", apiKey: "gemini-secret", model: "gemini-nano-banana-2.1",
