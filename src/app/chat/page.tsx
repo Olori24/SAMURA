@@ -478,16 +478,23 @@ ${message.content}`),
     }
   }
 
-  async function toggleVoiceInput() {
+  function stopVoiceInput() {
+    voiceSessionRef.current += 1;
+    voiceStartingRef.current = false;
+    speechRef.current?.stop();
+    speechRef.current = null;
+    setVoiceStarting(false);
+    setVoiceListening(false);
+  }
+
+  function toggleVoiceInput() {
     if (voiceListening) {
       speechRef.current?.stop();
-      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-      setVoiceListening(false);
       return;
     }
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      setError("Microphone access requires a secure connection and a browser that supports microphone permissions. Open SAMURA over HTTPS in an up-to-date browser.");
+    if (voiceStartingRef.current || speechRef.current || streaming) return;
+    if (!window.isSecureContext) {
+      setError("Voice typing requires a secure HTTPS connection.");
       return;
     }
     const speechWindow = window as unknown as {
@@ -500,67 +507,70 @@ ${message.content}`),
       return;
     }
     setError("");
+    voiceStartingRef.current = true;
+    setVoiceStarting(true);
+    const sessionId = ++voiceSessionRef.current;
     try {
-      // Explicitly request microphone access from the browser before starting recognition.
-      // Keep the stream alive while dictation is active, then release it on stop/end/error.
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = stream;
       const recognition = new Recognition();
       recognition.lang = navigator.language || "en-NG";
       recognition.interimResults = false;
       recognition.continuous = false;
       speechTextRef.current = "";
-      recognition.onresult = (event) => {
+      recognition.onstart = () => {
+        if (voiceSessionRef.current !== sessionId || speechRef.current !== recognition) return;
+        voiceStartingRef.current = false;
+        setVoiceStarting(false);
+        setVoiceListening(true);
+      };
+      recognition.onresult = event => {
+        if (voiceSessionRef.current !== sessionId || speechRef.current !== recognition) return;
         const parts: string[] = [];
         for (let index = event.resultIndex; index < event.results.length; index += 1) {
           if (event.results[index].isFinal) parts.push(event.results[index][0].transcript.trim());
         }
-        speechTextRef.current = parts.filter(Boolean).join(" ");
+        speechTextRef.current = parts.filter(Boolean).join(" ").slice(0, 12000);
       };
-      recognition.onerror = (event) => {
+      recognition.onerror = event => {
+        if (voiceSessionRef.current !== sessionId || speechRef.current !== recognition) return;
+        const transcript = speechTextRef.current.trim();
+        if (transcript) setDraft(current => [current.trim(), transcript].filter(Boolean).join(" ").slice(0, 12000));
+        voiceStartingRef.current = false;
+        setVoiceStarting(false);
         setVoiceListening(false);
-        mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
+        speechRef.current = null;
         const messages: Record<string, string> = {
-          "not-allowed": "Microphone or speech-recognition access was denied. Allow microphone access for this site in your browser settings.",
+          "not-allowed": "Microphone or speech-recognition access was denied. Allow microphone access for this site.",
           "service-not-allowed": "Your browser or device is blocking its speech-recognition service. Try Chrome with an active internet connection.",
           "audio-capture": "No usable microphone input was found. Check that your microphone works and is not being used exclusively by another app.",
-          "network": "The browser's speech-recognition service could not connect. Check your internet connection and try again.",
+          "network": "The browser speech-recognition service could not connect. Check your internet connection and try again.",
           "no-speech": "No speech was detected. Tap Voice and speak clearly after listening starts.",
-          "language-not-supported": "The browser speech service does not support the selected language. Check your device's speech-language settings.",
+          "language-not-supported": "The browser speech service does not support the selected language. Check your device speech-language settings.",
           "aborted": "Voice typing was stopped before recognition completed.",
         };
-        setError(messages[event.error] ?? `Voice typing failed (${event.error || "unknown error"}). Check your connection and browser microphone/speech settings, then try again.`);
+        setError(messages[event.error] ?? `Voice typing failed (${event.error || "unknown error"}). Check your connection and browser speech settings, then try again.`);
       };
       recognition.onend = () => {
+        if (voiceSessionRef.current !== sessionId || speechRef.current !== recognition) return;
         const transcript = speechTextRef.current.trim();
-        if (transcript) setDraft((current) => [current.trim(), transcript].filter(Boolean).join(" "));
+        if (transcript) setDraft(current => [current.trim(), transcript].filter(Boolean).join(" ").slice(0, 12000));
         setVoiceListening(false);
-        mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
+        voiceStartingRef.current = false;
+        setVoiceStarting(false);
         speechRef.current = null;
       };
       speechRef.current = recognition;
-      setVoiceListening(true);
       recognition.start();
     } catch (cause) {
+      if (voiceSessionRef.current !== sessionId) return;
+      voiceStartingRef.current = false;
+      setVoiceStarting(false);
       setVoiceListening(false);
       speechRef.current = null;
-      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-      if (cause instanceof DOMException && cause.name === "NotAllowedError") {
-        setError("SAMURA could not access your microphone. When your browser asks, choose Allow. If no prompt appears, open the site permissions in Chrome and set Microphone to Allow, then reload SAMURA.");
-      } else if (cause instanceof DOMException && cause.name === "NotFoundError") {
-        setError("No microphone was found on this device. Connect or enable a microphone and try again.");
-      } else if (cause instanceof DOMException && cause.name === "NotReadableError") {
-        setError("Your microphone is unavailable or busy in another app. Close other apps using it and try again.");
-      } else {
-        setError(cause instanceof Error ? `Could not access the microphone: ${cause.message}` : "Could not access the microphone. Check site permissions and try again.");
-      }
+      setError(cause instanceof DOMException && cause.name === "NotAllowedError"
+        ? "Microphone permission was denied. Allow microphone access for SAMURA in your browser settings."
+        : "Could not start voice typing. Check microphone access and try again.");
     }
   }
-
   function stopReadAloud() {
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     setSpeakingMessageId("");
