@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const optionalSecret = z.string().min(1).optional();
+const optionalSecret = z.preprocess(value => value === "" ? undefined : value, z.string().min(1).optional());
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   SAMURA_DATABASE_URL: optionalSecret,
