@@ -54,9 +54,11 @@ function requestBody() {
   };
 }
 
-function installGitHubMock(options: { movedBase?: boolean; invalidParent?: boolean; existingBranch?: boolean; pullAlreadyExists?: boolean } = {}) {
+function installGitHubMock(options: { movedBase?: boolean; invalidParent?: boolean; existingBranch?: boolean; pullAlreadyExists?: boolean; pullAppearsAfterConflict?: boolean } = {}) {
   const calls: Array<{ path: string; method: string; body: Record<string, unknown> | null }> = [];
   let mainRefReads = 0;
+  let pullListReads = 0;
+  let branchCreated = false;
   const patchDigest = createGitHubPatchDigest({
     repository: "acme/project", baseBranch: "main", expectedBaseCommit: baseSha,
     title: "Add a reviewed feature", body: "Reviewed by the user.",
@@ -76,7 +78,7 @@ function installGitHubMock(options: { movedBase?: boolean; invalidParent?: boole
       return response({ object: { sha: options.movedBase && mainRefReads > 1 ? movedBaseSha : baseSha } });
     }
     if (path.includes("/git/ref/heads/samura%2Fapproval-") && method === "GET") {
-      return options.existingBranch ? response({ object: { sha: commitSha } }) : response({ message: "Not Found" }, 404);
+      return options.existingBranch || branchCreated ? response({ object: { sha: commitSha } }) : response({ message: "Not Found" }, 404);
     }
     if (path.endsWith("/contents/" + filePath) && method === "GET") return response({ message: "Not Found" }, 404);
     if (path.endsWith("/git/commits/" + baseSha) && method === "GET") return response({ tree: { sha: treeSha }, parents: [{ sha: "0".repeat(40) }] });
@@ -91,15 +93,18 @@ function installGitHubMock(options: { movedBase?: boolean; invalidParent?: boole
     if (path.endsWith("/git/blobs") && method === "POST") return response({ sha: blobSha }, 201);
     if (path.endsWith("/git/trees") && method === "POST") return response({ sha: treeSha }, 201);
     if (path.endsWith("/git/commits") && method === "POST") return response({ sha: commitSha, html_url: "https://github.com/acme/project/commit/" + commitSha }, 201);
-    if (path.endsWith("/git/refs") && method === "POST") return response({ ref: "refs/heads/samura/approval-" + approvalId }, 201);
+    if (path.endsWith("/git/refs") && method === "POST") { branchCreated = true; return response({ ref: "refs/heads/samura/approval-" + approvalId }, 201); }
     if (path.endsWith("/pulls") && url.searchParams.get("state") === "all" && method === "GET") {
-      return response(options.pullAlreadyExists ? [{
+      pullListReads += 1;
+      const found = options.pullAlreadyExists || (options.pullAppearsAfterConflict && pullListReads > 1);
+      return response(found ? [{
         html_url: "https://github.com/acme/project/pull/123", number: 123, state: "open",
         head: { ref: "samura/approval-" + approvalId, sha: commitSha },
         base: { ref: "main", sha: baseSha },
       }] : []);
     }
     if (path.endsWith("/pulls") && method === "POST") {
+      if (options.pullAppearsAfterConflict) return response({ message: "A pull request already exists for this branch." }, 422);
       return response({
         html_url: "https://github.com/acme/project/pull/123", number: 123, state: "open",
         head: { ref: "samura/approval-" + approvalId, sha: commitSha },
@@ -165,8 +170,8 @@ describe("POST /api/connectors/github/publish", () => {
     expect(calls.some(call => call.method === "PATCH" && call.path.endsWith("/pulls/123") && call.body?.state === "closed")).toBe(true);
   });
 
-  it("recovers an existing verified branch and pull request without creating a duplicate", async () => {
-    const calls = installGitHubMock({ existingBranch: true, pullAlreadyExists: true });
+  it("recovers a 422 pull-request race without creating a duplicate", async () => {
+    const calls = installGitHubMock({ existingBranch: true, pullAppearsAfterConflict: true });
     const responseValue = await POST(new Request("https://samura.test/api/connectors/github/publish", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody()),
     }));
