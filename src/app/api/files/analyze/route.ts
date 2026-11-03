@@ -52,7 +52,7 @@ export async function POST(request: Request) {
         },
         {
           role: "user",
-          content: "File name: " + parsed.data.filename + "\\nFile type: " + (parsed.data.mimeType || "text") + "\\nQuestion: " + parsed.data.question + "\\n\\nBEGIN UNTRUSTED FILE CONTENT\\n" + numberedContent + "\\nEND UNTRUSTED FILE CONTENT",
+          content: "File name: " + parsed.data.filename + "\nFile type: " + (parsed.data.mimeType || "text") + "\nQuestion: " + parsed.data.question + "\n\nBEGIN UNTRUSTED FILE CONTENT\n" + numberedContent + "\nEND UNTRUSTED FILE CONTENT",
         },
       ],
     }, { timeout: 45_000 });
