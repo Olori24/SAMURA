@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { Archive, AudioWaveform, Check, ChevronLeft, Clipboard, Download, LoaderCircle, LogOut, Menu, MessageSquarePlus, Mic, MicOff, Pencil, RotateCw, Search, Send, Square, Sparkles, Trash2, Volume2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { captureProductEvent, resetProductIdentity } from "@/lib/product-analytics";
 
 type Conversation = { id: string; title: string; createdAt: string; updatedAt: string };
 type Message = { id: string; role: "user" | "assistant"; content: string; status?: string; createdAt?: string };
@@ -17,6 +18,7 @@ type SpeechRecognitionLike = {
   lang: string;
   interimResults: boolean;
   continuous: boolean;
+  onstart: (() => void) | null;
   onresult: ((event: SpeechRecognitionEventLike) => void) | null;
   onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
   onend: (() => void) | null;
@@ -46,12 +48,14 @@ export default function ChatPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [streaming, setStreaming] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceStarting, setVoiceStarting] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState("");
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const speechRef = useRef<SpeechRecognitionLike | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const voiceStartingRef = useRef(false);
+  const voiceSessionRef = useRef(0);
   const speechTextRef = useRef("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
