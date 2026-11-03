@@ -17,6 +17,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Check mergeability with main
+        run: |
+          git fetch origin main:refs/remotes/origin/main
+          if git merge --no-commit --no-ff origin/main; then
+            git merge --abort || true
+            echo "Feature branch merges cleanly with main."
+          else
+            echo "Conflicting files with main:"
+            git diff --name-only --diff-filter=U
+            git merge --abort || true
+            exit 1
+          fi
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
