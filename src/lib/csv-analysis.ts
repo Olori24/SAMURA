@@ -76,7 +76,7 @@ export function parseCsv(input: string): CsvTable {
     }
     if (char === "\n" || char === "\r") {
       if (char === "\r" && text[i + 1] === "\n") i += 1;
-      row.push(cellWasQuoted ? cell : cell.trim());
+      pushCell(cellWasQuoted ? cell : cell.trim());
       if (row.some(value => value.length > 0) || recordHasStructure) pushRecord();
       row = [];
       cell = "";
@@ -91,7 +91,7 @@ export function parseCsv(input: string): CsvTable {
 
   if (quoted) throw new Error("Invalid CSV: a quoted cell was not closed.");
   if (cell.length > 0 || row.length > 0 || closedQuote) {
-    row.push(cellWasQuoted ? cell : cell.trim());
+    pushCell(cellWasQuoted ? cell : cell.trim());
     if (row.some(value => value.length > 0) || recordHasStructure) pushRecord();
   }
   if (records.length < 2) throw new Error("CSV must contain a header row and at least one data row.");
