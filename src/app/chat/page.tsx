@@ -217,7 +217,7 @@ export default function ChatPage() {
       setSearchResults(previous => previous.filter(item => item.id !== conversation.id));
       if (activeId === conversation.id) {
         conversationLoadRef.current += 1; olderRequestRef.current += 1; preserveScrollRef.current = null; setLoadingOlderMessages(false);
-        activeIdRef.current = ""; setActiveId(""); setActiveTitle(""); setMessages([]); setHasOlderMessages(false); setHistoryCursor(null);
+        activeIdRef.current = ""; setActiveId(""); setActiveTitle(""); setMessages([]); setEditingMessageId(""); setDraft(""); setHasOlderMessages(false); setHistoryCursor(null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not archive this conversation.");
