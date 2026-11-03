@@ -54,7 +54,7 @@ function requestBody() {
   };
 }
 
-function installGitHubMock(options: { movedBase?: boolean; invalidParent?: boolean; existingBranch?: boolean; pullAlreadyExists?: boolean; pullAppearsAfterConflict?: boolean } = {}) {
+function installGitHubMock(options: { movedBase?: boolean; invalidParent?: boolean; existingBranch?: boolean; pullAlreadyExists?: boolean; pullAppearsAfterConflict?: boolean; closedPull?: boolean } = {}) {
   const calls: Array<{ path: string; method: string; body: Record<string, unknown> | null }> = [];
   let mainRefReads = 0;
   let pullListReads = 0;
@@ -98,7 +98,7 @@ function installGitHubMock(options: { movedBase?: boolean; invalidParent?: boole
       pullListReads += 1;
       const found = options.pullAlreadyExists || (options.pullAppearsAfterConflict && pullListReads > 1);
       return response(found ? [{
-        html_url: "https://github.com/acme/project/pull/123", number: 123, state: "open",
+        html_url: "https://github.com/acme/project/pull/123", number: 123, state: options.closedPull ? "closed" : "open",
         head: { ref: "samura/approval-" + approvalId, sha: commitSha },
         base: { ref: "main", sha: baseSha },
       }] : []);
@@ -181,6 +181,17 @@ describe("POST /api/connectors/github/publish", () => {
     }));
     expect(responseValue.status).toBe(502);
     expect(calls.some(call => call.method === "PATCH" && call.path.endsWith("/pulls/123") && call.body?.state === "closed")).toBe(true);
+  });
+
+  it("rejects recovery when the matching pull request was closed by the user", async () => {
+    const calls = installGitHubMock({ existingBranch: true, pullAlreadyExists: true, closedPull: true });
+    const responseValue = await POST(new Request("https://samura.test/api/connectors/github/publish", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody()),
+    }));
+    const payload = await responseValue.json();
+    expect(responseValue.status, JSON.stringify(payload)).toBe(409);
+    expect(payload.error).toContain("is closed");
+    expect(calls.some(call => call.method === "POST" && call.path.endsWith("/pulls"))).toBe(false);
   });
 
   it("recovers a 422 pull-request race without creating a duplicate", async () => {

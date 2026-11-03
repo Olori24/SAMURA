@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { csvEscape, parseCsv, summarizeNumericColumns } from "./csv-analysis";
+import { csvEscape, formatAnalysisNumber, parseCsv, summarizeNumericColumns } from "./csv-analysis";
+
+describe("formatAnalysisNumber", () => {
+  it("preserves every digit of safe integers while keeping small decimals readable", () => {
+    expect(formatAnalysisNumber(1_234_567_891, "en-US")).toBe("1,234,567,891");
+    expect(formatAnalysisNumber(-9_876_543_210, "en-US")).toBe("-9,876,543,210");
+    expect(formatAnalysisNumber(0.0000123456789, "en-US")).toBe("0.00001234568");
+  });
+});
 
 describe("parseCsv", () => {
   it("parses CRLF, quoted commas, escaped quotes, and newlines in quoted cells", () => {

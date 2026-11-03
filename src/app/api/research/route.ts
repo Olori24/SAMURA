@@ -51,6 +51,9 @@ export async function POST(request: Request) {
   if (!env.SAMURA_WEB_SEARCH_API_KEY && !useGeminiGrounding) {
     return NextResponse.json({ error: "Web research needs configuration. Ask an administrator to enable Tavily or opt in to Gemini Search grounding." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
+  if (!chatConfigured && !useGeminiGrounding) {
+    return NextResponse.json({ error: "The chat AI provider is not configured, so SAMURA cannot summarize search results. Ask an administrator to configure a chat provider or enable Gemini Search grounding." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
 
   try {
     if (useGeminiGrounding && env.GEMINI_API_KEY) {

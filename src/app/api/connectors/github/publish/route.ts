@@ -199,6 +199,9 @@ export async function POST(request: Request) {
           if (!pull) throw error;
         }
       }
+      if (pull.state !== "open") {
+        return NextResponse.json({ error: "The matching pull request for this approval key is closed. It will not be reported as a successful recovery; inspect or reopen it in GitHub before retrying." }, { status: 409, headers: noStore });
+      }
       const branchAfterRecovery = await github<{ object: { sha: string } }>(
         token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(branchName),
       );

@@ -107,7 +107,7 @@ export async function POST(request: Request, context: {
         }, { timeout: maxDuration * 1_000 - 5_000, signal: request.signal });
       } catch (error) {
         await withUserTransaction(user.id, async (tx) => {
-          await tx.insert(usageRecords).values({ userId: user.id, conversationId: id, provider: ai.provider, model: ai.model, status: "failed" });
+          await tx.insert(usageRecords).values({ userId: user.id, conversationId: id, provider: ai.provider, model: ai.model, status: request.signal.aborted ? "cancelled" : "failed" });
         }).catch(() => undefined);
         throw error;
       }

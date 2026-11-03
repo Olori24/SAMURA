@@ -42,4 +42,9 @@ describe("file analysis citation validation", () => {
     expect(validateFileAnalysisCitations("Claim [L2] and detail [L3-L5].", 5)).toBe("Claim [L2] and detail [L3-L5].");
     expect(validateFileAnalysisCitations("Unsupported [L6] or [L4-L2].", 5)).toBe("Unsupported [unverified line reference] or [unverified line reference].");
   });
+
+  it("marks an incomplete trailing line reference as unverified", () => {
+    expect(validateFileAnalysisCitations("This claim cites [L2001", 5)).toBe("This claim cites [unverified line reference]");
+    expect(validateFileAnalysisCitations("Incomplete [L", 5)).toBe("Incomplete [unverified line reference]");
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSensitiveAnalyticsRoute, POSTHOG_DEFAULTS } from "./product-analytics";
+import { isSensitiveAnalyticsRoute, POSTHOG_DEFAULTS, sanitizeAnalyticsUrlProperties } from "./product-analytics";
 
 describe("isSensitiveAnalyticsRoute", () => {
   it("blocks the password reset route", () => {
@@ -19,6 +19,26 @@ describe("isSensitiveAnalyticsRoute", () => {
   });
 });
 
+
+describe("sanitizeAnalyticsUrlProperties", () => {
+  it("removes query strings and fragments from nested SDK URL properties", () => {
+    const properties: Record<string, unknown> = {
+      "$current_url": "https://samura.test/login?email=private@example.com#reset",
+      "$web_vitals_FCP_event": {
+        "$current_url": "https://samura.test/login?email=private@example.com",
+        "$referrer": "https://example.test/path?token=secret",
+        "$pathname": "/login",
+      },
+    };
+    sanitizeAnalyticsUrlProperties(properties);
+    expect(properties["$current_url"]).toBe("https://samura.test/login");
+    expect(properties["$web_vitals_FCP_event"]).toEqual({
+      "$current_url": "https://samura.test/login",
+      "$referrer": "https://example.test/path",
+      "$pathname": "/login",
+    });
+  });
+});
 
 describe("POSTHOG_DEFAULTS", () => {
   it("captures pageleave and web vitals without enabling broad autocapture or session replay", () => {

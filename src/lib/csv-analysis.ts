@@ -120,6 +120,13 @@ export function parseCsv(input: string): CsvTable {
   return { headers, rows };
 }
 
+export function formatAnalysisNumber(value: number, locale?: string) {
+  const formatter = Number.isSafeInteger(value)
+    ? new Intl.NumberFormat(locale)
+    : new Intl.NumberFormat(locale, { maximumSignificantDigits: 8 });
+  return formatter.format(value);
+}
+
 export function csvEscape(value: string | number) {
   let text = String(value);
   if (typeof value === "string" && /^[\t\r\n ]*[=+\-@]/.test(text)) text = "'" + text;

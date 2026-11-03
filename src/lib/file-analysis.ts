@@ -45,7 +45,10 @@ export function validateFileAnalysisCitations(answer: string, lineCount: number)
     const markerStart = answer.indexOf("[L", cursor);
     if (markerStart < 0) break;
     const markerEnd = answer.indexOf("]", markerStart + 2);
-    if (markerEnd < 0) break;
+    if (markerEnd < 0) {
+      output += answer.slice(cursor, markerStart) + "[unverified line reference]";
+      return output;
+    }
     const marker = answer.slice(markerStart, markerEnd + 1);
     const parts = answer.slice(markerStart + 2, markerEnd).split("-L");
     const startText = parts[0] ?? "";
