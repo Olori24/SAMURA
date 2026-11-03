@@ -7,6 +7,7 @@ import { getServerEnv } from "@/lib/env";
 import { isRuntimeConfigured } from "@/lib/runtime-config";
 import { parseBoundedJson } from "@/lib/parse-bounded-json";
 import { createAIClient } from "@/lib/ai/provider";
+import { getAIProviderConfig } from "@/lib/ai/provider-config";
 import { normalizeResearchSources } from "@/lib/research/normalize-sources";
 import { normalizeGeminiResearchInteraction } from "@/lib/research/normalize-gemini-interaction";
 
@@ -39,7 +40,14 @@ export async function POST(request: Request) {
   if (!body.ok) return NextResponse.json({ error: body.tooLarge ? "Request is too large." : "Invalid JSON request body." }, { status: body.tooLarge ? 413 : 400 });
   const parsed = requestSchema.safeParse(body.value);
   if (!parsed.success) return NextResponse.json({ error: "Enter a research question between 3 and 500 characters." }, { status: 400 });
-  const useGeminiGrounding = !env.SAMURA_WEB_SEARCH_API_KEY && Boolean(env.GEMINI_API_KEY && env.SAMURA_GEMINI_GROUNDING_ENABLED);
+  let chatConfigured = false;
+  try {
+    getAIProviderConfig(env);
+    chatConfigured = true;
+  } catch {
+    // Gemini Search can still provide research when the separate chat provider is unavailable.
+  }
+  const useGeminiGrounding = Boolean(env.GEMINI_API_KEY && env.SAMURA_GEMINI_GROUNDING_ENABLED && (!env.SAMURA_WEB_SEARCH_API_KEY || !chatConfigured));
   if (!env.SAMURA_WEB_SEARCH_API_KEY && !useGeminiGrounding) {
     return NextResponse.json({ error: "Web research needs configuration. Ask an administrator to enable Tavily or opt in to Gemini Search grounding." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
