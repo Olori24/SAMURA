@@ -13,6 +13,7 @@ import { parseBoundedJson } from "@/lib/parse-bounded-json";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const schema = z.object({
   repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/).max(201),
@@ -143,10 +144,10 @@ export async function POST(request: Request) {
       if (existingCommit.sha !== existingRef.object.sha || !hasExpectedGitHubPatchDigest(existingCommit.message, patchDigest)) {
         return NextResponse.json({ error: "This idempotency key has already been used for a different patch. Generate a new approval key before publishing.", retryable: false }, { status: 409, headers: noStore });
       }
-      const existingPulls = await github<Array<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>>(
+      const existingPulls = await github<Array<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string; sha: string } }>>(
         token, "/repos/" + repository + "/pulls?state=all&head=" + encodeURIComponent(repoInfo.full_name.split("/")[0] + ":" + branchName) + "&base=" + encodeURIComponent(input.baseBranch),
       );
-      const existingPull = existingPulls.find(pull => pull.head.sha === existingCommit.sha);
+      const existingPull = existingPulls.find(pull => pull.head.sha === existingCommit.sha && pull.base.ref === input.baseBranch && pull.base.sha === input.expectedBaseCommit);
       const verification = await github<{ sha: string; parents?: Array<{ sha: string }>; files?: Array<{ filename: string; status: string }> }>(
         token, "/repos/" + repository + "/commits/" + existingCommit.sha,
       );
@@ -194,14 +195,14 @@ export async function POST(request: Request) {
           const racedPulls = await github<Array<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>>(
             token, "/repos/" + repository + "/pulls?state=all&head=" + encodeURIComponent(repoInfo.full_name.split("/")[0] + ":" + branchName) + "&base=" + encodeURIComponent(input.baseBranch),
           );
-          pull = racedPulls.find(item => item.head.sha === existingCommit.sha) ?? null;
+          pull = racedPulls.find(item => item.head.sha === existingCommit.sha && item.base.ref === input.baseBranch && item.base.sha === input.expectedBaseCommit) ?? null;
           if (!pull) throw error;
         }
       }
       const branchAfterRecovery = await github<{ object: { sha: string } }>(
         token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(branchName),
       );
-      if (pull.head.sha !== existingCommit.sha || branchAfterRecovery.object.sha !== existingCommit.sha) {
+      if (pull.head.sha !== existingCommit.sha || pull.base.ref !== input.baseBranch || pull.base.sha !== input.expectedBaseCommit || branchAfterRecovery.object.sha !== existingCommit.sha) {
         await github(token, "/repos/" + repository + "/pulls/" + pull.number, "PATCH", { state: "closed" }).catch(() => undefined);
         return NextResponse.json({ error: "The recovered pull request head changed during verification. The draft was closed; inspect the branch before retrying.", retryable: false }, { status: 409, headers: noStore });
       }
@@ -252,7 +253,7 @@ export async function POST(request: Request) {
     if (branchBeforePr.object.sha !== commit.sha) {
       return NextResponse.json({ error: "The approval branch changed before pull-request creation. Inspect it before retrying.", retryable: false }, { status: 409, headers: noStore });
     }
-    const pull = await github<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string } }>(
+    const pull = await github<{ html_url: string; number: number; state: string; head: { ref: string; sha: string }; base: { ref: string; sha: string } }>(
       token, "/repos/" + repository + "/pulls", "POST", {
         title: input.title,
         body: input.body + "\n\n---\nCreated by SAMURA after explicit user approval. Idempotency: " + input.idempotencyKey,
@@ -262,7 +263,7 @@ export async function POST(request: Request) {
     const branchAfterPr = await github<{ object: { sha: string } }>(
       token, "/repos/" + repository + "/git/ref/heads/" + encodeURIComponent(branchName),
     );
-    if (pull.head.sha !== commit.sha || branchAfterPr.object.sha !== commit.sha) {
+    if (pull.head.sha !== commit.sha || pull.base.ref !== input.baseBranch || pull.base.sha !== base.object.sha || branchAfterPr.object.sha !== commit.sha) {
       await github(token, "/repos/" + repository + "/pulls/" + pull.number, "PATCH", { state: "closed" }).catch(() => undefined);
       return NextResponse.json({ error: "The approval branch or pull-request head changed during verification. The draft was closed; inspect the branch before retrying.", retryable: false }, { status: 409, headers: noStore });
     }
