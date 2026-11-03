@@ -4,6 +4,20 @@ type Citation = { type?: string; url?: string; title?: string; start_index?: num
 type TextBlock = { type?: string; text?: string; annotations?: Citation[] };
 type ModelStep = { type?: string; content?: TextBlock[] };
 
+function utf8ByteOffsetToUtf16Index(text: string, byteOffset: number): number | null {
+  if (!Number.isInteger(byteOffset) || byteOffset < 0) return null;
+  let bytes = 0;
+  let utf16 = 0;
+  for (const character of text) {
+    if (bytes === byteOffset) return utf16;
+    const codePoint = character.codePointAt(0)!;
+    bytes += codePoint <= 0x7f ? 1 : codePoint <= 0x7ff ? 2 : codePoint <= 0xffff ? 3 : 4;
+    utf16 += character.length;
+    if (bytes > byteOffset) return null;
+  }
+  return bytes === byteOffset ? utf16 : null;
+}
+
 export function normalizeGeminiResearchInteraction(input: unknown): { answer: string; sources: ResearchSource[] } {
   if (!input || typeof input !== "object") return { answer: "", sources: [] };
   const interaction = input as { output_text?: unknown; steps?: unknown };
@@ -29,9 +43,13 @@ export function normalizeGeminiResearchInteraction(input: unknown): { answer: st
       if (annotation.type !== "url_citation" || typeof annotation.url !== "string" ||
           typeof annotation.start_index !== "number" || typeof annotation.end_index !== "number" ||
           !Number.isInteger(annotation.start_index) || !Number.isInteger(annotation.end_index) ||
-          annotation.start_index < 0 || annotation.end_index <= annotation.start_index || annotation.end_index > block.text.length) continue;
+          annotation.start_index < 0 || annotation.end_index <= annotation.start_index) continue;
+      // Gemini citation offsets are UTF-8 byte offsets; JavaScript indexes are UTF-16.
+      const start = utf8ByteOffsetToUtf16Index(block.text, annotation.start_index);
+      const end = utf8ByteOffsetToUtf16Index(block.text, annotation.end_index);
+      if (start === null || end === null || end <= start) continue;
       candidates.push({
-        end: block.offset + annotation.end_index,
+        end: block.offset + end,
         title: typeof annotation.title === "string" ? annotation.title : "",
         url: annotation.url,
       });
