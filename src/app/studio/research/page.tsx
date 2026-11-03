@@ -73,7 +73,7 @@ export default function ResearchPage() {
                 key={index}
                 title="Google Search suggestion"
                 srcDoc={markup}
-                sandbox="allow-top-navigation-by-user-activation"
+                sandbox="allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
                 className="h-20 w-full rounded-lg border-0 bg-white"
                 referrerPolicy="no-referrer"
               />)}
