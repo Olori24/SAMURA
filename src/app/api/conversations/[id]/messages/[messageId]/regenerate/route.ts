@@ -89,8 +89,9 @@ export async function POST(request: Request, context: {
         id: messages.id, role: messages.role, content: messages.content,
       }).from(messages)
         .where(and(eq(messages.conversationId, id), eq(messages.userId, user.id), beforeTarget))
-        .orderBy(asc(messages.createdAt), asc(messages.id))
+        .orderBy( /* latest prior messages first */ desc(messages.createdAt), desc(messages.id))
         .limit(39);
+      previousHistory.reverse();
       const tailSnapshot = await tx.select({ id: messages.id }).from(messages)
         .where(and(eq(messages.conversationId, id), eq(messages.userId, user.id), afterTarget))
         .orderBy(asc(messages.createdAt), asc(messages.id));
