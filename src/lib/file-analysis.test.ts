@@ -43,8 +43,10 @@ describe("file analysis citation validation", () => {
     expect(validateFileAnalysisCitations("Unsupported [L6] or [L4-L2].", 5)).toBe("Unsupported [unverified line reference] or [unverified line reference].");
   });
 
-  it("marks an incomplete trailing line reference as unverified", () => {
-    expect(validateFileAnalysisCitations("This claim cites [L2001", 5)).toBe("This claim cites [unverified line reference]");
+  it("marks incomplete references without discarding following prose", () => {
+    expect(validateFileAnalysisCitations("This claim cites [L2001", 5)).toBe("This claim cites [unverified line reference]2001");
     expect(validateFileAnalysisCitations("Incomplete [L", 5)).toBe("Incomplete [unverified line reference]");
+    expect(validateFileAnalysisCitations("The literal log prefix [LOG should remain visible in this explanation.", 5))
+      .toBe("The literal log prefix [unverified line reference]OG should remain visible in this explanation.");
   });
 });
