@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSensitiveAnalyticsRoute, POSTHOG_DEFAULTS, sanitizeAnalyticsUrlProperties } from "./product-analytics";
+import { isSensitiveAnalyticsRoute, POSTHOG_DEFAULTS, sanitizeAnalyticsEvent, sanitizeAnalyticsUrlProperties } from "./product-analytics";
 
 describe("isSensitiveAnalyticsRoute", () => {
   it("blocks the password reset route", () => {
@@ -36,6 +36,22 @@ describe("sanitizeAnalyticsUrlProperties", () => {
       "$current_url": "https://samura.test/login",
       "$referrer": "https://example.test/path",
       "$pathname": "/login",
+    });
+  });
+
+  it("sanitizes the complete analytics event, including nested $set_once URLs", () => {
+    const event = {
+      properties: { "$current_url": "https://samura.test/chat?token=private" },
+      $set_once: {
+        profile_url: "https://samura.test/profile?email=private@example.com#top",
+        nested: { referrer_url: "https://example.test/?access_token=secret" },
+      },
+    };
+    sanitizeAnalyticsEvent(event);
+    expect(event.properties["$current_url"]).toBe("https://samura.test/chat");
+    expect(event.$set_once).toEqual({
+      profile_url: "https://samura.test/profile",
+      nested: { referrer_url: "https://example.test/" },
     });
   });
 });
