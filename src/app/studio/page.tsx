@@ -14,8 +14,8 @@ const items = [
 ];
 
 export default function StudioPage() {
-  return <main className="min-h-screen bg-[#080b12] px-4 py-8 text-white sm:px-8">
-    <div className="mx-auto max-w-6xl">
+  return <main className="samura-studio-shell min-h-screen px-4 py-8 text-white sm:px-8">
+    <div className="mx-auto max-w-6xl">\n      <nav className="samura-studio-nav" aria-label="Workspace navigation"><Link href="/chat" className="samura-studio-brand"><span className="samura-studio-brand-mark"><Sparkles size={19}/></span><span>SAMURA <span className="text-teal-200">STUDIO</span></span></Link><Link href="/chat">Return to workspace <ArrowRight size={14}/></Link></nav>
       <Link href="/chat" className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"><ArrowRight size={16} className="rotate-180"/> Back to chat</Link>
       <header className="mb-10 mt-8 max-w-3xl">
         <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-teal-300/20 bg-teal-300/10 text-teal-200"><Sparkles size={21}/></div>

@@ -62,7 +62,7 @@ export default function DataAnalysisPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#080b12] px-4 py-8 text-white sm:px-8">
+    <main className="samura-studio-shell min-h-screen bg-[#080b12] px-4 py-8 text-white sm:px-8">
       <div className="mx-auto max-w-6xl">
         <Link href="/studio" className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"><ArrowLeft size={16} /> Back to Studio</Link>
         <header className="mb-8 mt-8 max-w-3xl">
