@@ -54,6 +54,17 @@ export function sanitizeAnalyticsUrlProperties(properties: Record<string, unknow
   visit(properties);
 }
 
+type SanitizableAnalyticsEvent = {
+  properties?: Record<string, unknown>;
+  $set_once?: Record<string, unknown>;
+};
+
+export function sanitizeAnalyticsEvent(event: SanitizableAnalyticsEvent) {
+  if (event.properties) sanitizeAnalyticsUrlProperties(event.properties);
+  if (event.$set_once) sanitizeAnalyticsUrlProperties(event.$set_once);
+  return event;
+}
+
 export function initializeProductAnalytics() {
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
   const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
@@ -64,7 +75,7 @@ export function initializeProductAnalytics() {
     // Scrub URL-bearing properties recursively, including nested web-vitals events.
     // This prevents query-string credentials and personal data reaching analytics.
     before_send: event => {
-      if (event.properties) sanitizeAnalyticsUrlProperties(event.properties as Record<string, unknown>);
+      sanitizeAnalyticsEvent(event as unknown as SanitizableAnalyticsEvent);
       return event;
     },
   });
