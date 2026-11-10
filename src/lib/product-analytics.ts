@@ -16,11 +16,12 @@ export type ProductEvent =
 
 type EventProperties = Record<string, string | number | boolean>;
 
-const POSTHOG_DEFAULTS = {
+export const POSTHOG_DEFAULTS = {
   defaults: "2026-08-30" as const,
   autocapture: false,
   capture_pageview: false,
-  capture_pageleave: false,
+  capture_pageleave: true,
+  capture_performance: { web_vitals: true },
   capture_exceptions: false,
   disable_session_recording: true,
   person_profiles: "identified_only" as const,
@@ -36,6 +37,34 @@ export function isSensitiveAnalyticsRoute(pathname: string, search = "") {
     || hasSensitiveQuery;
 }
 
+export function sanitizeAnalyticsUrlProperties(properties: Record<string, unknown>) {
+  const visit = (value: Record<string, unknown>) => {
+    for (const [key, child] of Object.entries(value)) {
+      if (typeof child === "string" && /url|referrer/i.test(key)) {
+        value[key] = child.split(/[?#]/, 1)[0];
+      } else if (Array.isArray(child)) {
+        for (const item of child) {
+          if (item && typeof item === "object" && !Array.isArray(item)) visit(item as Record<string, unknown>);
+        }
+      } else if (child && typeof child === "object") {
+        visit(child as Record<string, unknown>);
+      }
+    }
+  };
+  visit(properties);
+}
+
+type SanitizableAnalyticsEvent = {
+  properties?: Record<string, unknown>;
+  $set_once?: Record<string, unknown>;
+};
+
+export function sanitizeAnalyticsEvent(event: SanitizableAnalyticsEvent) {
+  if (event.properties) sanitizeAnalyticsUrlProperties(event.properties);
+  if (event.$set_once) sanitizeAnalyticsUrlProperties(event.$set_once);
+  return event;
+}
+
 export function initializeProductAnalytics() {
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
   const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
@@ -43,23 +72,10 @@ export function initializeProductAnalytics() {
   posthog.init(token, {
     api_host: host,
     ...POSTHOG_DEFAULTS,
-    // Strip query strings and fragments from SDK-generated URL properties.
-    // This prevents reset tokens and OAuth credentials from reaching analytics.
+    // Scrub URL-bearing properties recursively, including nested web-vitals events.
+    // This prevents query-string credentials and personal data reaching analytics.
     before_send: event => {
-      const urlProperties = [
-        "$current_url",
-        "$referrer",
-        "$pathname",
-        "$initial_current_url",
-        "$initial_referrer",
-      ] as const;
-      if (event.properties) {
-        for (const key of urlProperties) {
-          const value = event.properties[key];
-          if (typeof value !== "string") continue;
-          event.properties[key] = value.split(/[?#]/, 1)[0];
-        }
-      }
+      sanitizeAnalyticsEvent(event as unknown as SanitizableAnalyticsEvent);
       return event;
     },
   });

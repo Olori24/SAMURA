@@ -1,0 +1,63 @@
+# SAMURA AI — Data Inventory and Lifecycle Review
+
+Status: Preliminary engineering inventory. This is not a completed DPIA, legal determination, or confirmation of vendor settings.
+Last reviewed: 2026-11-03.
+Do not use this document as a public privacy notice until all unknowns are verified and counsel has reviewed it.
+
+## Inventory method
+
+Rows below identify data categories evidenced by the repository or requiring confirmation. "Verify" means the current deployment, vendor configuration, retention period or complete processing purpose has not yet been established. Do not infer provider settings from SDK usage alone.
+
+| Data category | Evidence / likely source | Purpose to verify | Recipients / storage to verify | Retention / deletion question |
+|---|---|---|---|---|
+| Account identity (name, email, image, verification status) | src/db/schema.ts users table; Better Auth | Account creation, login and support | Neon database; email provider if used | What happens on account closure and legal retention needs? |
+| Password credential material | accounts.password field; Better Auth email/password authentication | Password-based account authentication | Better Auth password-hash storage is used; confirm the exact deployed hash algorithm/parameters and upgrade path. `BETTER_AUTH_SECRET` is supplied as a sensitive Vercel environment variable for production; preview secrets are branch-specific. Verify Neon at-rest encryption, database access controls, backups and the deployed configuration; no application-level encryption or rotation process for password hashes is evidenced. | Password changes, hash upgrades, account deletion, backup retention and incident impact; record key/at-rest controls and evidence for the deployed database |
+| Sessions and authentication metadata | sessions table includes token, IP address, user agent and user ID | Session continuity, security and abuse prevention | Neon database; logs may also receive operational metadata | Expiry, logout, reset revocation and deletion schedule |
+| OAuth accounts and provider credentials | accounts table includes access/refresh/id tokens and scopes; GitHub connector routes | Connect GitHub and perform user-authorised operations | GitHub OAuth callback encrypts its persisted access token with AES-256-GCM using `SAMURA_CONNECTOR_ENCRYPTION_KEY` before writing `accounts.access_token`. The key is sourced from a sensitive Vercel environment variable configured for production and preview targets. Other credential fields/stores require separate verification. | Revocation, disconnect, token expiry, key rotation/re-encryption, backup exposure and deletion behaviour; no automated key-rotation evidence is currently recorded |
+| Password-reset verification data | verifications table and Better Auth callbacks | Account recovery | Database and email service | Token expiry, single use, cleanup and log redaction |
+| Prompts, conversations and messages | conversation/message tables and chat API routes | Provide conversation history and AI responses | Database and configured AI provider(s) | User deletion, retention period, model-provider retention and backup propagation |
+| Uploaded/generated documents | user_document schema and document API routes | User document workflows | Database/object storage/provider destinations must be confirmed | Deletion, versions, backup lifecycle and third-party copies |
+| AI usage and cost metadata | usage_record table | Service operations, usage measurement and cost estimation | Database and observability tools if exported | Metadata fields, identifiers, retention and aggregation |
+| Rate-limit records | api_rate_limit table | Abuse prevention and throttling | Database | Expiry cleanup and whether keys contain personal information |
+| Operational logs and error telemetry | Application, hosting and Sentry initialization/configuration | Reliability, security and troubleshooting | Vercel and Sentry DSN variables are configured; actual Sentry event ingestion remains unverified | Payload scrubbing, retention, access, region and deletion limitations |
+| Product analytics and cookies | `src/lib/product-analytics.ts`, `PostHogIdentity` and deployed PostHog configuration | Product events and route-level pageviews; prompts, message bodies and file contents are excluded | PostHog US Cloud project; project token/host configured and pageview ingestion observed | Identified-only profiles; session recording and broad autocapture disabled in source; verify consent, opt-out, cookie identifiers and retention |
+| Support and outbound email | auth-email.ts and configured sender | Password recovery and service communication | Resend or configured email service must be verified | Message content, delivery logs, recipient rights and vendor retention |
+
+## Required verification questions
+
+1. Which AI providers and model endpoints are enabled in each environment?
+2. Are prompts, uploaded files, outputs, identifiers or usage metadata transmitted to each provider?
+3. What do current contracts and account settings say about retention, training, subprocessors and regional processing?
+4. Which analytics, error monitoring, session replay, advertising or cookie tools are actually enabled?
+5. What personal data is written to logs, traces, support tickets and CI artifacts?
+6. What retention periods are implemented for account, session, verification, conversation, document, usage and security records?
+7. How are account deletion and data export implemented, including storage, vendors and backups?
+8. Are international transfers taking place, and what safeguards apply?
+9. Does SAMURA offer features to children or process special-category/sensitive data in a way requiring additional safeguards?
+10. Which entity determines processing purposes and means, and when is SAMURA acting as a processor for a business customer?
+
+## Engineering rules
+
+- Minimise collection and avoid logging prompts, message bodies, tokens, passwords, reset URLs or full request bodies by default.
+- Keep password credential material separate from OAuth credentials and session tokens. Verify password hashing and access controls from the deployed authentication configuration; do not describe password hashes as OAuth tokens.
+- Keep OAuth credentials server-side. The GitHub callback currently uses AES-256-GCM for its persisted access token, with SAMURA_CONNECTOR_ENCRYPTION_KEY as the key source. No automated key-rotation/re-encryption process is evidenced. Do not assume other Better Auth or OAuth credential fields use the same encryption. Record a separate control, key management, rotation and deployment evidence for every persisted credential store; treat missing or unverified controls as open risks. Never include credentials in client responses or diagnostics.
+- Use authenticated identity from a verified session; never trust a client-supplied user ID for ownership.
+- Prefer short, documented retention periods where compatible with product function, legal obligations and security needs.
+- Make deletion workflows explicit about backups and external processors; do not promise immediate erasure from systems where it cannot be verified.
+- Record policy version and acceptance only when necessary for a clear legal purpose; do not collect extra personal data merely to create audit evidence.
+- Treat vendor documentation as necessary but insufficient: verify the actual account configuration and contracts.
+
+## Completion criteria
+
+This inventory is complete only when each row has an accountable owner, a verified purpose and lawful basis (as determined with counsel), actual vendor/location details, retention rule, deletion mechanism, user-rights path and evidence source. Every persisted credential must additionally identify its at-rest protection, key source/management, rotation/re-encryption procedure, backup implications and deployment evidence.
+
+
+## Telemetry verification — 2026-11-03
+
+Repository and Vercel configuration now evidence both Sentry and PostHog SDK initialization. The Vercel environment inventory contains `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` and `NEXT_PUBLIC_POSTHOG_HOST` across production, preview and development targets. Presence of these variable names does not prove that the secret values are valid or that Sentry events are being received.
+
+The connected PostHog project has received `$pageview` events and currently reports zero active `ingestion_warning` issues. It has three active non-dismissed warnings: no `$pageleave` events, no `$web_vitals` events, and no authorized URLs. The feature branch now enables PostHog page-leave and web-vitals capture while retaining `autocapture: false`, `capture_exceptions: false` and `disable_session_recording: true`. These source changes have not yet been deployed and the warnings must be rechecked after deployment.
+
+Sentry DSN variables are configured in Vercel, but actual Sentry event ingestion and alert delivery have not been verified. Do not describe Sentry monitoring as operational until a controlled test event is observed in the intended Sentry project.
+
+**Current conclusion:** PostHog SDK initialization and pageview ingestion are evidenced; complete web analytics capture remains pending deployment and authorized-URL confirmation. Sentry source/configuration is present but runtime ingestion remains unverified. Analytics events are limited to product actions and route paths; chat content, prompts, uploaded files, credentials and reset tokens must remain excluded. No session replay or broad autocapture is enabled in the current SDK configuration.
