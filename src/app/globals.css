@@ -18,3 +18,74 @@ body { margin: 0; color: var(--foreground); background: radial-gradient(ellipse 
 button, a { -webkit-tap-highlight-color: transparent; }
 a { color: inherit; text-decoration: none; }
 ::selection { color: #06110d; background: var(--accent); }
+
+
+/* SAMURA premium workspace layer: visual-only refinements; existing interactions remain unchanged. */
+.samura-workspace {
+  background:
+    radial-gradient(ellipse at 50% -28%, rgba(112, 221, 177, .075), transparent 46%),
+    linear-gradient(115deg, rgba(14, 20, 32, .98), rgba(8, 11, 18, .99) 42%, rgba(10, 15, 24, .98));
+}
+.samura-sidebar {
+  background: linear-gradient(180deg, rgba(13, 19, 30, .98), rgba(9, 13, 21, .99));
+  border-color: rgba(183, 199, 230, .10);
+  box-shadow: 18px 0 60px rgba(0,0,0,.12);
+}
+.samura-topbar {
+  background: rgba(8, 12, 20, .68);
+  backdrop-filter: blur(22px);
+  border-color: rgba(183, 199, 230, .09);
+}
+.samura-message-scroll { scrollbar-width: thin; scrollbar-color: rgba(168,240,208,.2) transparent; }
+.samura-welcome h1 {
+  max-width: 760px;
+  background: linear-gradient(115deg, #f7fbff 8%, #d5f7e8 58%, #91dcbc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: -.055em;
+  line-height: 1.08;
+}
+.samura-welcome > p:not(:first-of-type) { color: #aab5c8; }
+.samura-welcome button {
+  min-height: 104px;
+  border-color: rgba(183,199,230,.12);
+  background: linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 10px 30px rgba(0,0,0,.10);
+  transition: transform .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.samura-welcome button:hover {
+  transform: translateY(-2px);
+  border-color: rgba(168,240,208,.32);
+  background: linear-gradient(145deg, rgba(168,240,208,.085), rgba(255,255,255,.025));
+  box-shadow: 0 16px 38px rgba(0,0,0,.18);
+}
+.samura-message { animation: samura-message-in .28s ease both; }
+.samura-composer-dock {
+  background: linear-gradient(180deg, transparent, rgba(8,11,18,.72) 22%);
+}
+.samura-composer {
+  background: linear-gradient(145deg, rgba(20,28,42,.98), rgba(13,19,30,.98));
+  border-color: rgba(183,199,230,.16);
+  box-shadow: 0 24px 70px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.045);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.samura-composer:focus-within {
+  border-color: rgba(168,240,208,.42);
+  box-shadow: 0 24px 70px rgba(0,0,0,.34), 0 0 0 3px rgba(168,240,208,.045), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.samura-composer-input { min-height: 66px; }
+@keyframes samura-message-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .samura-message, .samura-welcome button { animation: none; transition: none; }
+  .samura-welcome button:hover { transform: none; }
+}
+@media (max-width: 767px) {
+  .samura-sidebar { width: min(88vw, 320px); }
+  .samura-welcome { padding-top: 4rem; padding-bottom: 3rem; }
+  .samura-welcome h1 { font-size: clamp(2.4rem, 11vw, 3.4rem); }
+  .samura-composer-dock { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+}
