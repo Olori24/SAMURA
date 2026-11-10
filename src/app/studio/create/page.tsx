@@ -41,7 +41,7 @@ export default function CreatePage() {
 
   const imageExtension = image.match(/^data:image\/(png|jpeg|webp);base64,/i)?.[1].toLowerCase().replace("jpeg", "jpg") ?? "img";
 
-  if (isPending) return <main className="grid min-h-screen place-items-center bg-[#080b12] text-slate-400">Loading your workspace…</main>;
+  if (isPending) return <main className="samura-studio-shell grid min-h-screen place-items-center bg-[#080b12] text-slate-400">Loading your workspace…</main>;
   if (!session?.user) { router.replace("/login"); return null; }
 
   return <main className="min-h-screen bg-[#080b12] px-4 py-8 text-white sm:px-8">
