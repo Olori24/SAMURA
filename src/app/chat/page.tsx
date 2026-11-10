@@ -394,6 +394,12 @@ ${message.content}`),
         status: streamUnsaved ? "unsaved" : streamCancelled ? "stopped" : received ? (streamFailed ? "partial" : "complete") : "failed",
       } : m));
       if (!received && !streamFailed && !streamCancelled) setError("The model returned an empty response. You can try again.");
+      if (editMessageId && !persistedByResponse) {
+        await openConversation(conversationId, true).catch(() => undefined);
+        setDraft(text);
+        setEditingMessageId(editMessageId);
+        setError("The edit was not saved. Your original messages were preserved.");
+      }
       await loadConversations(showArchivedRef.current).catch(() => {
         setError("The conversation list could not be refreshed.");
       });
