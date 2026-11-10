@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, gt, lt, or } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -51,39 +51,55 @@ export async function POST(request: Request, context: {
 
   try {
     const setup = await withUserTransaction(user.id, async (tx) => {
-      const [conversation] = await tx.select({ id: conversations.id })
+      const [conversation] = await tx.select({ id: conversations.id, updatedAt: conversations.updatedAt })
         .from(conversations)
         .where(and(eq(conversations.id, id), eq(conversations.userId, user.id)))
         .limit(1)
         .for("update");
       if (!conversation) return { status: "not_found" as const };
 
-      // Keep the full snapshot lightweight: content is fetched only for the
-      // latest 40 messages up to the target turn, never for the entire conversation.
-      const history = await tx.select({
-        id: messages.id, role: messages.role,
-      }).from(messages)
-        .where(and(eq(messages.conversationId, id), eq(messages.userId, user.id)))
-        .orderBy(asc(messages.createdAt), asc(messages.id));
-      const targetIndex = history.findIndex((item) => item.id === messageId);
-      if (targetIndex < 0 || history[targetIndex].role !== "user") return { status: "not_found" as const };
-      if (history.slice(targetIndex + 1).some((item) => item.role === "user")) {
-        return { status: "not_latest" as const };
-      }
-      const contextIds = history.slice(Math.max(0, targetIndex - 39), targetIndex + 1).map((item) => item.id);
-      const context = await tx.select({
-        id: messages.id, role: messages.role, content: messages.content,
+      const [target] = await tx.select({
+        id: messages.id, role: messages.role, content: messages.content, createdAt: messages.createdAt,
       }).from(messages)
         .where(and(
+          eq(messages.id, messageId),
           eq(messages.conversationId, id),
           eq(messages.userId, user.id),
-          inArray(messages.id, contextIds),
         ))
+        .limit(1);
+      if (!target || target.role !== "user") return { status: "not_found" as const };
+
+      const afterTarget = or(
+        gt(messages.createdAt, target.createdAt),
+        and(eq(messages.createdAt, target.createdAt), gt(messages.id, target.id)),
+      );
+      const [laterUser] = await tx.select({ id: messages.id }).from(messages).where(and(
+        eq(messages.conversationId, id),
+        eq(messages.userId, user.id),
+        eq(messages.role, "user"),
+        afterTarget,
+      )).limit(1);
+      if (laterUser) return { status: "not_latest" as const };
+
+      const beforeTarget = or(
+        lt(messages.createdAt, target.createdAt),
+        and(eq(messages.createdAt, target.createdAt), lt(messages.id, target.id)),
+      );
+      const previousHistory = await tx.select({
+        id: messages.id, role: messages.role, content: messages.content,
+      }).from(messages)
+        .where(and(eq(messages.conversationId, id), eq(messages.userId, user.id), beforeTarget))
+        .orderBy(asc(messages.createdAt), asc(messages.id))
+        .limit(39);
+      const tailSnapshot = await tx.select({ id: messages.id }).from(messages)
+        .where(and(eq(messages.conversationId, id), eq(messages.userId, user.id), afterTarget))
         .orderBy(asc(messages.createdAt), asc(messages.id));
       return {
         status: "ok" as const,
-        history: context as HistoryMessage[],
-        snapshotIds: history.map((item) => item.id),
+        history: [...previousHistory, target] as HistoryMessage[],
+        targetCreatedAt: target.createdAt,
+        snapshotUpdatedAt: conversation.updatedAt,
+        tailSnapshotIds: tailSnapshot.map((item) => item.id),
       };
     });
 
@@ -128,31 +144,46 @@ export async function POST(request: Request, context: {
 
     const committed = await withUserTransaction(user.id, async (tx) => {
       if (request.signal.aborted) return null;
-      const [conversation] = await tx.select({ id: conversations.id })
+      const [conversation] = await tx.select({ id: conversations.id, updatedAt: conversations.updatedAt })
         .from(conversations)
         .where(and(eq(conversations.id, id), eq(conversations.userId, user.id)))
         .limit(1)
         .for("update");
-      if (!conversation) return null;
+      if (!conversation || conversation.updatedAt.getTime() !== setup.snapshotUpdatedAt.getTime()) return null;
 
-      const history = await tx.select({
-        id: messages.id, role: messages.role,
-      }).from(messages)
-        .where(and(eq(messages.conversationId, id), eq(messages.userId, user.id)))
-        .orderBy(asc(messages.createdAt), asc(messages.id));
-      const targetIndex = history.findIndex((item) => item.id === messageId);
-      if (targetIndex < 0 || history[targetIndex].role !== "user") return null;
-      if (history.slice(targetIndex + 1).some((item) => item.role === "user")) return null;
-      if (history.length !== setup.snapshotIds.length || history.some((item, index) => item.id !== setup.snapshotIds[index])) return null;
-
-      const removeIds = history.slice(targetIndex + 1).map((item) => item.id);
-      if (removeIds.length) {
-        await tx.delete(messages).where(and(
+      const [target] = await tx.select({ id: messages.id, role: messages.role, createdAt: messages.createdAt })
+        .from(messages)
+        .where(and(
+          eq(messages.id, messageId),
           eq(messages.conversationId, id),
           eq(messages.userId, user.id),
-          inArray(messages.id, removeIds),
-        ));
-      }
+        ))
+        .limit(1);
+      if (!target || target.role !== "user" || target.createdAt.getTime() !== setup.targetCreatedAt.getTime()) return null;
+
+      const afterTarget = or(
+        gt(messages.createdAt, target.createdAt),
+        and(eq(messages.createdAt, target.createdAt), gt(messages.id, target.id)),
+      );
+      const [laterUser] = await tx.select({ id: messages.id }).from(messages).where(and(
+        eq(messages.conversationId, id),
+        eq(messages.userId, user.id),
+        eq(messages.role, "user"),
+        afterTarget,
+      )).limit(1);
+      if (laterUser) return null;
+
+      const currentTail = await tx.select({ id: messages.id }).from(messages)
+        .where(and(eq(messages.conversationId, id), eq(messages.userId, user.id), afterTarget))
+        .orderBy(asc(messages.createdAt), asc(messages.id));
+      if (currentTail.length !== setup.tailSnapshotIds.length
+        || currentTail.some((item, index) => item.id !== setup.tailSnapshotIds[index])) return null;
+
+      await tx.delete(messages).where(and(
+        eq(messages.conversationId, id),
+        eq(messages.userId, user.id),
+        afterTarget,
+      ));
       const [replacement] = await tx.insert(messages).values({
         conversationId: id,
         userId: user.id,
