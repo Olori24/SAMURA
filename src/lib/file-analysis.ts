@@ -46,7 +46,8 @@ export function validateFileAnalysisCitations(answer: string, lineCount: number)
     if (markerStart < 0) break;
     const markerEnd = answer.indexOf("]", markerStart + 2);
     if (markerEnd < 0) {
-      output += answer.slice(cursor, markerStart) + "[unverified line reference]";
+      // Replace only the incomplete marker and preserve all following prose.
+      output += answer.slice(cursor, markerStart) + "[unverified line reference]" + answer.slice(markerStart + 2);
       return output;
     }
     const marker = answer.slice(markerStart, markerEnd + 1);
