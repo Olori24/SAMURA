@@ -5,6 +5,15 @@ type ResetEmailInput = {
   url: string;
 };
 
+export type PasswordRecoveryEmailConfigStatus = {
+  apiKeyPresent: boolean;
+  senderPresent: boolean;
+  senderFormatValid: boolean;
+  authBaseUrlPresent: boolean;
+  authBaseUrlValid: boolean;
+  authBaseUrlUsesHttps: boolean;
+};
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -14,21 +23,45 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;");
 }
 
-export function isPasswordRecoveryEmailConfigured() {
+/**
+ * Reports only configuration-presence/format booleans.
+ * Never return or log environment-variable values.
+ */
+export function getPasswordRecoveryEmailConfigStatus(): PasswordRecoveryEmailConfigStatus {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.SAMURA_EMAIL_FROM?.trim();
   const baseUrl = process.env.BETTER_AUTH_URL?.trim();
-  if (!apiKey || !from || !baseUrl || !from.includes("@") || /[\r\n]/.test(from)) {
-    return false;
+
+  let authBaseUrlValid = false;
+  let authBaseUrlUsesHttps = false;
+  if (baseUrl) {
+    try {
+      const url = new URL(baseUrl);
+      authBaseUrlValid = !url.username && !url.password && Boolean(url.hostname);
+      authBaseUrlUsesHttps = url.protocol === "https:";
+    } catch {
+      // Keep diagnostics boolean-only; do not include the invalid value.
+    }
   }
-  try {
-    const url = new URL(baseUrl);
-    return url.protocol === (process.env.NODE_ENV === "production" ? "https:" : url.protocol)
-      && !url.username
-      && !url.password;
-  } catch {
-    return false;
-  }
+
+  return {
+    apiKeyPresent: Boolean(apiKey),
+    senderPresent: Boolean(from),
+    senderFormatValid: Boolean(from && from.includes("@") && !/[\r\n]/.test(from)),
+    authBaseUrlPresent: Boolean(baseUrl),
+    authBaseUrlValid,
+    authBaseUrlUsesHttps,
+  };
+}
+
+export function isPasswordRecoveryEmailConfigured() {
+  const status = getPasswordRecoveryEmailConfigStatus();
+  return status.apiKeyPresent
+    && status.senderPresent
+    && status.senderFormatValid
+    && status.authBaseUrlPresent
+    && status.authBaseUrlValid
+    && (process.env.NODE_ENV !== "production" || status.authBaseUrlUsesHttps);
 }
 
 export async function sendPasswordResetEmail({ to, url }: ResetEmailInput) {
