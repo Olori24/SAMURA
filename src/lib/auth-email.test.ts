@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { isPasswordRecoveryEmailConfigured, sendPasswordResetEmail } from "./auth-email";
+import { getPasswordRecoveryEmailConfigStatus, isPasswordRecoveryEmailConfigured, sendPasswordResetEmail } from "./auth-email";
 
 beforeEach(() => {
   vi.stubEnv("NODE_ENV", "test");
@@ -21,6 +21,41 @@ describe("password recovery email", () => {
     expect(isPasswordRecoveryEmailConfigured()).toBe(true);
     vi.stubEnv("RESEND_API_KEY", "");
     expect(isPasswordRecoveryEmailConfigured()).toBe(false);
+  });
+
+  it("reports only boolean readiness diagnostics and never returns configured values", () => {
+    expect(getPasswordRecoveryEmailConfigStatus()).toEqual({
+      apiKeyPresent: true,
+      senderPresent: true,
+      senderValid: true,
+      baseUrlPresent: true,
+      baseUrlValid: true,
+      configured: true,
+    });
+
+    vi.stubEnv("SAMURA_EMAIL_FROM", "invalid-sender");
+    expect(getPasswordRecoveryEmailConfigStatus()).toMatchObject({
+      apiKeyPresent: true,
+      senderPresent: true,
+      senderValid: false,
+      configured: false,
+    });
+    expect(JSON.stringify(getPasswordRecoveryEmailConfigStatus())).not.toContain("test-resend-key");
+    expect(JSON.stringify(getPasswordRecoveryEmailConfigStatus())).not.toContain("security@samura.example");
+  });
+
+  it("requires HTTPS for the canonical production auth URL", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    expect(getPasswordRecoveryEmailConfigStatus()).toMatchObject({
+      baseUrlPresent: true,
+      baseUrlValid: false,
+      configured: false,
+    });
+    vi.stubEnv("BETTER_AUTH_URL", "https://samura.example");
+    expect(getPasswordRecoveryEmailConfigStatus()).toMatchObject({
+      baseUrlValid: true,
+      configured: true,
+    });
   });
 
   it("refuses to send a reset URL with an untrusted origin", async () => {
